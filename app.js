@@ -1889,6 +1889,84 @@ document.getElementById('importFile').addEventListener('change', (e) => {
   e.target.value = '';
 });
 
+// Rebuilds full task objects from the flattened "Export for AI Skill" format
+// (dependsOn as titles, status as a label, no ids). Additive only — appended
+// to the existing list, never replaces it, unlike the "Import backup" handler
+// above. dependsOn is re-linked by title match once every task in the batch
+// has an id, since the export has no ids left to match against.
+const importActiveTasksFile = document.getElementById('importActiveTasksFile');
+const VALID_IMPORT_PRIORITIES = ['urgent', 'high', 'medium', 'low'];
+const STATUS_LABEL_TO_KEY = { 'Not started': 'not_started', 'In Progress': 'in_progress', 'Completed': 'completed' };
+
+importActiveTasksFile.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    let data;
+    try {
+      data = JSON.parse(ev.target.result);
+    } catch {
+      alert('Could not read the file — make sure it is valid JSON.');
+      e.target.value = '';
+      return;
+    }
+    if (!Array.isArray(data)) {
+      alert('Invalid file — expected an array of tasks (the "Export for AI Skill" format).');
+      e.target.value = '';
+      return;
+    }
+    if (!confirm(`This will add ${data.length} task(s) to your current ${tasks.length} task(s). Continue?`)) {
+      e.target.value = '';
+      return;
+    }
+
+    const titleToId = {};
+    const newTasks = data.map((entry) => {
+      const task = {
+        id: uid(),
+        title: (entry.title || '').trim(),
+        category: CATEGORIES.includes(entry.category) ? entry.category : 'TO ALLOCATE',
+        effort: null,
+        impact: null,
+        project: entry.project || null,
+        labels: Array.isArray(entry.labels) ? entry.labels : [],
+        subtasks: (entry.subtasks || []).map((s) => ({
+          id: uid(),
+          title: s.title,
+          completed: !!s.completed,
+          minutes: s.minutes || null,
+        })),
+        estimatedMinutes: Number(entry.estimatedMinutes) || 0,
+        dependsOn: [],
+        email: entry.emailLink ? { link: entry.emailLink } : null,
+        notes: entry.notes || null,
+        startDate: entry.startDate || null,
+        due: entry.due || null,
+        priority: VALID_IMPORT_PRIORITIES.includes(entry.priority) ? entry.priority : 'medium',
+        completed: entry.status === 'Completed',
+        createdAt: entry.createdAt && !isNaN(Date.parse(entry.createdAt)) ? Date.parse(entry.createdAt) : Date.now(),
+        status: STATUS_LABEL_TO_KEY[entry.status] || 'not_started',
+      };
+      if (task.title) titleToId[task.title] = task.id;
+      return task;
+    });
+
+    data.forEach((entry, i) => {
+      newTasks[i].dependsOn = (entry.dependsOn || [])
+        .map((depTitle) => titleToId[depTitle])
+        .filter(Boolean);
+    });
+
+    tasks.push(...newTasks);
+    saveTasks();
+    render();
+    alert(`Imported ${newTasks.length} task(s) successfully.`);
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
 // ---------- Triage Log ----------
 // A staging area, deliberately separate from `tasks`/STORAGE_KEY. Claude for
 // Chrome writes here via the Import Triage Log file input only — never via
