@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>To Do</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+
+  <div class="layout">
+    <div class="create-column">
+      <div class="panel-header">
+        <h2>Quick Add</h2>
+      </div>
+
+      <form id="quickAddForm" class="task-form">
+        <input type="text" id="quickAddTitle" class="title-input" placeholder="Enter Task Name" required autocomplete="off">
+        <div class="task-form-row">
+          <select id="quickAddPriority" title="Priority">
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+            <option value="urgent">Urgent</option>
+          </select>
+          <button type="submit" class="add-btn">Add</button>
+        </div>
+        <input type="url" id="quickAddLink" class="subtask-input email-link-input" placeholder="Enter URL" autocomplete="off">
+        <textarea id="quickAddNotes" class="notes-input" placeholder="Add Notes" rows="3"></textarea>
+      </form>
+
+      <div class="panel-header">
+        <h2>Create a Task</h2>
+      </div>
+
+      <form id="taskForm" class="task-form">
+        <input type="text" id="taskTitle" class="title-input" placeholder="Enter Task Name" required autocomplete="off">
+        <div class="task-form-row">
+          <select id="taskEffort" title="Effort" required>
+            <option value="" disabled selected>Effort</option>
+            <option value="high">High</option>
+            <option value="low">Low</option>
+          </select>
+          <select id="taskImpact" title="Impact" required>
+            <option value="" disabled selected>Impact</option>
+            <option value="high">High</option>
+            <option value="low">Low</option>
+          </select>
+          <span id="taskCategoryPreview" class="category-preview"></span>
+          <select id="taskProject" title="Project">
+            <option value="">No project</option>
+          </select>
+          <input type="date" id="taskStartDate" title="Start date">
+          <input type="date" id="taskDue" title="Due date">
+          <select id="taskPriority" title="Priority">
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+            <option value="urgent">Urgent</option>
+          </select>
+          <input type="number" id="taskEstimatedTime" class="estimated-time-input" placeholder="Estimated Time (min)" title="Estimated Time (minutes)" min="0" step="5">
+          <button type="submit" class="add-btn">Add</button>
+        </div>
+        <div class="form-section-label">Labels</div>
+        <div id="labelPicker" class="label-picker"></div>
+
+        <div class="form-section-label">Sub-tasks</div>
+        <div class="subtask-input-row">
+          <input type="text" id="subtaskInput" class="subtask-input" placeholder="Enter Sub-Task Name" autocomplete="off">
+          <input type="number" id="subtaskMinutesInput" class="subtask-minutes-input" placeholder="Min" min="0" step="5">
+        </div>
+        <ul id="subtaskDraftList" class="subtask-draft-list"></ul>
+
+        <div class="form-section-label">Depends on</div>
+        <div class="dependency-dropdown" id="dependencyDropdown">
+          <button type="button" class="dropdown-toggle" id="dependencyToggle">Select dependencies ▾</button>
+          <div class="dropdown-panel hidden" id="dependencyPanel"></div>
+        </div>
+
+        <div class="form-section-label">Outlook Web URL</div>
+        <input type="url" id="emailLinkInput" class="subtask-input email-link-input" placeholder="Enter URL" autocomplete="off">
+
+        <div class="form-section-label">Notes</div>
+        <textarea id="taskNotes" class="notes-input" placeholder="Add Notes" rows="3"></textarea>
+      </form>
+
+      <div class="projects-panel">
+        <h3>Projects</h3>
+        <div class="project-add-row">
+          <input type="text" id="newProjectInput" placeholder="Enter Project Name" autocomplete="off">
+          <button type="button" id="addProjectBtn" class="add-btn">Add</button>
+        </div>
+        <ul id="projectListUl" class="project-list"></ul>
+      </div>
+    </div>
+
+    <div class="board-panel">
+      <div class="view-tabs" id="viewTabs">
+        <button type="button" class="view-tab active" data-view="board">Board</button>
+        <button type="button" class="view-tab" data-view="overdue">Overdue</button>
+        <button type="button" class="view-tab" data-view="week">This Week</button>
+        <button type="button" class="view-tab" data-view="list">List</button>
+        <button type="button" class="view-tab" data-view="calendar">Calendar</button>
+        <button type="button" class="view-tab" data-view="triage">Triage Log</button>
+      </div>
+
+      <div class="toolbar">
+        <div class="filter-group" id="statusFilters">
+          <button class="filter-btn active" data-status="all">All</button>
+          <button class="filter-btn" data-status="active">Active</button>
+          <button class="filter-btn" data-status="completed">Completed</button>
+        </div>
+        <div class="filter-group">
+          <select id="categoryFilter">
+            <option value="all">All categories</option>
+            <option value="DO">DO</option>
+            <option value="PLAN">PLAN</option>
+            <option value="DELEGATE">DELEGATE</option>
+            <option value="TO ALLOCATE">TO ALLOCATE</option>
+          </select>
+          <select id="projectFilter">
+            <option value="all">All projects</option>
+          </select>
+          <select id="labelFilter">
+            <option value="all">All labels</option>
+          </select>
+          <select id="sortBy">
+            <option value="created">Sort: Newest</option>
+            <option value="due">Sort: Due date</option>
+            <option value="priority">Sort: Priority</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <button type="button" id="exportBtn" class="filter-btn">⬇ Export</button>
+          <button type="button" id="exportCsvBtn" class="filter-btn">⬇ Export to Excel</button>
+          <button type="button" id="exportActiveJsonBtn" class="filter-btn" title="Export Not Started / In Progress tasks as JSON, for a Claude Skill">⬇ Export for AI Skill</button>
+          <label class="filter-btn" style="cursor:pointer;" title="Import backup">⬆ Import<input type="file" id="importFile" accept=".json" style="display:none;"></label>
+        </div>
+      </div>
+
+      <div id="boardView" class="view-content">
+        <div id="board" class="board">
+          <div class="board-column" data-category="DO">
+            <div class="board-column-header">
+              <span class="column-title">DO</span>
+              <span class="column-count" id="countDO">0</span>
+            </div>
+            <div class="board-column-body">
+              <ul class="task-list" id="listDO"></ul>
+              <details class="completed-group hidden" id="completedGroupDO">
+                <summary>Completed (<span id="completedCountDO">0</span>)</summary>
+                <ul class="task-list completed-list" id="completedListDO"></ul>
+              </details>
+            </div>
+          </div>
+          <div class="board-column" data-category="PLAN">
+            <div class="board-column-header">
+              <span class="column-title">PLAN</span>
+              <span class="column-count" id="countPLAN">0</span>
+            </div>
+            <div class="board-column-body">
+              <ul class="task-list" id="listPLAN"></ul>
+              <details class="completed-group hidden" id="completedGroupPLAN">
+                <summary>Completed (<span id="completedCountPLAN">0</span>)</summary>
+                <ul class="task-list completed-list" id="completedListPLAN"></ul>
+              </details>
+            </div>
+          </div>
+          <div class="board-column" data-category="DELEGATE">
+            <div class="board-column-header">
+              <span class="column-title">DELEGATE</span>
+              <span class="column-count" id="countDELEGATE">0</span>
+            </div>
+            <div class="board-column-body">
+              <ul class="task-list" id="listDELEGATE"></ul>
+              <details class="completed-group hidden" id="completedGroupDELEGATE">
+                <summary>Completed (<span id="completedCountDELEGATE">0</span>)</summary>
+                <ul class="task-list completed-list" id="completedListDELEGATE"></ul>
+              </details>
+            </div>
+          </div>
+          <div class="board-column" data-category="TO ALLOCATE">
+            <div class="board-column-header">
+              <span class="column-title">TO ALLOCATE</span>
+              <span class="column-count" id="countTOALLOCATE">0</span>
+            </div>
+            <div class="board-column-body">
+              <ul class="task-list" id="listTOALLOCATE"></ul>
+              <details class="completed-group hidden" id="completedGroupTOALLOCATE">
+                <summary>Completed (<span id="completedCountTOALLOCATE">0</span>)</summary>
+                <ul class="task-list completed-list" id="completedListTOALLOCATE"></ul>
+              </details>
+            </div>
+          </div>
+        </div>
+
+        <p id="emptyState" class="empty-state">No tasks yet — add one above.</p>
+      </div>
+
+      <div id="listView" class="view-content hidden">
+        <div class="week-table-wrap">
+          <table class="week-table">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Task</th>
+                <th class="email-col">Email</th>
+                <th class="centered-col">Project</th>
+                <th>Category</th>
+                <th class="centered-col">Priority</th>
+                <th class="centered-col">Start Date</th>
+                <th class="centered-col">Due Date</th>
+                <th class="centered-col">Est. Time</th>
+                <th>Labels</th>
+                <th class="centered-col">Sub-tasks</th>
+                <th>Dependencies</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="listTableBody"></tbody>
+            <tbody id="listCompletedToggleBody" class="hidden">
+              <tr class="completed-toggle-row">
+                <td colspan="13"><span class="completed-toggle-arrow">▸</span> Completed (<span id="listCompletedCount">0</span>)</td>
+              </tr>
+            </tbody>
+            <tbody id="listCompletedTableBody" class="hidden"></tbody>
+          </table>
+        </div>
+        <p id="listEmptyState" class="empty-state">No tasks match the current filters.</p>
+      </div>
+
+      <div id="weekView" class="view-content hidden">
+        <div class="week-range" id="weekRangeLabel"></div>
+        <div class="week-table-wrap">
+          <table class="week-table">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Task</th>
+                <th class="email-col">Email</th>
+                <th class="centered-col">Project</th>
+                <th>Category</th>
+                <th class="centered-col">Priority</th>
+                <th class="centered-col">Start Date</th>
+                <th class="centered-col">Due Date</th>
+                <th>Labels</th>
+                <th class="centered-col">Sub-tasks</th>
+                <th>Dependencies</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="weekTableBody"></tbody>
+            <tbody id="weekCompletedToggleBody" class="hidden">
+              <tr class="completed-toggle-row">
+                <td colspan="12"><span class="completed-toggle-arrow">▸</span> Completed (<span id="weekCompletedCount">0</span>)</td>
+              </tr>
+            </tbody>
+            <tbody id="weekCompletedTableBody" class="hidden"></tbody>
+          </table>
+        </div>
+        <p id="weekEmptyState" class="empty-state">No tasks due this week.</p>
+      </div>
+
+      <div id="overdueView" class="view-content hidden">
+        <div class="week-table-wrap">
+          <table class="week-table">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Task</th>
+                <th class="email-col">Email</th>
+                <th class="centered-col">Project</th>
+                <th>Category</th>
+                <th class="centered-col">Priority</th>
+                <th class="centered-col">Start Date</th>
+                <th class="centered-col">Due Date</th>
+                <th>Labels</th>
+                <th class="centered-col">Sub-tasks</th>
+                <th>Dependencies</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="overdueTableBody"></tbody>
+          </table>
+        </div>
+        <p id="overdueEmptyState" class="empty-state">No overdue tasks — nice work!</p>
+      </div>
+
+      <div id="calendarView" class="view-content hidden">
+        <div class="calendar-header">
+          <button type="button" class="icon-btn" id="calendarPrev" aria-label="Previous month">‹</button>
+          <span class="calendar-month-label" id="calendarMonthLabel"></span>
+          <button type="button" class="icon-btn" id="calendarNext" aria-label="Next month">›</button>
+        </div>
+        <div class="calendar-weekdays">
+          <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+        </div>
+        <div class="calendar-grid" id="calendarGrid"></div>
+      </div>
+
+      <div id="triageView" class="view-content hidden">
+        <div class="toolbar">
+          <div class="filter-group">
+            <label class="filter-btn" style="cursor:pointer;" title="Import a Triage Log JSON file produced by Claude for Chrome — additive only, never touches your existing tasks">
+              ⬆ Import Triage Log
+              <input type="file" id="importTriageLogFile" accept=".json" style="display:none;">
+            </label>
+            <button type="button" id="promoteSelectedBtn" class="filter-btn">Promote Selected → To Allocate</button>
+          </div>
+          <div class="filter-group">
+            <span id="triageCount" class="hint-text"></span>
+          </div>
+        </div>
+        <div class="week-table-wrap">
+          <table class="week-table">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Subject</th>
+                <th class="email-col">Email</th>
+                <th class="centered-col">Priority</th>
+                <th>Notes</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="triageLogTableBody"></tbody>
+          </table>
+        </div>
+        <p id="triageEmptyState" class="empty-state">No items in the Triage Log.</p>
+      </div>
+
+      <footer class="footer">
+        <span id="countLabel">0 tasks</span>
+        <button id="clearCompleted" class="link-btn">Clear completed</button>
+      </footer>
+    </div>
+  </div>
+
+</div>
+
+<div class="modal-overlay hidden" id="editModalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Edit Task</h2>
+      <button type="button" class="icon-btn" id="editModalClose" aria-label="Close">✕</button>
+    </div>
+    <form id="editForm">
+      <input type="text" id="editTitle" class="title-input" placeholder="Enter Task Name" required autocomplete="off">
+      <div class="task-form-row">
+        <select id="editEffort" title="Effort" required>
+          <option value="" disabled>Effort</option>
+          <option value="high">High</option>
+          <option value="low">Low</option>
+        </select>
+        <select id="editImpact" title="Impact" required>
+          <option value="" disabled>Impact</option>
+          <option value="high">High</option>
+          <option value="low">Low</option>
+        </select>
+        <span id="editCategoryPreview" class="category-preview"></span>
+        <select id="editProject" title="Project">
+          <option value="">No project</option>
+        </select>
+        <input type="date" id="editStartDate" title="Start date">
+        <input type="date" id="editDue" title="Due date">
+        <select id="editPriority" title="Priority">
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+          <option value="urgent">Urgent</option>
+        </select>
+        <input type="number" id="editEstimatedTime" class="estimated-time-input" placeholder="Estimated Time (min)" title="Estimated Time (minutes)" min="0" step="5">
+      </div>
+
+      <div class="form-section-label">Labels</div>
+      <div id="editLabelPicker" class="label-picker"></div>
+
+      <div class="form-section-label">Sub-tasks</div>
+      <div class="subtask-input-row">
+        <input type="text" id="editSubtaskInput" class="subtask-input" placeholder="Enter Sub-Task Name" autocomplete="off">
+        <input type="number" id="editSubtaskMinutesInput" class="subtask-minutes-input" placeholder="Min" min="0" step="5">
+      </div>
+      <ul id="editSubtaskDraftList" class="subtask-draft-list"></ul>
+
+      <div class="form-section-label">Depends on</div>
+      <div class="dependency-dropdown" id="editDependencyDropdown">
+        <button type="button" class="dropdown-toggle" id="editDependencyToggle">Select dependencies ▾</button>
+        <div class="dropdown-panel hidden" id="editDependencyPanel"></div>
+      </div>
+
+      <div class="form-section-label">Outlook Web URL</div>
+      <input type="url" id="editEmailLinkInput" class="subtask-input email-link-input" placeholder="Enter URL" autocomplete="off">
+
+      <div class="form-section-label">Notes</div>
+      <textarea id="editNotes" class="notes-input" placeholder="Add Notes" rows="3"></textarea>
+
+      <div class="modal-actions">
+        <button type="button" class="link-btn" id="editCancelBtn">Cancel</button>
+        <button type="submit" class="add-btn">Save changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="date-edit-popover hidden" id="dateEditPopover">
+  <label class="date-edit-field">Start<input type="date" id="dateEditStart"></label>
+  <label class="date-edit-field">Due<input type="date" id="dateEditDue"></label>
+</div>
+
+<div class="dropdown-panel card-dep-popover hidden" id="cardDepPopover"></div>
+
+<div class="dropdown-panel card-dep-popover hidden" id="calTasksPopover"></div>
+
+<div class="notes-popover hidden" id="notesPopover"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

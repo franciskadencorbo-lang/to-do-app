@@ -1,0 +1,1534 @@
+:root {
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --text: #575756;
+  --text-muted: #6b7280;
+  --border: #e2e4e9;
+  --accent: #00757E;
+  --accent-contrast: #ffffff;
+  --danger: #dc2626;
+  --low: #10b981;
+  --medium: #f59e0b;
+  --high: #ef4444;
+  --urgent: #991b1b;
+  --prio-urgent: #ef4444;
+  --prio-high: #eab308;
+  --prio-medium: #3b82f6;
+  --prio-low: #9ca3af;
+  --status-not-started: #6b7280;
+  --status-in-progress: #3b82f6;
+  --shadow: 0 1px 2px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.08);
+  --brand-teal: #00A9A3;
+  --brand-teal-deep: #00757E;
+  --brand-teal-soft: #B2E5E3;
+  --brand-green: #88B917;
+  --brand-orange: #F68C26;
+  --brand-peach: #FCDCBD;
+  --form-font-size: 14px;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.app {
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 24px 20px 60px;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.create-column {
+  position: sticky;
+  top: 20px;
+}
+
+.board-panel {
+  min-width: 0;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.panel-header h2 {
+  font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--text);
+  margin: 0;
+}
+
+.icon-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  width: 38px;
+  height: 38px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+.icon-btn:hover { filter: brightness(0.97); }
+
+.task-form {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: var(--shadow);
+  margin-bottom: 18px;
+}
+
+.projects-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: var(--shadow);
+}
+
+.projects-panel h3 {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+}
+
+.project-add-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.project-add-row input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: var(--form-font-size);
+}
+
+.project-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.title-input {
+  width: 100%;
+  font-size: var(--form-font-size);
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  margin-bottom: 10px;
+}
+.title-input::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+.task-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.task-form-row input,
+.task-form-row select {
+  flex: 1 1 120px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: var(--form-font-size);
+}
+
+.task-form-row .estimated-time-input {
+  flex: 0 0 8ch;
+  width: 8ch;
+}
+
+.add-btn {
+  flex: 0 0 auto;
+  background: var(--brand-teal-deep);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.add-btn:hover { opacity: 0.9; }
+
+.form-section-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin: 12px 0 6px;
+}
+
+.label-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.label-chip {
+  border: 1px solid transparent;
+  background: var(--chip-bg, var(--bg));
+  color: var(--chip-color, var(--text-muted));
+  padding: 4px 11px;
+  border-radius: 14px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.label-chip.selected {
+  border-color: var(--chip-color, var(--accent));
+}
+
+.hint-text {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.subtask-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.subtask-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: var(--form-font-size);
+}
+.subtask-input::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+.subtask-minutes-input {
+  flex: 0 0 8ch;
+  width: 8ch;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: var(--form-font-size);
+}
+.subtask-minutes-input::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+.notes-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: var(--form-font-size);
+  font-family: inherit;
+  resize: vertical;
+  margin-top: 8px;
+}
+.notes-input::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+.subtask-draft-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.draft-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 3px 6px 3px 11px;
+  font-size: 0.8rem;
+}
+
+.draft-chip-time {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.remove-draft-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 2px 4px;
+}
+.remove-draft-btn:hover { color: var(--danger); }
+
+.file-input {
+  width: 100%;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.email-link-input {
+  margin-top: 8px;
+}
+
+.email-preview:empty {
+  display: none;
+}
+
+.email-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  margin-top: 8px;
+  font-size: 0.82rem;
+}
+
+.email-chip-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.email-badge {
+  cursor: pointer;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+.email-badge:hover {
+  opacity: 0.7;
+}
+
+/* Stylized blue/purple mark evoking Outlook — not a reproduction of the
+   actual trademarked Outlook logo artwork. */
+.email-badge.outlook-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  background: linear-gradient(135deg, #4f6df5, #2038b0);
+  color: #fff;
+  font-size: 0.68rem;
+  line-height: 1;
+}
+
+.notes-badge {
+  cursor: pointer;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+.notes-badge:hover {
+  opacity: 0.7;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.dependency-dropdown {
+  position: relative;
+}
+
+.dropdown-toggle {
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: var(--form-font-size);
+  cursor: pointer;
+}
+.dropdown-toggle:hover { border-color: var(--accent); }
+
+.dropdown-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  padding: 8px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.dep-group-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  padding: 4px 4px 2px;
+}
+
+.dep-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.dep-option:hover { background: var(--bg); }
+
+.dep-separator {
+  height: 1px;
+  background: var(--border);
+  margin: 6px 2px;
+}
+
+.view-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 14px;
+}
+
+.view-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  padding: 8px 14px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: -1px;
+}
+.view-tab:hover { color: var(--text); }
+.view-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.filter-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 6px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.filter-btn.active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-color: var(--accent);
+}
+
+.filter-group select {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.85rem;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  align-items: stretch;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.board-column:first-child {
+  border-radius: 14px 0 0 14px;
+}
+
+.board-column:last-child {
+  border-right: none;
+  border-radius: 0 14px 14px 0;
+}
+
+.board-column:first-child .board-column-header {
+  border-radius: 14px 0 0 0;
+}
+
+.board-column:last-child .board-column-header {
+  border-radius: 0 14px 0 0;
+}
+
+.board-column {
+  background: var(--bg);
+  border: none;
+  border-right: 1px solid var(--border);
+  border-radius: 0;
+  padding: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 180px);
+}
+
+.board-column-body {
+  overflow-y: auto;
+  flex: 1;
+  padding: 12px 12px 12px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.board-column-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.board-column-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.board-column-body::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+  border-radius: 3px;
+}
+
+.board-column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  flex-shrink: 0;
+  margin: 0;
+  border-radius: 0;
+  background: var(--column-color, var(--border));
+}
+
+.column-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.column-count {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--column-color, var(--text));
+  background: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 1px 8px;
+}
+
+.column-empty {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  padding: 16px 4px;
+}
+
+.completed-group {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border);
+}
+
+.completed-group summary {
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  list-style: none;
+}
+.completed-group summary::-webkit-details-marker {
+  display: none;
+}
+.completed-group summary::before {
+  content: '▸';
+  display: inline-block;
+  margin-right: 5px;
+  transition: transform 0.15s ease;
+}
+.completed-group[open] summary::before {
+  transform: rotate(90deg);
+}
+.completed-group summary:hover {
+  color: var(--text);
+}
+
+.completed-list {
+  margin-top: 8px;
+}
+
+@media (max-width: 800px) {
+  .board {
+    grid-template-columns: 1fr;
+  }
+}
+
+.task-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.task-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  box-shadow: var(--shadow);
+}
+
+.task-item.completed {
+  opacity: 0.55;
+}
+.task-item.completed .task-title {
+  text-decoration: line-through;
+}
+
+/* Scoped to <li> (board cards) only — <tr> (table rows) keep their persistent
+   checkbox/edit/delete and must not get position:relative from this rule. */
+li.task-item {
+  position: relative;
+}
+
+.card-hover-actions {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 3px;
+  box-shadow: var(--shadow);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+}
+li.task-item:hover .card-hover-actions,
+li.task-item:focus-within .card-hover-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+.card-hover-actions button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.card-hover-actions button:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+.card-hover-actions button.mark-complete-btn:hover {
+  color: var(--low);
+  border-color: var(--low);
+}
+.card-hover-actions button.delete-btn:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.task-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  margin-top: 3px;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.task-checkbox:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.task-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.task-title {
+  font-size: 0.98rem;
+  font-weight: 700;
+  word-break: break-word;
+  flex: 1 1 auto;
+  min-width: 60px;
+}
+
+.priority-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  font-size: 0.85rem;
+  line-height: 1;
+  background: #fff;
+  flex-shrink: 0;
+}
+.priority-tag.priority-urgent { color: var(--prio-urgent); }
+.priority-tag.priority-high { color: var(--prio-high); }
+.priority-tag.priority-medium { color: var(--prio-medium); }
+.priority-tag.priority-low { color: var(--prio-low); }
+
+/* Empty ring = not started, half-filled = in progress, solid = completed. */
+.status-circle {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 1.5px solid var(--status-not-started);
+  background: var(--surface);
+  cursor: default;
+  flex-shrink: 0;
+}
+.status-circle.status-in_progress {
+  border-color: var(--status-in-progress);
+  background: conic-gradient(var(--status-in-progress) 180deg, var(--surface) 0);
+}
+.status-circle.status-completed {
+  border-color: var(--low);
+  background: var(--low);
+}
+
+.subtask-section-toggle {
+  cursor: pointer;
+  user-select: none;
+}
+.subtask-section-toggle:hover {
+  color: var(--text);
+}
+
+.subtask-toggle-arrow {
+  display: inline-block;
+  margin-right: 3px;
+}
+
+.due-tag {
+  font-size: 0.75rem;
+  color: var(--text);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.due-tag.overdue {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.date-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 2px 9px;
+  cursor: pointer;
+}
+.date-pill:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.date-pill.overdue {
+  color: var(--danger);
+  border-color: var(--danger);
+  font-weight: 600;
+}
+
+.project-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 2px 9px;
+}
+
+/* Estimated-time label. Task-level (next to the date pill) gets the same
+   rounded-rectangle format as .date-pill, keeping its own font color/size.
+   Sub-task rows stay plain text, no box. */
+.time-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 2px 9px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.subtask-time-badge {
+  margin-left: auto;
+  font-size: 0.62rem;
+  color: var(--accent);
+  font-weight: 700;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.date-edit-popover {
+  position: fixed;
+  z-index: 150;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  padding: 10px;
+  display: flex;
+  gap: 10px;
+}
+
+.date-edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.date-edit-field input {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.82rem;
+}
+
+.card-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 9px 0;
+}
+
+.card-section-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  margin-bottom: 5px;
+}
+
+.task-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.badge {
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.badge.label-badge {
+  background: var(--chip-bg, var(--bg));
+  color: var(--chip-color, var(--text));
+  border-color: transparent;
+  font-weight: 600;
+}
+
+.subtasks {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.subtask-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.76rem;
+  padding: 3px 0;
+  cursor: pointer;
+}
+
+.subtask-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  border: 1.5px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.subtask-checkbox:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.subtask-done {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.subtask-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.subtask-add-toggle-btn {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+}
+.subtask-add-toggle-btn:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.subtask-add-form {
+  margin-top: 4px;
+  display: flex;
+  gap: 6px;
+}
+
+.subtask-add-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  padding: 4px 0;
+}
+.subtask-add-input:focus {
+  color: var(--text);
+  outline: none;
+}
+
+.subtask-add-minutes-input {
+  flex: 0 0 44px;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  padding: 4px 0;
+}
+.subtask-add-minutes-input:focus {
+  color: var(--text);
+  outline: none;
+}
+
+.deps-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.deps-edit-btn {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+}
+.deps-edit-btn:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.card-dep-popover {
+  position: fixed;
+  max-width: 260px;
+}
+
+.dependencies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.notes-popover {
+  position: fixed;
+  z-index: 150;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  padding: 10px 12px;
+  max-width: 280px;
+  max-height: 200px;
+  overflow-y: auto;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.badge.dep-badge.dep-pending {
+  color: var(--medium);
+  border-color: var(--medium);
+}
+
+.badge.dep-badge.dep-done {
+  color: var(--low);
+  border-color: var(--low);
+}
+
+.task-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.task-actions button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  padding: 4px;
+  border-radius: 6px;
+}
+.task-actions button:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+.task-actions button.delete-btn:hover {
+  color: var(--danger);
+}
+
+.empty-state {
+  text-align: center;
+  color: var(--text-muted);
+  margin-top: 40px;
+  display: none;
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 18px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: 0.85rem;
+}
+.link-btn:hover { color: var(--danger); }
+
+@media (max-width: 480px) {
+  .toolbar { flex-direction: column; align-items: stretch; }
+}
+
+.badge.category-tag {
+  background: var(--chip-color, var(--bg));
+  color: var(--chip-text, var(--text));
+  border-color: var(--chip-color, var(--border));
+  font-weight: 600;
+}
+
+.category-preview {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  height: 30px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  background: var(--chip-color, transparent);
+  color: #fff;
+}
+.category-preview:empty { padding: 0; }
+
+.week-range {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.week-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.week-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+  font-size: 0.75rem;
+  color: var(--text);
+}
+
+/* .task-item is shared with board cards for event delegation, but its flex/card
+   styling breaks a <tr> out of table layout — reset it back to a plain row here. */
+.week-table tr.task-item {
+  display: table-row;
+  background: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+.completed-toggle-row {
+  cursor: pointer;
+}
+.completed-toggle-row td {
+  padding: 8px 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg);
+  border-top: 1px dashed var(--border);
+}
+.completed-toggle-row:hover td {
+  color: var(--text);
+}
+.completed-toggle-arrow {
+  display: inline-block;
+  margin-right: 4px;
+}
+
+.week-table th {
+  text-align: left;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  background: var(--bg);
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.week-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.week-table tr:last-child td {
+  border-bottom: none;
+}
+
+.week-table tr.completed .week-task-name {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.week-task-name {
+  font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.week-table .task-meta,
+.week-table .dependencies {
+  margin-top: 0;
+  max-width: 220px;
+}
+
+.week-actions {
+  white-space: nowrap;
+}
+
+.week-table th.email-col,
+.week-table td.email-col,
+.week-table th.centered-col,
+.week-table td.centered-col {
+  text-align: center;
+}
+
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.calendar-month-label {
+  font-weight: 700;
+  font-size: 1.05rem;
+  min-width: 160px;
+  text-align: center;
+}
+
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.calendar-weekdays span {
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.calendar-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.calendar-week {
+  position: relative;
+}
+
+.calendar-week-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+
+.calendar-day {
+  min-height: 92px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.calendar-day.empty {
+  background: transparent;
+  border-color: transparent;
+}
+.calendar-day.today {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.calendar-day-number {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.calendar-day.today .calendar-day-number {
+  color: var(--accent);
+}
+
+.calendar-day-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  /* overflow-y removed — summary content doesn't overflow, and the tooltip
+     must be able to escape the day cell without being clipped. */
+}
+
+/* ---------- Calendar day load summary ---------- */
+
+.cal-day-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cal-day-stat {
+  font-size: 0.64rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.cal-day-stat strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.cal-view-tasks-wrap {
+  margin-top: 5px;
+}
+
+.cal-view-tasks {
+  position: relative;
+  display: inline-block;
+  font-size: 0.64rem;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: default;
+  user-select: none;
+}
+
+/* Tooltip appears above the trigger so it doesn't get clipped by the
+   bottom edge of the cell; z-index floats it above the grid. */
+.cal-tasks-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: -6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.14);
+  padding: 8px 10px;
+  z-index: 200;
+  min-width: 200px;
+  max-width: 320px;
+  white-space: normal;
+  cursor: default;
+}
+
+.cal-view-tasks:hover .cal-tasks-tooltip {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.cal-tooltip-task {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  font-size: 0.72rem;
+  color: var(--text);
+  line-height: 1.3;
+}
+
+.cal-flag {
+  font-size: 0.75rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.cal-flag.flag-urgent { color: var(--prio-urgent); }
+.cal-flag.flag-high   { color: var(--prio-high); }
+.cal-flag.flag-medium { color: var(--prio-medium); }
+.cal-flag.flag-low    { color: var(--prio-low); }
+
+.cal-tooltip-name {
+  flex: 1;
+  word-break: break-word;
+  font-weight: 600;
+}
+
+.cal-tooltip-time {
+  color: var(--text-muted);
+  font-size: 0.67rem;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Completed tasks in the tooltip show as muted strikethrough */
+.cal-tooltip-task.cal-tooltip-done .cal-tooltip-name {
+  text-decoration: line-through;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+.cal-tooltip-task.cal-tooltip-done .cal-tooltip-time {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+.cal-tooltip-task.cal-tooltip-done .cal-flag {
+  opacity: 0.35;
+}
+
+@media (max-width: 700px) {
+  .calendar-day { min-height: 64px; }
+  .calendar-task-chip, .calendar-bar { font-size: 0.62rem; }
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 16px;
+  overflow-y: auto;
+  z-index: 100;
+}
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  width: 100%;
+  max-width: 560px;
+  padding: 18px;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.modal-header h2 {
+  font-size: 1.15rem;
+  margin: 0;
+}
+
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 14px;
+  margin-top: 16px;
+  align-items: center;
+}
