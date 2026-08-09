@@ -3,11 +3,32 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>To Do</title>
+<title>Task Hub</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div class="app">
+
+  <div class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg class="icon" viewBox="0 0 24 24" fill="currentColor" stroke="none" width="18" height="18">
+          <rect x="3" y="3" width="8" height="8" rx="2"></rect>
+          <rect x="13" y="3" width="8" height="8" rx="2"></rect>
+          <rect x="3" y="13" width="8" height="8" rx="2"></rect>
+          <rect x="13" y="13" width="8" height="8" rx="2"></rect>
+        </svg>
+      </span>
+      <div>
+        <span class="brand-name">Task <span class="accent">Hub</span></span>
+        <span class="brand-tag">Eisenhower Matrix &amp; Action Ledger</span>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <button type="button" id="exportSummaryBtn" class="btn btn-secondary">⬇ Export Summary</button>
+      <button type="button" id="topbarAddTaskBtn" class="btn btn-primary">+ Add Task</button>
+    </div>
+  </div>
 
   <div class="layout">
     <div class="board-panel">
@@ -32,7 +53,6 @@
           <option value="TO ALLOCATE">TO ALLOCATE</option>
         </select>
         <span id="resultsCount" class="hint-text results-count"></span>
-        <button type="button" id="addTaskBtn" class="add-btn add-task-btn">+ Add Task</button>
       </div>
 
       <div class="toolbar">
@@ -67,7 +87,11 @@
         <div id="board" class="board">
           <div class="board-column" data-category="DO">
             <div class="board-column-header">
-              <span class="column-title">DO</span>
+              <span class="column-title-group">
+                <span class="column-icon">⚡</span>
+                <span class="column-title">DO</span>
+                <span class="column-subtitle">(High Impact / Low Effort)</span>
+              </span>
               <span class="column-count" id="countDO">0</span>
             </div>
             <div class="board-column-body">
@@ -80,7 +104,11 @@
           </div>
           <div class="board-column" data-category="PLAN">
             <div class="board-column-header">
-              <span class="column-title">PLAN</span>
+              <span class="column-title-group">
+                <span class="column-icon">📅</span>
+                <span class="column-title">PLAN</span>
+                <span class="column-subtitle">(High Impact / High Effort)</span>
+              </span>
               <span class="column-count" id="countPLAN">0</span>
             </div>
             <div class="board-column-body">
@@ -93,7 +121,11 @@
           </div>
           <div class="board-column" data-category="DELEGATE">
             <div class="board-column-header">
-              <span class="column-title">DELEGATE</span>
+              <span class="column-title-group">
+                <span class="column-icon">👥</span>
+                <span class="column-title">DELEGATE</span>
+                <span class="column-subtitle">(Low Impact / Low Effort)</span>
+              </span>
               <span class="column-count" id="countDELEGATE">0</span>
             </div>
             <div class="board-column-body">
@@ -106,7 +138,11 @@
           </div>
           <div class="board-column" data-category="TO ALLOCATE">
             <div class="board-column-header">
-              <span class="column-title">TO ALLOCATE</span>
+              <span class="column-title-group">
+                <span class="column-icon">ⓘ</span>
+                <span class="column-title">TO ALLOCATE</span>
+                <span class="column-subtitle">(Un-triaged Staging)</span>
+              </span>
               <span class="column-count" id="countTOALLOCATE">0</span>
             </div>
             <div class="board-column-body">
