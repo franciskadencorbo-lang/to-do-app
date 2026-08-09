@@ -88,6 +88,7 @@ const projectListUl = document.getElementById('projectListUl');
 const projectManagePopover = document.getElementById('projectManagePopover');
 const taskProjectManageBtn = document.getElementById('taskProjectManageBtn');
 const editProjectManageBtn = document.getElementById('editProjectManageBtn');
+const manageProjectsBtn = document.getElementById('manageProjectsBtn');
 
 // Pill bars (project + label quick-filters)
 const labelPillBar = document.getElementById('labelPillBar');
@@ -582,7 +583,11 @@ function renderProjectOptions() {
   if (prevFilterVal === 'all' || projects.includes(prevFilterVal)) projectFilter.value = prevFilterVal;
 
   projectListUl.innerHTML = projects.length
-    ? projects.map((p) => `<li class="draft-chip">${escapeHtml(p)}<button type="button" class="remove-draft-btn" data-project="${escapeHtml(p)}">×</button></li>`).join('')
+    ? projects.map((p) => `<li class="draft-chip" data-project="${escapeHtml(p)}">
+        <span class="draft-chip-label">${escapeHtml(p)}</span>
+        <button type="button" class="edit-draft-btn" data-project="${escapeHtml(p)}" title="Rename project">✎</button>
+        <button type="button" class="remove-draft-btn" data-project="${escapeHtml(p)}" title="Delete project">×</button>
+      </li>`).join('')
     : '<li class="hint-text">No projects yet.</li>';
 
   renderProjectPillBar();
@@ -608,6 +613,40 @@ function removeProject(name) {
   render();
 }
 
+function renameProject(oldName, newName) {
+  newName = (newName || '').trim();
+  if (!newName || newName === oldName || projects.includes(newName)) {
+    renderProjectOptions();
+    return;
+  }
+  const idx = projects.indexOf(oldName);
+  if (idx === -1) return;
+  projects[idx] = newName;
+  saveProjects();
+  tasks.forEach((t) => {
+    if (t.project === oldName) t.project = newName;
+  });
+  saveTasks();
+  renderProjectOptions();
+  render();
+}
+
+function startEditProject(li, name) {
+  li.innerHTML = `<input type="text" class="draft-chip-edit-input" value="${escapeHtml(name)}">
+    <button type="button" class="save-edit-btn" title="Save">✓</button>
+    <button type="button" class="cancel-edit-btn" title="Cancel">×</button>`;
+  const input = li.querySelector('.draft-chip-edit-input');
+  input.focus();
+  input.select();
+  const commit = () => renameProject(name, input.value);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); commit(); }
+    if (e.key === 'Escape') { e.preventDefault(); renderProjectOptions(); }
+  });
+  li.querySelector('.save-edit-btn').addEventListener('click', commit);
+  li.querySelector('.cancel-edit-btn').addEventListener('click', () => renderProjectOptions());
+}
+
 addProjectBtn.addEventListener('click', addProject);
 newProjectInput.addEventListener('keydown', (e) => {
   if (e.key !== 'Enter') return;
@@ -615,17 +654,25 @@ newProjectInput.addEventListener('keydown', (e) => {
   addProject();
 });
 projectListUl.addEventListener('click', (e) => {
-  const btn = e.target.closest('.remove-draft-btn');
-  if (!btn) return;
-  removeProject(btn.dataset.project);
+  const removeBtn = e.target.closest('.remove-draft-btn');
+  if (removeBtn) { removeProject(removeBtn.dataset.project); return; }
+  const editBtn = e.target.closest('.edit-draft-btn');
+  if (editBtn) { startEditProject(editBtn.closest('.draft-chip'), editBtn.dataset.project); }
 });
 
 // ---------- Manage-projects popover (shared, opened from either form's "+" button) ----------
 
 function openProjectManagePopover(anchorEl) {
   const rect = anchorEl.getBoundingClientRect();
+  const popoverWidth = 280; // matches .project-manage-popover max-width
   projectManagePopover.style.top = `${rect.bottom + 6}px`;
-  projectManagePopover.style.left = `${rect.left}px`;
+  if (rect.left + popoverWidth > window.innerWidth) {
+    projectManagePopover.style.left = 'auto';
+    projectManagePopover.style.right = `${window.innerWidth - rect.right}px`;
+  } else {
+    projectManagePopover.style.left = `${rect.left}px`;
+    projectManagePopover.style.right = 'auto';
+  }
   projectManagePopover.classList.remove('hidden');
   newProjectInput.focus();
 }
@@ -674,6 +721,13 @@ settingsPopover.addEventListener('click', (e) => e.stopPropagation());
 document.addEventListener('click', () => closeSettingsPopover());
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') closeSettingsPopover();
+});
+
+manageProjectsBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  closeSettingsPopover();
+  document.querySelectorAll('.dropdown-panel').forEach((p) => { if (p !== projectManagePopover) p.classList.add('hidden'); });
+  openProjectManagePopover(settingsBtn);
 });
 
 // ---------- Effort/Impact -> Category preview (create + edit forms) ----------
