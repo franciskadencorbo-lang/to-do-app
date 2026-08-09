@@ -545,27 +545,40 @@ body {
 }
 
 .view-tabs {
-  display: flex;
+  display: inline-flex;
+  flex-wrap: wrap;
   gap: 4px;
-  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 4px;
+  width: fit-content;
   margin-bottom: 14px;
 }
 
 .view-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
   color: var(--text-muted);
-  padding: 8px 14px;
-  font-size: 0.88rem;
+  padding: 7px 14px;
+  font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
-  margin-bottom: -1px;
 }
 .view-tab:hover { color: var(--text); }
 .view-tab.active {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  box-shadow: var(--shadow);
+}
+
+.view-tab-icon {
+  font-size: 0.9rem;
+  line-height: 1;
 }
 
 .toolbar {
@@ -916,6 +929,7 @@ li.task-item:focus-within .card-hover-actions {
 
 .card-sub-row {
   margin-top: 6px;
+  justify-content: flex-end;
 }
 
 .card-section-tight {
