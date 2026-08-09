@@ -46,20 +46,8 @@ body {
 
 .layout {
   display: grid;
-  grid-template-columns: 340px 1fr;
-  gap: 20px;
+  grid-template-columns: 1fr;
   align-items: start;
-}
-
-@media (max-width: 900px) {
-  .layout {
-    grid-template-columns: 1fr;
-  }
-}
-
-.create-column {
-  position: sticky;
-  top: 20px;
 }
 
 .board-panel {
@@ -443,6 +431,43 @@ body {
   margin: 6px 2px;
 }
 
+.pill-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.pill-btn:hover { border-color: var(--accent); }
+.pill-btn.active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-color: var(--accent);
+}
+.pill-btn .pill-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--pill-color, var(--text-muted));
+  flex-shrink: 0;
+}
+.pill-btn.active .pill-dot {
+  background: var(--accent-contrast);
+}
+
 .view-tabs {
   display: flex;
   gap: 4px;
@@ -474,6 +499,43 @@ body {
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 24px;
+}
+
+.toolbar-search-row {
+  margin-bottom: 12px;
+}
+
+.search-input {
+  flex: 1 1 260px;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+.search-input::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+.toolbar-search-row select {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.results-count {
+  white-space: nowrap;
+}
+
+.add-task-btn {
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .filter-group {
@@ -543,7 +605,7 @@ body {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  max-height: calc(100vh - 180px);
+  max-height: calc(100vh - 280px);
 }
 
 .board-column-body {
@@ -673,6 +735,10 @@ body {
    checkbox/edit/delete and must not get position:relative from this rule. */
 li.task-item {
   position: relative;
+  cursor: pointer;
+}
+li.task-item:hover {
+  border-color: var(--accent);
 }
 
 .card-hover-actions {
@@ -762,6 +828,23 @@ li.task-item:focus-within .card-hover-actions {
   word-break: break-word;
   flex: 1 1 auto;
   min-width: 60px;
+}
+
+.card-header-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1 1 auto;
+  justify-content: flex-end;
+}
+
+.card-sub-row {
+  margin-top: 6px;
+}
+
+.card-section-tight {
+  margin-top: 8px;
 }
 
 .priority-tag {
@@ -1085,6 +1168,45 @@ li.task-item:focus-within .card-hover-actions {
 .card-dep-popover {
   position: fixed;
   max-width: 260px;
+}
+
+.project-manage-popover {
+  position: fixed;
+  max-width: 280px;
+  min-width: 220px;
+}
+
+.project-manage-btn {
+  flex: 0 0 auto;
+  width: 34px;
+  padding: 8px 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.project-manage-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+.subtask-hover-preview {
+  position: fixed;
+  max-width: 280px;
+  min-width: 180px;
+  font-size: 0.82rem;
+}
+
+.subtask-preview-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 2px;
+}
+.subtask-preview-row.subtask-done {
+  color: var(--text-muted);
+  text-decoration: line-through;
 }
 
 .dependencies {
