@@ -437,6 +437,40 @@ body {
 }
 .remove-draft-btn:hover { color: var(--danger); }
 
+.edit-draft-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+  line-height: 1;
+  padding: 2px 4px;
+}
+.edit-draft-btn:hover { color: var(--accent); }
+
+.draft-chip-edit-input {
+  width: 120px;
+  padding: 3px 6px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.8rem;
+}
+
+.save-edit-btn,
+.cancel-edit-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 2px 4px;
+  color: var(--text-muted);
+}
+.save-edit-btn:hover { color: var(--success, #2e9e5b); }
+.cancel-edit-btn:hover { color: var(--danger); }
+
 .file-input {
   width: 100%;
   font-size: 0.82rem;
