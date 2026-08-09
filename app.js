@@ -77,7 +77,8 @@ const taskNotes = document.getElementById('taskNotes');
 
 // Add Task modal
 const addTaskModalOverlay = document.getElementById('addTaskModalOverlay');
-const addTaskBtn = document.getElementById('addTaskBtn');
+const addTaskBtn = document.getElementById('topbarAddTaskBtn');
+const exportSummaryBtn = document.getElementById('exportSummaryBtn');
 const addTaskModalClose = document.getElementById('addTaskModalClose');
 const addTaskCancelBtn = document.getElementById('addTaskCancelBtn');
 
@@ -416,30 +417,34 @@ function initLabelFilter() {
     + LABELS.map((l) => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join('');
 }
 
-// ---------- Label quick-filter pill bar ----------
-// A faster, always-visible alternative to the "All labels" dropdown — clicking
-// a pill sets the same labelFilter value, so both stay in sync automatically.
+// ---------- Project quick-filter pill bar ----------
+// A faster, always-visible alternative to the "All projects" dropdown —
+// clicking a pill sets the same projectFilter value, so both stay in sync.
+// Driven by the live `projects` list, so it's re-rendered whenever projects
+// are added/removed (see renderProjectOptions), not just once at init.
 
-function renderLabelPillBar() {
-  labelPillBar.innerHTML = `<button type="button" class="pill-btn" data-label="all">All Projects</button>`
-    + LABELS.map((l) => `
-      <button type="button" class="pill-btn" data-label="${escapeHtml(l)}" style="--pill-color: ${LABEL_COLORS[l]};">
-        <span class="pill-dot"></span>${escapeHtml(l)}
+const PILL_COLOR_CYCLE = Object.values(LABEL_COLORS);
+
+function renderProjectPillBar() {
+  labelPillBar.innerHTML = `<button type="button" class="pill-btn" data-project="all">All Projects</button>`
+    + projects.map((p, i) => `
+      <button type="button" class="pill-btn" data-project="${escapeHtml(p)}" style="--pill-color: ${PILL_COLOR_CYCLE[i % PILL_COLOR_CYCLE.length]};">
+        <span class="pill-dot"></span>${escapeHtml(p)}
       </button>
     `).join('');
-  updateLabelPillBarActive();
+  updateProjectPillBarActive();
 }
 
-function updateLabelPillBarActive() {
-  const active = labelFilter.value || 'all';
-  [...labelPillBar.children].forEach((btn) => btn.classList.toggle('active', btn.dataset.label === active));
+function updateProjectPillBarActive() {
+  const active = projectFilter.value || 'all';
+  [...labelPillBar.children].forEach((btn) => btn.classList.toggle('active', btn.dataset.project === active));
 }
 
 labelPillBar.addEventListener('click', (e) => {
   const btn = e.target.closest('.pill-btn');
   if (!btn) return;
-  labelFilter.value = btn.dataset.label;
-  updateLabelPillBarActive();
+  projectFilter.value = btn.dataset.project;
+  updateProjectPillBarActive();
   render();
 });
 
@@ -602,6 +607,8 @@ function renderProjectOptions() {
   projectListUl.innerHTML = projects.length
     ? projects.map((p) => `<li class="draft-chip">${escapeHtml(p)}<button type="button" class="remove-draft-btn" data-project="${escapeHtml(p)}">×</button></li>`).join('')
     : '<li class="hint-text">No projects yet.</li>';
+
+  renderProjectPillBar();
 }
 
 function addProject() {
@@ -849,8 +856,8 @@ statusFilters.addEventListener('click', (e) => {
 });
 
 categoryFilter.addEventListener('change', render);
-projectFilter.addEventListener('change', render);
-labelFilter.addEventListener('change', () => { updateLabelPillBarActive(); render(); });
+projectFilter.addEventListener('change', () => { updateProjectPillBarActive(); render(); });
+labelFilter.addEventListener('change', render);
 sortBy.addEventListener('change', render);
 searchInput.addEventListener('input', render);
 
@@ -1034,20 +1041,42 @@ function openSubtaskHoverPreview(taskId, anchorEl) {
 }
 
 function closeSubtaskHoverPreview() {
+  clearTimeout(subtaskHoverCloseTimer);
   subtaskHoverPreview.classList.add('hidden');
   delete subtaskHoverPreview.dataset.taskId;
 }
 
+// The popover renders outside .board (it's a shared fixed-position overlay),
+// so crossing the gap between the trigger and the popover briefly leaves both
+// elements — a plain mouseout would close it mid-crossing. Instead, closing
+// is delayed a beat and cancelled if the pointer lands on either the trigger
+// or the popover itself, so it survives the hop between them.
+let subtaskHoverCloseTimer = null;
+
+function cancelSubtaskHoverClose() {
+  clearTimeout(subtaskHoverCloseTimer);
+  subtaskHoverCloseTimer = null;
+}
+
+function scheduleSubtaskHoverClose() {
+  cancelSubtaskHoverClose();
+  subtaskHoverCloseTimer = setTimeout(closeSubtaskHoverPreview, 200);
+}
+
 board.addEventListener('mouseover', (e) => {
   const trigger = e.target.closest('[data-subtask-hover]');
-  if (!trigger || trigger.dataset.subtaskHover === subtaskHoverPreview.dataset.taskId) return;
+  if (!trigger) return;
+  cancelSubtaskHoverClose();
+  if (trigger.dataset.subtaskHover === subtaskHoverPreview.dataset.taskId && !subtaskHoverPreview.classList.contains('hidden')) return;
   openSubtaskHoverPreview(trigger.dataset.subtaskHover, trigger);
 });
 board.addEventListener('mouseout', (e) => {
   const trigger = e.target.closest('[data-subtask-hover]');
   if (!trigger || (e.relatedTarget && trigger.contains(e.relatedTarget))) return;
-  closeSubtaskHoverPreview();
+  scheduleSubtaskHoverClose();
 });
+subtaskHoverPreview.addEventListener('mouseenter', cancelSubtaskHoverClose);
+subtaskHoverPreview.addEventListener('mouseleave', scheduleSubtaskHoverClose);
 
 // ---------- View tabs ----------
 
@@ -1849,7 +1878,7 @@ function render() {
 
 // ---------- Export / Import ----------
 
-document.getElementById('exportBtn').addEventListener('click', () => {
+function exportBackupJson() {
   const data = {
     tasks: JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'),
     projects: JSON.parse(localStorage.getItem(PROJECTS_KEY) || '[]'),
@@ -1864,7 +1893,10 @@ document.getElementById('exportBtn').addEventListener('click', () => {
   a.click();
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 10000);
-});
+}
+
+document.getElementById('exportBtn').addEventListener('click', exportBackupJson);
+exportSummaryBtn.addEventListener('click', exportBackupJson);
 
 // Quotes any field containing a comma, quote, or newline, doubling embedded quotes
 // per RFC 4180 so Excel (and other CSV importers) parse it back correctly.
@@ -2220,7 +2252,6 @@ promoteSelectedBtn.addEventListener('click', () => {
 
 labelPicker.innerHTML = buildLabelPickerHtml(selectedLabels);
 initLabelFilter();
-renderLabelPillBar();
 initColumnHeaders();
 renderProjectOptions();
 wireCompletedToggle('list');
