@@ -735,6 +735,13 @@ body {
   white-space: nowrap;
 }
 
+.column-header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
 .column-count {
   font-size: 0.75rem;
   font-weight: 700;
@@ -744,6 +751,37 @@ body {
   border-radius: var(--radius-pill);
   padding: 1px 9px;
   flex-shrink: 0;
+}
+
+.column-collapse-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  font-size: 0.85rem;
+  line-height: 1;
+  font-weight: 700;
+  color: var(--column-color, var(--text-muted));
+  background: var(--bg);
+  border: none;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.column-collapse-btn:hover {
+  color: var(--text);
+  background: var(--border);
+}
+
+.board-column.collapsed .board-column-body {
+  display: none;
+}
+
+.board-column.collapsed {
+  max-height: none;
 }
 
 .column-empty {
