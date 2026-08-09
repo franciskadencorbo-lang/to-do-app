@@ -70,8 +70,6 @@ const labelPicker = document.getElementById('labelPicker');
 const subtaskInput = document.getElementById('subtaskInput');
 const subtaskMinutesInput = document.getElementById('subtaskMinutesInput');
 const subtaskDraftList = document.getElementById('subtaskDraftList');
-const dependencyToggle = document.getElementById('dependencyToggle');
-const dependencyPanel = document.getElementById('dependencyPanel');
 const emailLinkInput = document.getElementById('emailLinkInput');
 const taskNotes = document.getElementById('taskNotes');
 
@@ -114,8 +112,6 @@ const editLabelPicker = document.getElementById('editLabelPicker');
 const editSubtaskInput = document.getElementById('editSubtaskInput');
 const editSubtaskMinutesInput = document.getElementById('editSubtaskMinutesInput');
 const editSubtaskDraftList = document.getElementById('editSubtaskDraftList');
-const editDependencyToggle = document.getElementById('editDependencyToggle');
-const editDependencyPanel = document.getElementById('editDependencyPanel');
 const editEmailLinkInput = document.getElementById('editEmailLinkInput');
 const editNotes = document.getElementById('editNotes');
 const editCancelBtn = document.getElementById('editCancelBtn');
@@ -172,9 +168,6 @@ const dateEditPopover = document.getElementById('dateEditPopover');
 const dateEditStart = document.getElementById('dateEditStart');
 const dateEditDue = document.getElementById('dateEditDue');
 
-// Board card dependency-edit popover (shared, positioned near whichever card's edit icon was clicked)
-const cardDepPopover = document.getElementById('cardDepPopover');
-
 // Board card notes popover (shared, read-only, positioned near whichever notes icon was clicked)
 const notesPopover = document.getElementById('notesPopover');
 
@@ -205,18 +198,14 @@ let calendarViewDate = new Date();
 
 let selectedLabels = new Set();
 let subtaskDraft = [];
-let selectedDependencies = new Set();
 
 let editingTaskId = null;
 let editSelectedLabels = new Set();
 let editSubtaskDraft = [];
-let editSelectedDependencies = new Set();
 
 let expandedSubtaskIds = new Set();
 let openSubtaskAddIds = new Set();
 let dateEditTaskId = null;
-let cardDepTaskId = null;
-let cardDepSelected = new Set();
 let calTasksDayKey = null;
 
 function loadTasks() {
@@ -526,65 +515,6 @@ editEmailLinkInput.addEventListener('blur', () => {
   editEmailLinkInput.value = normalizeEmailLink(editEmailLinkInput.value.trim());
 });
 
-// ---------- Dependency dropdown (grouped by category, shared pattern) ----------
-
-function buildDependencyPanelHtml(excludeId, selectedSet) {
-  const groups = CATEGORIES.map((cat) => {
-    const catTasks = tasks.filter((t) => t.category === cat && t.id !== excludeId);
-    if (!catTasks.length) return '';
-    const rows = catTasks.map((t) => `
-      <label class="dep-option">
-        <input type="checkbox" class="dep-checkbox" value="${t.id}" ${selectedSet.has(t.id) ? 'checked' : ''}>
-        ${escapeHtml(t.title)}
-      </label>
-    `).join('');
-    return `<div class="dep-group"><div class="dep-group-label">${cat}</div>${rows}</div>`;
-  }).filter(Boolean);
-
-  return groups.length ? groups.join('<div class="dep-separator"></div>') : '<span class="hint-text">No tasks yet to depend on</span>';
-}
-
-function makeDependencyDropdown(toggleEl, panelEl, selectedSet, excludeIdGetter) {
-  function updateToggleLabel() {
-    const count = selectedSet.size;
-    toggleEl.textContent = count ? `${count} selected ▾` : 'Select dependencies ▾';
-  }
-
-  function refresh() {
-    panelEl.innerHTML = buildDependencyPanelHtml(excludeIdGetter(), selectedSet);
-    updateToggleLabel();
-  }
-
-  toggleEl.addEventListener('click', (e) => {
-    e.stopPropagation();
-    document.querySelectorAll('.dropdown-panel').forEach((p) => {
-      if (p !== panelEl) p.classList.add('hidden');
-    });
-    panelEl.classList.toggle('hidden');
-  });
-
-  panelEl.addEventListener('click', (e) => e.stopPropagation());
-
-  panelEl.addEventListener('change', (e) => {
-    const cb = e.target.closest('.dep-checkbox');
-    if (!cb) return;
-    if (cb.checked) selectedSet.add(cb.value);
-    else selectedSet.delete(cb.value);
-    updateToggleLabel();
-  });
-
-  document.addEventListener('click', () => panelEl.classList.add('hidden'));
-
-  return { refresh };
-}
-
-const createDependencyDropdown = makeDependencyDropdown(
-  dependencyToggle, dependencyPanel, selectedDependencies, () => null
-);
-const editDependencyDropdown = makeDependencyDropdown(
-  editDependencyToggle, editDependencyPanel, editSelectedDependencies, () => editingTaskId
-);
-
 // ---------- Projects ----------
 
 function renderProjectOptions() {
@@ -703,9 +633,6 @@ function resetTaskForm() {
 
   subtaskDraft = [];
   subtaskDraftList.innerHTML = '';
-
-  selectedDependencies.clear();
-  createDependencyDropdown.refresh();
 }
 
 function openAddTaskModal() {
@@ -716,7 +643,6 @@ function openAddTaskModal() {
 
 function closeAddTaskModal() {
   addTaskModalOverlay.classList.add('hidden');
-  dependencyPanel.classList.add('hidden');
 }
 
 addTaskBtn.addEventListener('click', openAddTaskModal);
@@ -744,7 +670,6 @@ taskForm.addEventListener('submit', (e) => {
     labels: [...selectedLabels],
     subtasks: subtaskDraft,
     estimatedMinutes: Number(taskEstimatedTime.value) || 0,
-    dependsOn: [...selectedDependencies],
     email: linkValue ? { link: linkValue } : null,
     notes: taskNotes.value.trim() || null,
     startDate: taskStartDate.value || null,
@@ -785,10 +710,6 @@ function openEditModal(id) {
   editSubtaskDraft = (task.subtasks || []).map((s) => ({ ...s }));
   editSubtaskDraftList.innerHTML = buildSubtaskDraftHtml(editSubtaskDraft);
 
-  editSelectedDependencies.clear();
-  (task.dependsOn || []).forEach((depId) => editSelectedDependencies.add(depId));
-  editDependencyDropdown.refresh();
-
   editEmailLinkInput.value = (task.email && task.email.link) || '';
   editNotes.value = task.notes || '';
 
@@ -798,7 +719,6 @@ function openEditModal(id) {
 function closeEditModal() {
   editModalOverlay.classList.add('hidden');
   editingTaskId = null;
-  editDependencyPanel.classList.add('hidden');
 }
 
 editCancelBtn.addEventListener('click', closeEditModal);
@@ -837,7 +757,6 @@ editForm.addEventListener('submit', (e) => {
   task.labels = [...editSelectedLabels];
   task.subtasks = editSubtaskDraft;
   recalcStatus(task);
-  task.dependsOn = [...editSelectedDependencies];
   task.notes = editNotes.value.trim() || null;
 
   saveTasks();
@@ -889,12 +808,6 @@ function handleTaskListClick(e) {
   if (e.target.closest('.date-pill')) {
     e.stopPropagation();
     openDateEditPopover(id, e.target.closest('.date-pill'));
-    return;
-  }
-
-  if (e.target.closest('[data-edit-deps]')) {
-    e.stopPropagation();
-    openCardDepPopover(id, e.target.closest('[data-edit-deps]'));
     return;
   }
 
@@ -965,7 +878,6 @@ function handleTaskListClick(e) {
     expandedSubtaskIds.delete(id);
     openSubtaskAddIds.delete(id);
     if (dateEditTaskId === id) closeDateEditPopover();
-    if (cardDepTaskId === id) closeCardDepPopover();
     tasks = tasks.filter((t) => t.id !== id);
     tasks.forEach((t) => {
       t.dependsOn = (t.dependsOn || []).filter((depId) => depId !== id);
@@ -1229,46 +1141,6 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') closeDateEditPopover();
 });
 
-// ---------- Board card dependency-edit popover ----------
-// Lets you update just Dependencies from the board card's edit icon next to
-// the Dependencies label, without opening the full edit modal.
-
-function openCardDepPopover(taskId, anchorEl) {
-  const task = getTaskById(taskId);
-  if (!task) return;
-  cardDepTaskId = taskId;
-  cardDepSelected = new Set(task.dependsOn || []);
-  cardDepPopover.innerHTML = buildDependencyPanelHtml(taskId, cardDepSelected);
-
-  const rect = anchorEl.getBoundingClientRect();
-  cardDepPopover.style.top = `${rect.bottom + 6}px`;
-  cardDepPopover.style.left = `${rect.left}px`;
-  cardDepPopover.classList.remove('hidden');
-}
-
-function closeCardDepPopover() {
-  cardDepPopover.classList.add('hidden');
-  cardDepTaskId = null;
-}
-
-cardDepPopover.addEventListener('click', (e) => e.stopPropagation());
-cardDepPopover.addEventListener('change', (e) => {
-  const cb = e.target.closest('.dep-checkbox');
-  if (!cb) return;
-  if (cb.checked) cardDepSelected.add(cb.value);
-  else cardDepSelected.delete(cb.value);
-  const task = getTaskById(cardDepTaskId);
-  if (task) {
-    task.dependsOn = [...cardDepSelected];
-    saveTasks();
-    render();
-  }
-});
-document.addEventListener('click', () => closeCardDepPopover());
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') closeCardDepPopover();
-});
-
 // ---------- Board card notes popover ----------
 // Read-only — the notes icon shows the full note via native title-tooltip on
 // hover, and this popover on click (a native tooltip alone is too easy to
@@ -1364,16 +1236,6 @@ function labelBadges(task) {
     const color = LABEL_COLORS[label];
     if (!color) return '';
     return `<span class="badge label-badge" style="--chip-color: ${color}; --chip-bg: ${hexToRgba(color, 0.15)};">${escapeHtml(label)}</span>`;
-  }).join('');
-}
-
-function dependencyBadges(task) {
-  return (task.dependsOn || []).map((depId) => {
-    const dep = getTaskById(depId);
-    if (!dep) return '';
-    const cls = dep.completed ? 'dep-done' : 'dep-pending';
-    const icon = dep.completed ? '✓' : '⏳';
-    return `<span class="badge dep-badge ${cls}">${icon} ${escapeHtml(dep.title)}</span>`;
   }).join('');
 }
 
@@ -1535,15 +1397,6 @@ function taskItemHtml(task) {
         <div class="card-section card-section-tight">
           ${subtaskSectionHtml(task)}
         </div>
-
-        <hr class="card-divider">
-        <div class="card-section">
-          <div class="card-section-label deps-label-row">
-            <span>Dependencies</span>
-            <button type="button" class="deps-edit-btn" data-edit-deps="${task.id}" title="Edit dependencies">+</button>
-          </div>
-          <div class="dependencies">${dependencyBadges(task) || '<span class="hint-text">None</span>'}</div>
-        </div>
       </div>
     </li>
   `;
@@ -1627,7 +1480,6 @@ function taskRowHtml(task, { estTimeCol = false } = {}) {
       ${estTimeCell}
       <td><div class="task-meta">${labelBadges(task) || '—'}</div></td>
       <td class="centered-col">${subtaskSummary}</td>
-      <td><div class="dependencies">${dependencyBadges(task) || '—'}</div></td>
       <td class="week-actions">
         <div class="task-actions">
           <button class="edit-btn" title="Edit">✏️</button>
@@ -1872,8 +1724,6 @@ function render() {
 
   updateFooterCount(list, weekTasks, overdueTasks);
   resultsCount.textContent = `Showing ${list.length} task${list.length === 1 ? '' : 's'}`;
-
-  createDependencyDropdown.refresh();
 }
 
 // ---------- Export / Import ----------
@@ -1909,16 +1759,13 @@ function toCsvField(value) {
 document.getElementById('exportCsvBtn').addEventListener('click', () => {
   const headers = [
     'Title', 'Category', 'Project', 'Status', 'Priority', 'Start Date', 'Due Date',
-    'Estimated Time (min)', 'Labels', 'Subtasks', 'Dependencies', 'Notes', 'Email Link', 'Completed', 'Created At',
+    'Estimated Time (min)', 'Labels', 'Subtasks', 'Notes', 'Email Link', 'Completed', 'Created At',
   ];
 
   const rows = tasks.map((task) => {
     const status = task.completed ? 'Completed' : (STATUS_LABELS[task.status] || task.status || '');
     const subtasks = (task.subtasks || [])
       .map((s) => `${s.completed ? '[x]' : '[ ]'} ${s.title}${s.minutes ? ` (${s.minutes}m)` : ''}`).join('; ');
-    const dependencies = (task.dependsOn || [])
-      .map((depId) => { const dep = getTaskById(depId); return dep ? dep.title : null; })
-      .filter(Boolean).join('; ');
 
     return [
       task.title,
@@ -1931,7 +1778,6 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
       taskTotalMinutes(task) || '',
       (task.labels || []).join('; '),
       subtasks,
-      dependencies,
       task.notes || '',
       task.email && task.email.link ? task.email.link : '',
       task.completed ? 'Yes' : 'No',
