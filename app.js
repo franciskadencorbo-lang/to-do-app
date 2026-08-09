@@ -4,6 +4,7 @@ const PROJECTS_KEY = 'todo.projects.v1';
 // Log is a staging area Claude writes to and the user reviews — it must
 // never be able to touch or replace the real task list.
 const TRIAGE_STORAGE_KEY = 'todo.triageLog.v1';
+const COLLAPSED_COLUMNS_KEY = 'todo.collapsedColumns.v1';
 
 const CATEGORY_COLORS = {
   DO: '#2f5fed',
@@ -207,6 +208,7 @@ let expandedSubtaskIds = new Set();
 let openSubtaskAddIds = new Set();
 let dateEditTaskId = null;
 let calTasksDayKey = null;
+let collapsedColumns = loadCollapsedColumns();
 
 function loadTasks() {
   try {
@@ -245,6 +247,19 @@ function loadTriageLog() {
 
 function saveTriageLog() {
   localStorage.setItem(TRIAGE_STORAGE_KEY, JSON.stringify(triageLog));
+}
+
+function loadCollapsedColumns() {
+  try {
+    const raw = localStorage.getItem(COLLAPSED_COLUMNS_KEY);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function saveCollapsedColumns() {
+  localStorage.setItem(COLLAPSED_COLUMNS_KEY, JSON.stringify([...collapsedColumns]));
 }
 
 function uid() {
@@ -926,6 +941,16 @@ function handleSubtaskAddSubmit(e) {
 }
 
 board.addEventListener('click', handleTaskListClick);
+
+board.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-collapse-toggle]');
+  if (!btn) return;
+  const cat = btn.dataset.collapseToggle;
+  if (collapsedColumns.has(cat)) collapsedColumns.delete(cat);
+  else collapsedColumns.add(cat);
+  saveCollapsedColumns();
+  render();
+});
 board.addEventListener('submit', handleSubtaskAddSubmit);
 listTableBody.addEventListener('click', handleTaskListClick);
 weekTableBody.addEventListener('click', handleTaskListClick);
@@ -1420,11 +1445,19 @@ function renderBoard(list) {
     const completedGroupEl = document.getElementById(`completedGroup${slug}`);
     const completedListEl = document.getElementById(`completedList${slug}`);
     const completedCountEl = document.getElementById(`completedCount${slug}`);
+    const collapseBtn = column.querySelector('[data-collapse-toggle]');
     const catTasks = list.filter((t) => t.category === cat);
     const activeTasks = catTasks.filter((t) => !t.completed);
     const completedTasks = catTasks.filter((t) => t.completed);
 
     column.style.display = (activeCategory === 'all' || activeCategory === cat) ? '' : 'none';
+
+    const isCollapsed = collapsedColumns.has(cat);
+    column.classList.toggle('collapsed', isCollapsed);
+    if (collapseBtn) {
+      collapseBtn.textContent = isCollapsed ? '+' : '−';
+      collapseBtn.title = isCollapsed ? 'Expand column' : 'Collapse column';
+    }
 
     listEl.innerHTML = activeTasks.length
       ? activeTasks.map(taskItemHtml).join('')
