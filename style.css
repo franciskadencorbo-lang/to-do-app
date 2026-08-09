@@ -1296,6 +1296,19 @@ li.task-item:focus-within .card-hover-actions {
   min-width: 220px;
 }
 
+.label-manage-popover {
+  position: fixed;
+  max-width: 280px;
+  min-width: 220px;
+}
+
+.label-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
 .settings-popover {
   position: fixed;
   min-width: 240px;
