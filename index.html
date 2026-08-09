@@ -10,99 +10,29 @@
 <div class="app">
 
   <div class="layout">
-    <div class="create-column">
-      <div class="panel-header">
-        <h2>Quick Add</h2>
-      </div>
-
-      <form id="quickAddForm" class="task-form">
-        <input type="text" id="quickAddTitle" class="title-input" placeholder="Enter Task Name" required autocomplete="off">
-        <div class="task-form-row">
-          <select id="quickAddPriority" title="Priority">
-            <option value="low">Low</option>
-            <option value="medium" selected>Medium</option>
-            <option value="high">High</option>
-            <option value="urgent">Urgent</option>
-          </select>
-          <button type="submit" class="add-btn">Add</button>
-        </div>
-        <input type="url" id="quickAddLink" class="subtask-input email-link-input" placeholder="Enter URL" autocomplete="off">
-        <textarea id="quickAddNotes" class="notes-input" placeholder="Add Notes" rows="3"></textarea>
-      </form>
-
-      <div class="panel-header">
-        <h2>Create a Task</h2>
-      </div>
-
-      <form id="taskForm" class="task-form">
-        <input type="text" id="taskTitle" class="title-input" placeholder="Enter Task Name" required autocomplete="off">
-        <div class="task-form-row">
-          <select id="taskEffort" title="Effort" required>
-            <option value="" disabled selected>Effort</option>
-            <option value="high">High</option>
-            <option value="low">Low</option>
-          </select>
-          <select id="taskImpact" title="Impact" required>
-            <option value="" disabled selected>Impact</option>
-            <option value="high">High</option>
-            <option value="low">Low</option>
-          </select>
-          <span id="taskCategoryPreview" class="category-preview"></span>
-          <select id="taskProject" title="Project">
-            <option value="">No project</option>
-          </select>
-          <input type="date" id="taskStartDate" title="Start date">
-          <input type="date" id="taskDue" title="Due date">
-          <select id="taskPriority" title="Priority">
-            <option value="low">Low</option>
-            <option value="medium" selected>Medium</option>
-            <option value="high">High</option>
-            <option value="urgent">Urgent</option>
-          </select>
-          <input type="number" id="taskEstimatedTime" class="estimated-time-input" placeholder="Estimated Time (min)" title="Estimated Time (minutes)" min="0" step="5">
-          <button type="submit" class="add-btn">Add</button>
-        </div>
-        <div class="form-section-label">Labels</div>
-        <div id="labelPicker" class="label-picker"></div>
-
-        <div class="form-section-label">Sub-tasks</div>
-        <div class="subtask-input-row">
-          <input type="text" id="subtaskInput" class="subtask-input" placeholder="Enter Sub-Task Name" autocomplete="off">
-          <input type="number" id="subtaskMinutesInput" class="subtask-minutes-input" placeholder="Min" min="0" step="5">
-        </div>
-        <ul id="subtaskDraftList" class="subtask-draft-list"></ul>
-
-        <div class="form-section-label">Depends on</div>
-        <div class="dependency-dropdown" id="dependencyDropdown">
-          <button type="button" class="dropdown-toggle" id="dependencyToggle">Select dependencies ▾</button>
-          <div class="dropdown-panel hidden" id="dependencyPanel"></div>
-        </div>
-
-        <div class="form-section-label">Outlook Web URL</div>
-        <input type="url" id="emailLinkInput" class="subtask-input email-link-input" placeholder="Enter URL" autocomplete="off">
-
-        <div class="form-section-label">Notes</div>
-        <textarea id="taskNotes" class="notes-input" placeholder="Add Notes" rows="3"></textarea>
-      </form>
-
-      <div class="projects-panel">
-        <h3>Projects</h3>
-        <div class="project-add-row">
-          <input type="text" id="newProjectInput" placeholder="Enter Project Name" autocomplete="off">
-          <button type="button" id="addProjectBtn" class="add-btn">Add</button>
-        </div>
-        <ul id="projectListUl" class="project-list"></ul>
-      </div>
-    </div>
-
     <div class="board-panel">
+      <div class="pill-bar" id="labelPillBar"></div>
+
       <div class="view-tabs" id="viewTabs">
-        <button type="button" class="view-tab active" data-view="board">Board</button>
+        <button type="button" class="view-tab active" data-view="board">Matrix Grid</button>
+        <button type="button" class="view-tab" data-view="calendar">Calendar</button>
         <button type="button" class="view-tab" data-view="overdue">Overdue</button>
         <button type="button" class="view-tab" data-view="week">This Week</button>
-        <button type="button" class="view-tab" data-view="list">List</button>
-        <button type="button" class="view-tab" data-view="calendar">Calendar</button>
+        <button type="button" class="view-tab" data-view="list">All Tasks</button>
         <button type="button" class="view-tab" data-view="triage">Triage Log</button>
+      </div>
+
+      <div class="toolbar toolbar-search-row">
+        <input type="text" id="searchInput" class="search-input" placeholder="Search tasks, descriptions, tags..." autocomplete="off">
+        <select id="categoryFilter">
+          <option value="all">All categories</option>
+          <option value="DO">DO</option>
+          <option value="PLAN">PLAN</option>
+          <option value="DELEGATE">DELEGATE</option>
+          <option value="TO ALLOCATE">TO ALLOCATE</option>
+        </select>
+        <span id="resultsCount" class="hint-text results-count"></span>
+        <button type="button" id="addTaskBtn" class="add-btn add-task-btn">+ Add Task</button>
       </div>
 
       <div class="toolbar">
@@ -112,13 +42,6 @@
           <button class="filter-btn" data-status="completed">Completed</button>
         </div>
         <div class="filter-group">
-          <select id="categoryFilter">
-            <option value="all">All categories</option>
-            <option value="DO">DO</option>
-            <option value="PLAN">PLAN</option>
-            <option value="DELEGATE">DELEGATE</option>
-            <option value="TO ALLOCATE">TO ALLOCATE</option>
-          </select>
           <select id="projectFilter">
             <option value="all">All projects</option>
           </select>
@@ -340,6 +263,70 @@
 
 </div>
 
+<div class="modal-overlay hidden" id="addTaskModalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Add Task</h2>
+      <button type="button" class="icon-btn" id="addTaskModalClose" aria-label="Close">✕</button>
+    </div>
+    <form id="taskForm">
+      <input type="text" id="taskTitle" class="title-input" placeholder="Enter Task Name" required autocomplete="off">
+      <div class="task-form-row">
+        <select id="taskEffort" title="Effort" required>
+          <option value="" disabled selected>Effort</option>
+          <option value="high">High</option>
+          <option value="low">Low</option>
+        </select>
+        <select id="taskImpact" title="Impact" required>
+          <option value="" disabled selected>Impact</option>
+          <option value="high">High</option>
+          <option value="low">Low</option>
+        </select>
+        <span id="taskCategoryPreview" class="category-preview"></span>
+        <select id="taskProject" title="Project">
+          <option value="">No project</option>
+        </select>
+        <button type="button" class="project-manage-btn" id="taskProjectManageBtn" title="Add / manage projects">+</button>
+        <input type="date" id="taskStartDate" title="Start date">
+        <input type="date" id="taskDue" title="Due date">
+        <select id="taskPriority" title="Priority">
+          <option value="low">Low</option>
+          <option value="medium" selected>Medium</option>
+          <option value="high">High</option>
+          <option value="urgent">Urgent</option>
+        </select>
+        <input type="number" id="taskEstimatedTime" class="estimated-time-input" placeholder="Estimated Time (min)" title="Estimated Time (minutes)" min="0" step="5">
+      </div>
+      <div class="form-section-label">Labels</div>
+      <div id="labelPicker" class="label-picker"></div>
+
+      <div class="form-section-label">Sub-tasks</div>
+      <div class="subtask-input-row">
+        <input type="text" id="subtaskInput" class="subtask-input" placeholder="Enter Sub-Task Name" autocomplete="off">
+        <input type="number" id="subtaskMinutesInput" class="subtask-minutes-input" placeholder="Min" min="0" step="5">
+      </div>
+      <ul id="subtaskDraftList" class="subtask-draft-list"></ul>
+
+      <div class="form-section-label">Depends on</div>
+      <div class="dependency-dropdown" id="dependencyDropdown">
+        <button type="button" class="dropdown-toggle" id="dependencyToggle">Select dependencies ▾</button>
+        <div class="dropdown-panel hidden" id="dependencyPanel"></div>
+      </div>
+
+      <div class="form-section-label">Outlook Web URL</div>
+      <input type="url" id="emailLinkInput" class="subtask-input email-link-input" placeholder="Enter URL" autocomplete="off">
+
+      <div class="form-section-label">Notes</div>
+      <textarea id="taskNotes" class="notes-input" placeholder="Add Notes" rows="3"></textarea>
+
+      <div class="modal-actions">
+        <button type="button" class="link-btn" id="addTaskCancelBtn">Cancel</button>
+        <button type="submit" class="add-btn">Add task</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <div class="modal-overlay hidden" id="editModalOverlay">
   <div class="modal">
     <div class="modal-header">
@@ -363,6 +350,7 @@
         <select id="editProject" title="Project">
           <option value="">No project</option>
         </select>
+        <button type="button" class="project-manage-btn" id="editProjectManageBtn" title="Add / manage projects">+</button>
         <input type="date" id="editStartDate" title="Start date">
         <input type="date" id="editDue" title="Due date">
         <select id="editPriority" title="Priority">
@@ -414,6 +402,16 @@
 <div class="dropdown-panel card-dep-popover hidden" id="calTasksPopover"></div>
 
 <div class="notes-popover hidden" id="notesPopover"></div>
+
+<div class="dropdown-panel project-manage-popover hidden" id="projectManagePopover">
+  <div class="project-add-row">
+    <input type="text" id="newProjectInput" placeholder="Enter Project Name" autocomplete="off">
+    <button type="button" id="addProjectBtn" class="add-btn">Add</button>
+  </div>
+  <ul id="projectListUl" class="project-list"></ul>
+</div>
+
+<div class="dropdown-panel subtask-hover-preview hidden" id="subtaskHoverPreview"></div>
 
 <script src="app.js"></script>
 </body>

@@ -75,17 +75,27 @@ const dependencyPanel = document.getElementById('dependencyPanel');
 const emailLinkInput = document.getElementById('emailLinkInput');
 const taskNotes = document.getElementById('taskNotes');
 
-// Quick Add form elements
-const quickAddForm = document.getElementById('quickAddForm');
-const quickAddTitle = document.getElementById('quickAddTitle');
-const quickAddPriority = document.getElementById('quickAddPriority');
-const quickAddLink = document.getElementById('quickAddLink');
-const quickAddNotes = document.getElementById('quickAddNotes');
+// Add Task modal
+const addTaskModalOverlay = document.getElementById('addTaskModalOverlay');
+const addTaskBtn = document.getElementById('addTaskBtn');
+const addTaskModalClose = document.getElementById('addTaskModalClose');
+const addTaskCancelBtn = document.getElementById('addTaskCancelBtn');
 
-// Projects panel
+// Projects (shared "manage projects" popover, opened from either form)
 const newProjectInput = document.getElementById('newProjectInput');
 const addProjectBtn = document.getElementById('addProjectBtn');
 const projectListUl = document.getElementById('projectListUl');
+const projectManagePopover = document.getElementById('projectManagePopover');
+const taskProjectManageBtn = document.getElementById('taskProjectManageBtn');
+const editProjectManageBtn = document.getElementById('editProjectManageBtn');
+
+// Pill bar (label quick-filter) + search
+const labelPillBar = document.getElementById('labelPillBar');
+const searchInput = document.getElementById('searchInput');
+const resultsCount = document.getElementById('resultsCount');
+
+// Subtask hover preview (shared popover)
+const subtaskHoverPreview = document.getElementById('subtaskHoverPreview');
 
 // Edit modal elements
 const editModalOverlay = document.getElementById('editModalOverlay');
@@ -201,7 +211,7 @@ let editSelectedLabels = new Set();
 let editSubtaskDraft = [];
 let editSelectedDependencies = new Set();
 
-let collapsedSubtaskIds = new Set();
+let expandedSubtaskIds = new Set();
 let openSubtaskAddIds = new Set();
 let dateEditTaskId = null;
 let cardDepTaskId = null;
@@ -406,6 +416,33 @@ function initLabelFilter() {
     + LABELS.map((l) => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join('');
 }
 
+// ---------- Label quick-filter pill bar ----------
+// A faster, always-visible alternative to the "All labels" dropdown — clicking
+// a pill sets the same labelFilter value, so both stay in sync automatically.
+
+function renderLabelPillBar() {
+  labelPillBar.innerHTML = `<button type="button" class="pill-btn" data-label="all">All Projects</button>`
+    + LABELS.map((l) => `
+      <button type="button" class="pill-btn" data-label="${escapeHtml(l)}" style="--pill-color: ${LABEL_COLORS[l]};">
+        <span class="pill-dot"></span>${escapeHtml(l)}
+      </button>
+    `).join('');
+  updateLabelPillBarActive();
+}
+
+function updateLabelPillBarActive() {
+  const active = labelFilter.value || 'all';
+  [...labelPillBar.children].forEach((btn) => btn.classList.toggle('active', btn.dataset.label === active));
+}
+
+labelPillBar.addEventListener('click', (e) => {
+  const btn = e.target.closest('.pill-btn');
+  if (!btn) return;
+  labelFilter.value = btn.dataset.label;
+  updateLabelPillBarActive();
+  render();
+});
+
 // ---------- Sub-task draft list (shared pattern by create + edit forms) ----------
 
 function buildSubtaskDraftHtml(draft) {
@@ -482,10 +519,6 @@ emailLinkInput.addEventListener('blur', () => {
 
 editEmailLinkInput.addEventListener('blur', () => {
   editEmailLinkInput.value = normalizeEmailLink(editEmailLinkInput.value.trim());
-});
-
-quickAddLink.addEventListener('blur', () => {
-  quickAddLink.value = normalizeEmailLink(quickAddLink.value.trim());
 });
 
 // ---------- Dependency dropdown (grouped by category, shared pattern) ----------
@@ -603,6 +636,35 @@ projectListUl.addEventListener('click', (e) => {
   removeProject(btn.dataset.project);
 });
 
+// ---------- Manage-projects popover (shared, opened from either form's "+" button) ----------
+
+function openProjectManagePopover(anchorEl) {
+  const rect = anchorEl.getBoundingClientRect();
+  projectManagePopover.style.top = `${rect.bottom + 6}px`;
+  projectManagePopover.style.left = `${rect.left}px`;
+  projectManagePopover.classList.remove('hidden');
+  newProjectInput.focus();
+}
+
+function closeProjectManagePopover() {
+  projectManagePopover.classList.add('hidden');
+}
+
+[taskProjectManageBtn, editProjectManageBtn].forEach((btn) => {
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const alreadyOpen = !projectManagePopover.classList.contains('hidden');
+    document.querySelectorAll('.dropdown-panel').forEach((p) => { if (p !== projectManagePopover) p.classList.add('hidden'); });
+    if (alreadyOpen) closeProjectManagePopover();
+    else openProjectManagePopover(btn);
+  });
+});
+projectManagePopover.addEventListener('click', (e) => e.stopPropagation());
+document.addEventListener('click', () => closeProjectManagePopover());
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeProjectManagePopover();
+});
+
 // ---------- Effort/Impact -> Category preview (create + edit forms) ----------
 
 function updateCategoryPreview(effortEl, impactEl, previewEl) {
@@ -621,7 +683,41 @@ taskImpact.addEventListener('change', () => updateCategoryPreview(taskEffort, ta
 editEffort.addEventListener('change', () => updateCategoryPreview(editEffort, editImpact, editCategoryPreview));
 editImpact.addEventListener('change', () => updateCategoryPreview(editEffort, editImpact, editCategoryPreview));
 
-// ---------- Create task ----------
+// ---------- Create task (Add Task modal) ----------
+
+function resetTaskForm() {
+  taskForm.reset();
+  taskPriority.value = 'medium';
+  taskCategoryPreview.textContent = '';
+  taskCategoryPreview.style.removeProperty('--chip-color');
+
+  selectedLabels.clear();
+  labelPicker.innerHTML = buildLabelPickerHtml(selectedLabels);
+
+  subtaskDraft = [];
+  subtaskDraftList.innerHTML = '';
+
+  selectedDependencies.clear();
+  createDependencyDropdown.refresh();
+}
+
+function openAddTaskModal() {
+  resetTaskForm();
+  addTaskModalOverlay.classList.remove('hidden');
+  taskTitle.focus();
+}
+
+function closeAddTaskModal() {
+  addTaskModalOverlay.classList.add('hidden');
+  dependencyPanel.classList.add('hidden');
+}
+
+addTaskBtn.addEventListener('click', openAddTaskModal);
+addTaskCancelBtn.addEventListener('click', closeAddTaskModal);
+addTaskModalClose.addEventListener('click', closeAddTaskModal);
+addTaskModalOverlay.addEventListener('click', (e) => {
+  if (e.target === addTaskModalOverlay) closeAddTaskModal();
+});
 
 taskForm.addEventListener('submit', (e) => {
   e.preventDefault();
@@ -654,59 +750,7 @@ taskForm.addEventListener('submit', (e) => {
   tasks.push(task);
 
   saveTasks();
-  taskForm.reset();
-  taskPriority.value = 'medium';
-  taskCategoryPreview.textContent = '';
-
-  selectedLabels.clear();
-  labelPicker.innerHTML = buildLabelPickerHtml(selectedLabels);
-
-  subtaskDraft = [];
-  subtaskDraftList.innerHTML = '';
-
-  selectedDependencies.clear();
-
-  taskTitle.focus();
-  render();
-});
-
-// ---------- Quick Add ----------
-// Minimal fast-capture path (title, link, notes) — everything else (due date,
-// priority, project, Effort/Impact/category) is left for the daily
-// "TO ALLOCATE" triage pass rather than asked for up front.
-
-quickAddForm.addEventListener('submit', (e) => {
-  e.preventDefault();
-  const title = quickAddTitle.value.trim();
-  if (!title) return;
-
-  const linkValue = normalizeEmailLink(quickAddLink.value.trim()) || null;
-
-  const task = {
-    id: uid(),
-    title,
-    category: 'TO ALLOCATE',
-    effort: null,
-    impact: null,
-    project: null,
-    labels: [],
-    subtasks: [],
-    dependsOn: [],
-    email: linkValue ? { link: linkValue } : null,
-    notes: quickAddNotes.value.trim() || null,
-    startDate: null,
-    due: null,
-    priority: quickAddPriority.value || 'medium',
-    completed: false,
-    createdAt: Date.now(),
-  };
-  recalcStatus(task);
-  tasks.push(task);
-
-  saveTasks();
-  quickAddForm.reset();
-  quickAddPriority.value = 'medium';
-  quickAddTitle.focus();
+  closeAddTaskModal();
   render();
 });
 
@@ -806,8 +850,9 @@ statusFilters.addEventListener('click', (e) => {
 
 categoryFilter.addEventListener('change', render);
 projectFilter.addEventListener('change', render);
-labelFilter.addEventListener('change', render);
+labelFilter.addEventListener('change', () => { updateLabelPillBarActive(); render(); });
 sortBy.addEventListener('change', render);
+searchInput.addEventListener('input', render);
 
 clearCompletedBtn.addEventListener('click', () => {
   tasks = tasks.filter((t) => !t.completed);
@@ -853,9 +898,10 @@ function handleTaskListClick(e) {
   }
 
   if (e.target.closest('[data-toggle-subtasks]')) {
+    e.stopPropagation();
     const toggleId = e.target.closest('[data-toggle-subtasks]').dataset.toggleSubtasks;
-    if (collapsedSubtaskIds.has(toggleId)) collapsedSubtaskIds.delete(toggleId);
-    else collapsedSubtaskIds.add(toggleId);
+    if (expandedSubtaskIds.has(toggleId)) expandedSubtaskIds.delete(toggleId);
+    else expandedSubtaskIds.add(toggleId);
     render();
     return;
   }
@@ -909,7 +955,7 @@ function handleTaskListClick(e) {
   if (e.target.closest('.delete-btn')) {
     const task = getTaskById(id);
     if (task && task.email && task.email.id) deleteEmailFile(task.email.id);
-    collapsedSubtaskIds.delete(id);
+    expandedSubtaskIds.delete(id);
     openSubtaskAddIds.delete(id);
     if (dateEditTaskId === id) closeDateEditPopover();
     if (cardDepTaskId === id) closeCardDepPopover();
@@ -923,6 +969,15 @@ function handleTaskListClick(e) {
   }
 
   if (e.target.closest('.edit-btn')) {
+    openEditModal(id);
+    return;
+  }
+
+  // Fallback: clicking anywhere else on a Matrix Grid card (not a table row)
+  // opens the edit modal. Excludes the inline sub-task add form and the
+  // sub-task rows themselves, whose label text would otherwise both toggle
+  // the checkbox (via the native <label>/<input> association) and open the modal.
+  if (item.tagName === 'LI' && !e.target.closest('.subtask-add-form') && !e.target.closest('.subtask-row')) {
     openEditModal(id);
   }
 }
@@ -956,6 +1011,43 @@ board.addEventListener('submit', handleSubtaskAddSubmit);
 listTableBody.addEventListener('click', handleTaskListClick);
 weekTableBody.addEventListener('click', handleTaskListClick);
 overdueTableBody.addEventListener('click', handleTaskListClick);
+
+// ---------- Sub-task hover preview (Matrix Grid cards) ----------
+// A quick read-only glance at a card's sub-tasks on hover, without needing to
+// click the arrow and expand them in place.
+
+function openSubtaskHoverPreview(taskId, anchorEl) {
+  const task = getTaskById(taskId);
+  const subtasks = (task && task.subtasks) || [];
+  if (!subtasks.length) return;
+  subtaskHoverPreview.innerHTML = subtasks.map((s) => `
+    <div class="subtask-preview-row ${s.completed ? 'subtask-done' : ''}">
+      <span>${s.completed ? '✓' : '○'} ${escapeHtml(s.title)}</span>
+      ${s.minutes ? `<span class="time-badge subtask-time-badge">${formatMinutesBadge(s.minutes)}</span>` : ''}
+    </div>
+  `).join('');
+  subtaskHoverPreview.dataset.taskId = taskId;
+  const rect = anchorEl.getBoundingClientRect();
+  subtaskHoverPreview.style.top = `${rect.bottom + 6}px`;
+  subtaskHoverPreview.style.left = `${rect.left}px`;
+  subtaskHoverPreview.classList.remove('hidden');
+}
+
+function closeSubtaskHoverPreview() {
+  subtaskHoverPreview.classList.add('hidden');
+  delete subtaskHoverPreview.dataset.taskId;
+}
+
+board.addEventListener('mouseover', (e) => {
+  const trigger = e.target.closest('[data-subtask-hover]');
+  if (!trigger || trigger.dataset.subtaskHover === subtaskHoverPreview.dataset.taskId) return;
+  openSubtaskHoverPreview(trigger.dataset.subtaskHover, trigger);
+});
+board.addEventListener('mouseout', (e) => {
+  const trigger = e.target.closest('[data-subtask-hover]');
+  if (!trigger || (e.relatedTarget && trigger.contains(e.relatedTarget))) return;
+  closeSubtaskHoverPreview();
+});
 
 // ---------- View tabs ----------
 
@@ -1200,6 +1292,15 @@ function getFilteredSortedTasks() {
   const label = labelFilter.value;
   if (label && label !== 'all') list = list.filter((t) => (t.labels || []).includes(label));
 
+  const query = searchInput.value.trim().toLowerCase();
+  if (query) {
+    list = list.filter((t) => {
+      const haystack = [t.title, t.notes, t.project, ...(t.labels || []), ...((t.subtasks || []).map((s) => s.title))]
+        .filter(Boolean).join(' ').toLowerCase();
+      return haystack.includes(query);
+    });
+  }
+
   const sort = sortBy.value;
   if (sort === 'due') {
     list.sort((a, b) => {
@@ -1301,13 +1402,15 @@ function estimatedTimeBadgeHtml(task) {
   return `<span class="time-badge" title="Estimated time remaining">${formatMinutesBadge(remaining)}</span>`;
 }
 
-// The sub-task rows collapse independently per task (arrow toggle); the
-// add-subtask form is hidden by default and revealed via the "+" button —
+// Sub-tasks start collapsed to just a count on every card (arrow toggle
+// expands them in place for interactive checking); hovering the count shows
+// a read-only preview via subtaskHoverPreview without needing to expand.
+// The add-subtask form is hidden by default and revealed via the "+" button —
 // it stays open across renders (and after adding one) for fast multi-add.
 function subtaskSectionHtml(task) {
   const subtasks = task.subtasks || [];
   const hasSubtasks = subtasks.length > 0;
-  const collapsed = hasSubtasks && collapsedSubtaskIds.has(task.id);
+  const collapsed = hasSubtasks && !expandedSubtaskIds.has(task.id);
   const addFormOpen = openSubtaskAddIds.has(task.id);
 
   const rows = subtasks.map((s) => `
@@ -1319,7 +1422,7 @@ function subtaskSectionHtml(task) {
   `).join('');
 
   const labelText = hasSubtasks
-    ? `<span class="subtask-section-toggle" data-toggle-subtasks="${task.id}"><span class="subtask-toggle-arrow">${collapsed ? '▸' : '▾'}</span>${subtaskSectionLabel(task)}</span>`
+    ? `<span class="subtask-section-toggle" data-toggle-subtasks="${task.id}" data-subtask-hover="${task.id}"><span class="subtask-toggle-arrow">${collapsed ? '▸' : '▾'}</span>${subtaskSectionLabel(task)}</span>`
     : `<span>${subtaskSectionLabel(task)}</span>`;
 
   return `
@@ -1377,7 +1480,7 @@ function taskItemHtml(task) {
   const dateLabel = dateRangeLabel(task);
 
   return `
-    <li class="task-item ${task.completed ? 'completed' : ''}" data-id="${task.id}" data-priority="${task.priority}">
+    <li class="task-item ${task.completed ? 'completed' : ''}" data-id="${task.id}" data-priority="${task.priority}" title="Click to edit">
       <div class="card-hover-actions">
         <button class="mark-complete-btn" title="${task.completed ? 'Mark incomplete' : 'Mark complete'}">${task.completed ? '↺' : '✓'}</button>
         <button class="edit-btn" title="Edit">✏️</button>
@@ -1385,32 +1488,24 @@ function taskItemHtml(task) {
       </div>
       <div class="task-body">
         <div class="card-title-row">
-          <span class="task-title">${escapeHtml(task.title)}</span>
           <span class="priority-tag priority-${task.priority}">${PRIORITY_ICON}</span>
           ${statusCircleHtml(task)}
-        </div>
-
-        <hr class="card-divider">
-        <div class="card-section">
-          <div class="task-meta">
-            ${projectTagHtml(task)}
+          <span class="task-title">${escapeHtml(task.title)}</span>
+          <span class="card-header-meta">
             ${dateLabel ? `<span class="date-pill ${isOverdue(task) ? 'overdue' : ''}" title="Click to edit dates">📅 ${dateLabel}</span>` : ''}
+            ${projectTagHtml(task)}
             ${estimatedTimeBadgeHtml(task)}
             ${emailBadgeHtml(task)}
             ${notesBadgeHtml(task)}
-          </div>
-        </div>
-
-        <hr class="card-divider">
-        <div class="card-section">
-          ${subtaskSectionHtml(task)}
+          </span>
         </div>
 
         ${hasLabels ? `
-        <hr class="card-divider">
-        <div class="card-section">
-          <div class="task-meta">${labelBadges(task)}</div>
-        </div>` : ''}
+        <div class="card-sub-row task-meta">${labelBadges(task)}</div>` : ''}
+
+        <div class="card-section card-section-tight">
+          ${subtaskSectionHtml(task)}
+        </div>
 
         <hr class="card-divider">
         <div class="card-section">
@@ -1734,6 +1829,7 @@ function updateFooterCount(list, weekTasks, overdueTasks) {
 }
 
 function render() {
+  closeSubtaskHoverPreview();
   const list = getFilteredSortedTasks();
   const weekTasks = getWeekTasks(list);
   const overdueTasks = getOverdueTasks(list);
@@ -1746,6 +1842,7 @@ function render() {
   renderTriageView();
 
   updateFooterCount(list, weekTasks, overdueTasks);
+  resultsCount.textContent = `Showing ${list.length} task${list.length === 1 ? '' : 's'}`;
 
   createDependencyDropdown.refresh();
 }
@@ -2123,6 +2220,7 @@ promoteSelectedBtn.addEventListener('click', () => {
 
 labelPicker.innerHTML = buildLabelPickerHtml(selectedLabels);
 initLabelFilter();
+renderLabelPillBar();
 initColumnHeaders();
 renderProjectOptions();
 wireCompletedToggle('list');
