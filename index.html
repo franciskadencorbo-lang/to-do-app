@@ -174,14 +174,13 @@
                 <th class="centered-col">Est. Time</th>
                 <th>Labels</th>
                 <th class="centered-col">Sub-tasks</th>
-                <th>Dependencies</th>
                 <th></th>
               </tr>
             </thead>
             <tbody id="listTableBody"></tbody>
             <tbody id="listCompletedToggleBody" class="hidden">
               <tr class="completed-toggle-row">
-                <td colspan="13"><span class="completed-toggle-arrow">▸</span> Completed (<span id="listCompletedCount">0</span>)</td>
+                <td colspan="12"><span class="completed-toggle-arrow">▸</span> Completed (<span id="listCompletedCount">0</span>)</td>
               </tr>
             </tbody>
             <tbody id="listCompletedTableBody" class="hidden"></tbody>
@@ -206,14 +205,13 @@
                 <th class="centered-col">Due Date</th>
                 <th>Labels</th>
                 <th class="centered-col">Sub-tasks</th>
-                <th>Dependencies</th>
                 <th></th>
               </tr>
             </thead>
             <tbody id="weekTableBody"></tbody>
             <tbody id="weekCompletedToggleBody" class="hidden">
               <tr class="completed-toggle-row">
-                <td colspan="12"><span class="completed-toggle-arrow">▸</span> Completed (<span id="weekCompletedCount">0</span>)</td>
+                <td colspan="11"><span class="completed-toggle-arrow">▸</span> Completed (<span id="weekCompletedCount">0</span>)</td>
               </tr>
             </tbody>
             <tbody id="weekCompletedTableBody" class="hidden"></tbody>
@@ -237,7 +235,6 @@
                 <th class="centered-col">Due Date</th>
                 <th>Labels</th>
                 <th class="centered-col">Sub-tasks</th>
-                <th>Dependencies</th>
                 <th></th>
               </tr>
             </thead>
@@ -343,12 +340,6 @@
       </div>
       <ul id="subtaskDraftList" class="subtask-draft-list"></ul>
 
-      <div class="form-section-label">Depends on</div>
-      <div class="dependency-dropdown" id="dependencyDropdown">
-        <button type="button" class="dropdown-toggle" id="dependencyToggle">Select dependencies ▾</button>
-        <div class="dropdown-panel hidden" id="dependencyPanel"></div>
-      </div>
-
       <div class="form-section-label">Outlook Web URL</div>
       <input type="url" id="emailLinkInput" class="subtask-input email-link-input" placeholder="Enter URL" autocomplete="off">
 
@@ -408,12 +399,6 @@
       </div>
       <ul id="editSubtaskDraftList" class="subtask-draft-list"></ul>
 
-      <div class="form-section-label">Depends on</div>
-      <div class="dependency-dropdown" id="editDependencyDropdown">
-        <button type="button" class="dropdown-toggle" id="editDependencyToggle">Select dependencies ▾</button>
-        <div class="dropdown-panel hidden" id="editDependencyPanel"></div>
-      </div>
-
       <div class="form-section-label">Outlook Web URL</div>
       <input type="url" id="editEmailLinkInput" class="subtask-input email-link-input" placeholder="Enter URL" autocomplete="off">
 
@@ -432,8 +417,6 @@
   <label class="date-edit-field">Start<input type="date" id="dateEditStart"></label>
   <label class="date-edit-field">Due<input type="date" id="dateEditDue"></label>
 </div>
-
-<div class="dropdown-panel card-dep-popover hidden" id="cardDepPopover"></div>
 
 <div class="dropdown-panel card-dep-popover hidden" id="calTasksPopover"></div>
 

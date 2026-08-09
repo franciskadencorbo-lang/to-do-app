@@ -492,23 +492,6 @@ body {
   display: none !important;
 }
 
-.dependency-dropdown {
-  position: relative;
-}
-
-.dropdown-toggle {
-  width: 100%;
-  text-align: left;
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--bg);
-  color: var(--text);
-  font-size: var(--form-font-size);
-  cursor: pointer;
-}
-.dropdown-toggle:hover { border-color: var(--accent); }
-
 .dropdown-panel {
   position: absolute;
   top: calc(100% + 4px);
@@ -522,32 +505,6 @@ body {
   padding: 8px;
   max-height: 260px;
   overflow-y: auto;
-}
-
-.dep-group-label {
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--text-muted);
-  padding: 4px 4px 2px;
-}
-
-.dep-option {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 4px;
-  font-size: 0.85rem;
-  cursor: pointer;
-  border-radius: 6px;
-}
-.dep-option:hover { background: var(--bg); }
-
-.dep-separator {
-  height: 1px;
-  background: var(--border);
-  margin: 6px 2px;
 }
 
 .pill-bar {
@@ -686,6 +643,8 @@ body {
 .board {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  grid-template-rows: repeat(2, auto);
+  grid-auto-flow: column;
   gap: 16px;
   align-items: start;
 }
@@ -693,6 +652,8 @@ body {
 @media (max-width: 800px) {
   .board {
     grid-template-columns: 1fr;
+    grid-template-rows: none;
+    grid-auto-flow: row;
   }
 }
 
@@ -1250,35 +1211,6 @@ li.task-item:focus-within .card-hover-actions {
   outline: none;
 }
 
-.deps-label-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.deps-edit-btn {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text-muted);
-  font-size: 0.7rem;
-  line-height: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  flex-shrink: 0;
-  padding: 0;
-}
-.deps-edit-btn:hover {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-contrast);
-}
-
 .card-dep-popover {
   position: fixed;
   max-width: 260px;
@@ -1323,13 +1255,6 @@ li.task-item:focus-within .card-hover-actions {
   text-decoration: line-through;
 }
 
-.dependencies {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
-}
-
 .notes-popover {
   position: fixed;
   z-index: 150;
@@ -1345,16 +1270,6 @@ li.task-item:focus-within .card-hover-actions {
   color: var(--text-muted);
   white-space: pre-wrap;
   word-break: break-word;
-}
-
-.badge.dep-badge.dep-pending {
-  color: var(--medium);
-  border-color: var(--medium);
-}
-
-.badge.dep-badge.dep-done {
-  color: var(--low);
-  border-color: var(--low);
 }
 
 .task-actions {
@@ -1515,8 +1430,7 @@ li.task-item:focus-within .card-hover-actions {
   white-space: nowrap;
 }
 
-.week-table .task-meta,
-.week-table .dependencies {
+.week-table .task-meta {
   margin-top: 0;
   max-width: 220px;
 }
