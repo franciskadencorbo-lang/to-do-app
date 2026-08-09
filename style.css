@@ -50,12 +50,6 @@
   --radius: 12px;
   --radius-sm: 8px;
   --radius-pill: 999px;
-  --brand-teal: #00A9A3;
-  --brand-teal-deep: #00757E;
-  --brand-teal-soft: #B2E5E3;
-  --brand-green: #88B917;
-  --brand-orange: #F68C26;
-  --brand-peach: #FCDCBD;
   --form-font-size: 14px;
   color-scheme: light;
 }
@@ -286,8 +280,8 @@ body {
 
 .add-btn {
   flex: 0 0 auto;
-  background: var(--brand-teal-deep);
-  color: #ffffff;
+  background: var(--accent);
+  color: var(--accent-contrast);
   border: none;
   border-radius: 8px;
   padding: 8px 18px;
@@ -295,7 +289,7 @@ body {
   font-weight: 600;
   cursor: pointer;
 }
-.add-btn:hover { opacity: 0.9; }
+.add-btn:hover { background: var(--accent-hover); }
 
 .form-section-label {
   font-size: 0.75rem;
