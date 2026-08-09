@@ -89,10 +89,14 @@ const projectManagePopover = document.getElementById('projectManagePopover');
 const taskProjectManageBtn = document.getElementById('taskProjectManageBtn');
 const editProjectManageBtn = document.getElementById('editProjectManageBtn');
 
-// Pill bar (label quick-filter) + search
+// Pill bars (project + label quick-filters)
 const labelPillBar = document.getElementById('labelPillBar');
-const searchInput = document.getElementById('searchInput');
+const labelQuickFilterBar = document.getElementById('labelQuickFilterBar');
 const resultsCount = document.getElementById('resultsCount');
+
+// Settings popover (Export/Import)
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsPopover = document.getElementById('settingsPopover');
 
 // Subtask hover preview (shared popover)
 const subtaskHoverPreview = document.getElementById('subtaskHoverPreview');
@@ -452,6 +456,34 @@ labelPillBar.addEventListener('click', (e) => {
   render();
 });
 
+// ---------- Label quick-filter pill bar ----------
+// Same pattern as the project pill bar above, but driven by the fixed LABELS
+// list rather than the user-editable projects array, so it only needs to
+// render once at startup.
+
+function renderLabelPillBar() {
+  labelQuickFilterBar.innerHTML = `<button type="button" class="pill-btn" data-label-filter="all">All Labels</button>`
+    + LABELS.map((l) => `
+      <button type="button" class="pill-btn" data-label-filter="${escapeHtml(l)}" style="--pill-color: ${LABEL_COLORS[l]};">
+        <span class="pill-dot"></span>${escapeHtml(l)}
+      </button>
+    `).join('');
+  updateLabelPillBarActive();
+}
+
+function updateLabelPillBarActive() {
+  const active = labelFilter.value || 'all';
+  [...labelQuickFilterBar.children].forEach((btn) => btn.classList.toggle('active', btn.dataset.labelFilter === active));
+}
+
+labelQuickFilterBar.addEventListener('click', (e) => {
+  const btn = e.target.closest('.pill-btn');
+  if (!btn) return;
+  labelFilter.value = btn.dataset.labelFilter;
+  updateLabelPillBarActive();
+  render();
+});
+
 // ---------- Sub-task draft list (shared pattern by create + edit forms) ----------
 
 function buildSubtaskDraftHtml(draft) {
@@ -615,6 +647,33 @@ projectManagePopover.addEventListener('click', (e) => e.stopPropagation());
 document.addEventListener('click', () => closeProjectManagePopover());
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') closeProjectManagePopover();
+});
+
+// ---------- Settings popover (Export / Import, opened from the gear icon) ----------
+
+function openSettingsPopover() {
+  const rect = settingsBtn.getBoundingClientRect();
+  settingsPopover.style.top = `${rect.bottom + 6}px`;
+  settingsPopover.style.right = `${window.innerWidth - rect.right}px`;
+  settingsPopover.style.left = 'auto';
+  settingsPopover.classList.remove('hidden');
+}
+
+function closeSettingsPopover() {
+  settingsPopover.classList.add('hidden');
+}
+
+settingsBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const alreadyOpen = !settingsPopover.classList.contains('hidden');
+  document.querySelectorAll('.dropdown-panel').forEach((p) => { if (p !== settingsPopover) p.classList.add('hidden'); });
+  if (alreadyOpen) closeSettingsPopover();
+  else openSettingsPopover();
+});
+settingsPopover.addEventListener('click', (e) => e.stopPropagation());
+document.addEventListener('click', () => closeSettingsPopover());
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeSettingsPopover();
 });
 
 // ---------- Effort/Impact -> Category preview (create + edit forms) ----------
@@ -791,9 +850,8 @@ statusFilters.addEventListener('click', (e) => {
 
 categoryFilter.addEventListener('change', render);
 projectFilter.addEventListener('change', () => { updateProjectPillBarActive(); render(); });
-labelFilter.addEventListener('change', render);
+labelFilter.addEventListener('change', () => { updateLabelPillBarActive(); render(); });
 sortBy.addEventListener('change', render);
-searchInput.addEventListener('input', render);
 
 clearCompletedBtn.addEventListener('click', () => {
   tasks = tasks.filter((t) => !t.completed);
@@ -1217,15 +1275,6 @@ function getFilteredSortedTasks() {
 
   const label = labelFilter.value;
   if (label && label !== 'all') list = list.filter((t) => (t.labels || []).includes(label));
-
-  const query = searchInput.value.trim().toLowerCase();
-  if (query) {
-    list = list.filter((t) => {
-      const haystack = [t.title, t.notes, t.project, ...(t.labels || []), ...((t.subtasks || []).map((s) => s.title))]
-        .filter(Boolean).join(' ').toLowerCase();
-      return haystack.includes(query);
-    });
-  }
 
   const sort = sortBy.value;
   if (sort === 'due') {
@@ -2131,6 +2180,7 @@ promoteSelectedBtn.addEventListener('click', () => {
 
 labelPicker.innerHTML = buildLabelPickerHtml(selectedLabels);
 initLabelFilter();
+renderLabelPillBar();
 initColumnHeaders();
 renderProjectOptions();
 wireCompletedToggle('list');

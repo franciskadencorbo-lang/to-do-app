@@ -121,9 +121,31 @@ body {
 
 .topbar-actions {
   display: flex;
+  flex-direction: column;
+  align-items: flex-end;
   gap: 8px;
   flex-shrink: 0;
 }
+
+.topbar-actions-row {
+  display: flex;
+  gap: 8px;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 1rem;
+  cursor: pointer;
+}
+.icon-btn:hover { border-color: var(--accent); color: var(--accent); box-shadow: var(--shadow); }
 
 .btn {
   appearance: none;
@@ -582,34 +604,6 @@ body {
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 24px;
-}
-
-.toolbar-search-row {
-  margin-bottom: 12px;
-}
-
-.search-input {
-  flex: 1 1 260px;
-  padding: 8px 14px;
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  background: var(--surface);
-  color: var(--text);
-  font-size: 0.9rem;
-}
-.search-input::placeholder {
-  color: var(--text-muted);
-  opacity: 1;
-}
-
-.toolbar-search-row select {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text);
-  border-radius: 8px;
-  padding: 8px 10px;
-  font-size: 0.85rem;
-  flex-shrink: 0;
 }
 
 .results-count {
@@ -1266,6 +1260,18 @@ li.task-item:focus-within .card-hover-actions {
   position: fixed;
   max-width: 280px;
   min-width: 220px;
+}
+
+.settings-popover {
+  position: fixed;
+  min-width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.settings-popover .filter-btn {
+  width: 100%;
+  text-align: left;
 }
 
 .project-manage-btn {
