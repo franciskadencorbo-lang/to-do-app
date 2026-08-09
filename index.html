@@ -430,6 +430,7 @@
 
 <div class="dropdown-panel settings-popover hidden" id="settingsPopover">
   <button type="button" id="manageProjectsBtn" class="filter-btn">🗂 Manage Projects</button>
+  <button type="button" id="manageLabelsBtn" class="filter-btn">🏷 Manage Labels</button>
   <button type="button" id="exportBtn" class="filter-btn">⬇ Export</button>
   <button type="button" id="exportCsvBtn" class="filter-btn">⬇ Export to Excel</button>
   <button type="button" id="exportActiveJsonBtn" class="filter-btn" title="Export Not Started / In Progress tasks as JSON, for a Claude Skill">⬇ Export for AI Skill</button>
@@ -445,6 +446,14 @@
     <button type="button" id="addProjectBtn" class="add-btn">Add</button>
   </div>
   <ul id="projectListUl" class="project-list"></ul>
+</div>
+
+<div class="dropdown-panel label-manage-popover hidden" id="labelManagePopover">
+  <div class="project-add-row">
+    <input type="text" id="newLabelInput" placeholder="Enter Label Name" autocomplete="off">
+    <button type="button" id="addLabelBtn" class="add-btn">Add</button>
+  </div>
+  <ul id="labelListUl" class="project-list"></ul>
 </div>
 
 <div class="dropdown-panel subtask-hover-preview hidden" id="subtaskHoverPreview"></div>

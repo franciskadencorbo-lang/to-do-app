@@ -1,5 +1,6 @@
 const STORAGE_KEY = 'todo.tasks.v1';
 const PROJECTS_KEY = 'todo.projects.v1';
+const LABELS_KEY = 'todo.labels.v1';
 // Deliberately its own key/array, never merged with STORAGE_KEY. The Triage
 // Log is a staging area Claude writes to and the user reviews — it must
 // never be able to touch or replace the real task list.
@@ -38,20 +39,16 @@ function categorySlug(cat) {
   return cat.replace(/\s+/g, '');
 }
 
-// Brand palette only (Teal / Teal Deep / Green / Orange), reused across labels
-// per the label color palette (Red/Yellow/Green/Aqua/Blue/Lime/Purple/Peach/
-// Light green/Marigold/Bronze/Dark green) — each label gets its own distinct color.
-const LABEL_COLORS = {
-  'M&A': '#E03131',
-  'Financing': '#B8860B',
-  'YOKO': '#2F9E44',
-  'Vietnam': '#0C8599',
-  'Thailand': '#1971C2',
-  'Philippines': '#66A80F',
-  'Help': '#9C36B5',
-  'Reporting': '#8B5E3C',
-};
-const LABELS = Object.keys(LABEL_COLORS);
+// Seed labels for first-time users — from here on, labels are user-editable
+// (see `labels` / Manage Labels) and colors are assigned by cycling through
+// COLOR_CYCLE based on each label's position in the list, not a fixed map.
+const DEFAULT_LABELS = ['M&A', 'Financing', 'YOKO', 'Vietnam', 'Thailand', 'Philippines', 'Help', 'Reporting'];
+const COLOR_CYCLE = ['#E03131', '#B8860B', '#2F9E44', '#0C8599', '#1971C2', '#66A80F', '#9C36B5', '#8B5E3C'];
+
+function labelColor(name) {
+  const idx = labels.indexOf(name);
+  return COLOR_CYCLE[(idx < 0 ? 0 : idx) % COLOR_CYCLE.length];
+}
 
 const PRIORITY_ICON = '⚑';
 const STATUS_LABELS = { not_started: 'Not started', in_progress: 'In Progress', completed: 'Completed' };
@@ -89,6 +86,13 @@ const projectManagePopover = document.getElementById('projectManagePopover');
 const taskProjectManageBtn = document.getElementById('taskProjectManageBtn');
 const editProjectManageBtn = document.getElementById('editProjectManageBtn');
 const manageProjectsBtn = document.getElementById('manageProjectsBtn');
+
+// Labels (manage-labels popover, opened from the settings gear)
+const newLabelInput = document.getElementById('newLabelInput');
+const addLabelBtn = document.getElementById('addLabelBtn');
+const labelListUl = document.getElementById('labelListUl');
+const labelManagePopover = document.getElementById('labelManagePopover');
+const manageLabelsBtn = document.getElementById('manageLabelsBtn');
 
 // Pill bars (project + label quick-filters)
 const labelPillBar = document.getElementById('labelPillBar');
@@ -197,6 +201,7 @@ function migrateCategories(list) {
 let tasks = loadTasks();
 if (migrateCategories(tasks)) saveTasks();
 let projects = loadProjects();
+let labels = loadLabels();
 let triageLog = loadTriageLog();
 let currentStatus = 'all';
 let currentView = 'board';
@@ -239,6 +244,19 @@ function loadProjects() {
 
 function saveProjects() {
   localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+}
+
+function loadLabels() {
+  try {
+    const raw = localStorage.getItem(LABELS_KEY);
+    return raw ? JSON.parse(raw) : [...DEFAULT_LABELS];
+  } catch {
+    return [...DEFAULT_LABELS];
+  }
+}
+
+function saveLabels() {
+  localStorage.setItem(LABELS_KEY, JSON.stringify(labels));
 }
 
 function loadTriageLog() {
@@ -395,9 +413,9 @@ function toDateKey(date) {
 // ---------- Label picker (shared by create + edit forms) ----------
 
 function buildLabelPickerHtml(selectedSet) {
-  return LABELS.map((label) => `
+  return labels.map((label) => `
     <button type="button" class="label-chip ${selectedSet.has(label) ? 'selected' : ''}" data-label="${escapeHtml(label)}"
-      style="--chip-color: ${LABEL_COLORS[label]}; --chip-bg: ${hexToRgba(LABEL_COLORS[label], 0.15)};">
+      style="--chip-color: ${labelColor(label)}; --chip-bg: ${hexToRgba(labelColor(label), 0.15)};">
       ${escapeHtml(label)}
     </button>
   `).join('');
@@ -423,7 +441,7 @@ wireLabelPicker(editLabelPicker, editSelectedLabels);
 
 function initLabelFilter() {
   labelFilter.innerHTML = '<option value="all">All labels</option>'
-    + LABELS.map((l) => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join('');
+    + labels.map((l) => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join('');
 }
 
 // ---------- Project quick-filter pill bar ----------
@@ -432,12 +450,10 @@ function initLabelFilter() {
 // Driven by the live `projects` list, so it's re-rendered whenever projects
 // are added/removed (see renderProjectOptions), not just once at init.
 
-const PILL_COLOR_CYCLE = Object.values(LABEL_COLORS);
-
 function renderProjectPillBar() {
   labelPillBar.innerHTML = `<button type="button" class="pill-btn" data-project="all">All Projects</button>`
     + projects.map((p, i) => `
-      <button type="button" class="pill-btn" data-project="${escapeHtml(p)}" style="--pill-color: ${PILL_COLOR_CYCLE[i % PILL_COLOR_CYCLE.length]};">
+      <button type="button" class="pill-btn" data-project="${escapeHtml(p)}" style="--pill-color: ${COLOR_CYCLE[i % COLOR_CYCLE.length]};">
         <span class="pill-dot"></span>${escapeHtml(p)}
       </button>
     `).join('');
@@ -458,14 +474,13 @@ labelPillBar.addEventListener('click', (e) => {
 });
 
 // ---------- Label quick-filter pill bar ----------
-// Same pattern as the project pill bar above, but driven by the fixed LABELS
-// list rather than the user-editable projects array, so it only needs to
-// render once at startup.
+// Same pattern as the project pill bar above, driven by the user-editable
+// `labels` array (see renderLabelOptions).
 
 function renderLabelPillBar() {
   labelQuickFilterBar.innerHTML = `<button type="button" class="pill-btn" data-label-filter="all">All Labels</button>`
-    + LABELS.map((l) => `
-      <button type="button" class="pill-btn" data-label-filter="${escapeHtml(l)}" style="--pill-color: ${LABEL_COLORS[l]};">
+    + labels.map((l) => `
+      <button type="button" class="pill-btn" data-label-filter="${escapeHtml(l)}" style="--pill-color: ${labelColor(l)};">
         <span class="pill-dot"></span>${escapeHtml(l)}
       </button>
     `).join('');
@@ -696,6 +711,118 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') closeProjectManagePopover();
 });
 
+// ---------- Labels ----------
+
+function renderLabelOptions() {
+  initLabelFilter();
+  renderLabelPillBar();
+  labelPicker.innerHTML = buildLabelPickerHtml(selectedLabels);
+  editLabelPicker.innerHTML = buildLabelPickerHtml(editSelectedLabels);
+
+  labelListUl.innerHTML = labels.length
+    ? labels.map((l) => `<li class="draft-chip" data-label="${escapeHtml(l)}">
+        <span class="label-swatch" style="background: ${labelColor(l)};"></span>
+        <span class="draft-chip-label">${escapeHtml(l)}</span>
+        <button type="button" class="edit-draft-btn" data-label="${escapeHtml(l)}" title="Rename label">✎</button>
+        <button type="button" class="remove-draft-btn" data-label="${escapeHtml(l)}" title="Delete label">×</button>
+      </li>`).join('')
+    : '<li class="hint-text">No labels yet.</li>';
+}
+
+function addLabel() {
+  const name = newLabelInput.value.trim();
+  newLabelInput.value = '';
+  if (!name || labels.includes(name)) return;
+  labels.push(name);
+  saveLabels();
+  renderLabelOptions();
+}
+
+function removeLabel(name) {
+  labels = labels.filter((l) => l !== name);
+  saveLabels();
+  tasks.forEach((t) => {
+    if (t.labels) t.labels = t.labels.filter((l) => l !== name);
+  });
+  saveTasks();
+  renderLabelOptions();
+  render();
+}
+
+function renameLabel(oldName, newName) {
+  newName = (newName || '').trim();
+  if (!newName || newName === oldName || labels.includes(newName)) {
+    renderLabelOptions();
+    return;
+  }
+  const idx = labels.indexOf(oldName);
+  if (idx === -1) return;
+  labels[idx] = newName;
+  saveLabels();
+  tasks.forEach((t) => {
+    if (t.labels) t.labels = t.labels.map((l) => (l === oldName ? newName : l));
+  });
+  saveTasks();
+  renderLabelOptions();
+  render();
+}
+
+function startEditLabel(li, name) {
+  li.innerHTML = `<input type="text" class="draft-chip-edit-input" value="${escapeHtml(name)}">
+    <button type="button" class="save-edit-btn" title="Save">✓</button>
+    <button type="button" class="cancel-edit-btn" title="Cancel">×</button>`;
+  const input = li.querySelector('.draft-chip-edit-input');
+  input.focus();
+  input.select();
+  const commit = () => renameLabel(name, input.value);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); commit(); }
+    if (e.key === 'Escape') { e.preventDefault(); renderLabelOptions(); }
+  });
+  li.querySelector('.save-edit-btn').addEventListener('click', commit);
+  li.querySelector('.cancel-edit-btn').addEventListener('click', () => renderLabelOptions());
+}
+
+addLabelBtn.addEventListener('click', addLabel);
+newLabelInput.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  addLabel();
+});
+labelListUl.addEventListener('click', (e) => {
+  const removeBtn = e.target.closest('.remove-draft-btn');
+  if (removeBtn) { removeLabel(removeBtn.dataset.label); return; }
+  const editBtn = e.target.closest('.edit-draft-btn');
+  if (editBtn) { startEditLabel(editBtn.closest('.draft-chip'), editBtn.dataset.label); }
+});
+
+// ---------- Manage-labels popover (opened from the settings gear) ----------
+
+function openLabelManagePopover(anchorEl) {
+  const rect = anchorEl.getBoundingClientRect();
+  const popoverWidth = 280; // matches .label-manage-popover max-width
+  labelManagePopover.style.top = `${rect.bottom + 6}px`;
+  if (rect.left + popoverWidth > window.innerWidth) {
+    labelManagePopover.style.left = 'auto';
+    labelManagePopover.style.right = `${window.innerWidth - rect.right}px`;
+  } else {
+    labelManagePopover.style.left = `${rect.left}px`;
+    labelManagePopover.style.right = 'auto';
+  }
+  labelManagePopover.classList.remove('hidden');
+  newLabelInput.focus();
+}
+
+function closeLabelManagePopover() {
+  labelManagePopover.classList.add('hidden');
+}
+
+labelManagePopover.addEventListener('click', (e) => e.stopPropagation());
+document.addEventListener('click', () => closeLabelManagePopover());
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeLabelManagePopover();
+});
+
 // ---------- Settings popover (Export / Import, opened from the gear icon) ----------
 
 function openSettingsPopover() {
@@ -728,6 +855,13 @@ manageProjectsBtn.addEventListener('click', (e) => {
   closeSettingsPopover();
   document.querySelectorAll('.dropdown-panel').forEach((p) => { if (p !== projectManagePopover) p.classList.add('hidden'); });
   openProjectManagePopover(settingsBtn);
+});
+
+manageLabelsBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  closeSettingsPopover();
+  document.querySelectorAll('.dropdown-panel').forEach((p) => { if (p !== labelManagePopover) p.classList.add('hidden'); });
+  openLabelManagePopover(settingsBtn);
 });
 
 // ---------- Effort/Impact -> Category preview (create + edit forms) ----------
@@ -1361,8 +1495,7 @@ function categoryTag(category) {
 // style (e.g. "On track", "Blocked") rather than a solid-fill chip.
 function labelBadges(task) {
   return (task.labels || []).map((label) => {
-    const color = LABEL_COLORS[label];
-    if (!color) return '';
+    const color = labelColor(label);
     return `<span class="badge label-badge" style="--chip-color: ${color}; --chip-bg: ${hexToRgba(color, 0.15)};">${escapeHtml(label)}</span>`;
   }).join('');
 }
@@ -1868,6 +2001,7 @@ function exportBackupJson() {
   const data = {
     tasks: JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'),
     projects: JSON.parse(localStorage.getItem(PROJECTS_KEY) || '[]'),
+    labels: JSON.parse(localStorage.getItem(LABELS_KEY) || '[]'),
     exportedAt: new Date().toISOString(),
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -1987,9 +2121,12 @@ document.getElementById('importFile').addEventListener('change', (e) => {
       if (!confirm(`This will replace your current ${tasks.length} task(s) with ${data.tasks.length} task(s) from the backup. Continue?`)) return;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data.tasks));
       if (Array.isArray(data.projects)) localStorage.setItem(PROJECTS_KEY, JSON.stringify(data.projects));
+      if (Array.isArray(data.labels)) localStorage.setItem(LABELS_KEY, JSON.stringify(data.labels));
       tasks = loadTasks();
       projects = loadProjects();
+      labels = loadLabels();
       renderProjectOptions();
+      renderLabelOptions();
       render();
       alert(`Imported ${data.tasks.length} task(s) successfully.`);
     } catch {
@@ -2232,9 +2369,7 @@ promoteSelectedBtn.addEventListener('click', () => {
   render();
 });
 
-labelPicker.innerHTML = buildLabelPickerHtml(selectedLabels);
-initLabelFilter();
-renderLabelPillBar();
+renderLabelOptions();
 initColumnHeaders();
 renderProjectOptions();
 wireCompletedToggle('list');
