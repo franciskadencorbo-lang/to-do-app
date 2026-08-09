@@ -6,8 +6,8 @@ const PROJECTS_KEY = 'todo.projects.v1';
 const TRIAGE_STORAGE_KEY = 'todo.triageLog.v1';
 
 const CATEGORY_COLORS = {
-  DO: '#88B917',
-  PLAN: '#F68C26',
+  DO: '#2f5fed',
+  PLAN: '#88B917',
   DELEGATE: '#00A9A3',
   'TO ALLOCATE': '#FCDCBD',
 };

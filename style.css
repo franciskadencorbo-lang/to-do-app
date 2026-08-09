@@ -731,7 +731,7 @@ body {
 .column-subtitle {
   font-weight: 500;
   font-size: 0.76rem;
-  color: var(--text-muted);
+  color: var(--column-color, var(--text-muted));
   white-space: nowrap;
 }
 
