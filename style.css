@@ -1680,6 +1680,7 @@ li.task-item:focus-within .card-hover-actions {
 .modal-header h2 {
   font-size: 1.15rem;
   margin: 0;
+  color: var(--accent);
 }
 
 
