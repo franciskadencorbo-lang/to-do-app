@@ -337,6 +337,7 @@
           <option value="urgent">Urgent</option>
         </select>
         <input type="number" id="taskEstimatedTime" class="estimated-time-input" placeholder="Estimated Time (min)" title="Estimated Time (minutes)" min="0" step="5">
+        <label class="ai-checkbox-label" title="AI-assisted task"><input type="checkbox" id="taskAiCheckbox">AI</label>
       </div>
       <div class="form-section-label">Labels</div>
       <div id="labelPicker" class="label-picker"></div>
@@ -345,6 +346,7 @@
       <div class="subtask-input-row">
         <input type="text" id="subtaskInput" class="subtask-input" placeholder="Enter Sub-Task Name" autocomplete="off">
         <input type="number" id="subtaskMinutesInput" class="subtask-minutes-input" placeholder="Min" min="0" step="5">
+        <label class="ai-checkbox-label" title="AI-assisted sub-task"><input type="checkbox" id="subtaskAiInput">AI</label>
       </div>
       <ul id="subtaskDraftList" class="subtask-draft-list"></ul>
 
@@ -395,6 +397,7 @@
           <option value="urgent">Urgent</option>
         </select>
         <input type="number" id="editEstimatedTime" class="estimated-time-input" placeholder="Estimated Time (min)" title="Estimated Time (minutes)" min="0" step="5">
+        <label class="ai-checkbox-label" title="AI-assisted task"><input type="checkbox" id="editAiCheckbox">AI</label>
       </div>
 
       <div class="form-section-label">Labels</div>
@@ -404,6 +407,7 @@
       <div class="subtask-input-row">
         <input type="text" id="editSubtaskInput" class="subtask-input" placeholder="Enter Sub-Task Name" autocomplete="off">
         <input type="number" id="editSubtaskMinutesInput" class="subtask-minutes-input" placeholder="Min" min="0" step="5">
+        <label class="ai-checkbox-label" title="AI-assisted sub-task"><input type="checkbox" id="editSubtaskAiInput">AI</label>
       </div>
       <ul id="editSubtaskDraftList" class="subtask-draft-list"></ul>
 
