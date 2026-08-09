@@ -25,15 +25,18 @@
       </div>
     </div>
     <div class="topbar-actions">
-      <button type="button" id="exportSummaryBtn" class="btn btn-secondary">⬇ Export Summary</button>
-      <button type="button" id="topbarAddTaskBtn" class="btn btn-primary">+ Add Task</button>
+      <div class="topbar-actions-row">
+        <button type="button" id="exportSummaryBtn" class="btn btn-secondary">⬇ Export Summary</button>
+        <button type="button" id="topbarAddTaskBtn" class="btn btn-primary">+ Add Task</button>
+      </div>
+      <div class="topbar-actions-row topbar-actions-row-secondary">
+        <button type="button" id="settingsBtn" class="icon-btn" title="Import / Export">⚙</button>
+      </div>
     </div>
   </div>
 
   <div class="layout">
     <div class="board-panel">
-      <div class="pill-bar" id="labelPillBar"></div>
-
       <div class="view-tabs" id="viewTabs">
         <button type="button" class="view-tab active" data-view="board"><span class="view-tab-icon">▦</span>Matrix Grid</button>
         <button type="button" class="view-tab" data-view="calendar"><span class="view-tab-icon">📅</span>Calendar</button>
@@ -43,17 +46,9 @@
         <button type="button" class="view-tab" data-view="triage"><span class="view-tab-icon">🎚</span>Triage Log</button>
       </div>
 
-      <div class="toolbar toolbar-search-row">
-        <input type="text" id="searchInput" class="search-input" placeholder="Search tasks, descriptions, tags..." autocomplete="off">
-        <select id="categoryFilter">
-          <option value="all">All categories</option>
-          <option value="DO">DO</option>
-          <option value="PLAN">PLAN</option>
-          <option value="DELEGATE">DELEGATE</option>
-          <option value="TO ALLOCATE">TO ALLOCATE</option>
-        </select>
-        <span id="resultsCount" class="hint-text results-count"></span>
-      </div>
+      <div class="pill-bar" id="labelPillBar"></div>
+
+      <div class="pill-bar" id="labelQuickFilterBar"></div>
 
       <div class="toolbar">
         <div class="filter-group" id="statusFilters">
@@ -62,6 +57,13 @@
           <button class="filter-btn" data-status="completed">Completed</button>
         </div>
         <div class="filter-group">
+          <select id="categoryFilter">
+            <option value="all">All categories</option>
+            <option value="DO">DO</option>
+            <option value="PLAN">PLAN</option>
+            <option value="DELEGATE">DELEGATE</option>
+            <option value="TO ALLOCATE">TO ALLOCATE</option>
+          </select>
           <select id="projectFilter">
             <option value="all">All projects</option>
           </select>
@@ -74,13 +76,7 @@
             <option value="priority">Sort: Priority</option>
           </select>
         </div>
-        <div class="filter-group">
-          <button type="button" id="exportBtn" class="filter-btn">⬇ Export</button>
-          <button type="button" id="exportCsvBtn" class="filter-btn">⬇ Export to Excel</button>
-          <button type="button" id="exportActiveJsonBtn" class="filter-btn" title="Export Not Started / In Progress tasks as JSON, for a Claude Skill">⬇ Export for AI Skill</button>
-          <label class="filter-btn" style="cursor:pointer;" title="Import backup">⬆ Import<input type="file" id="importFile" accept=".json" style="display:none;"></label>
-          <label class="filter-btn" style="cursor:pointer;" title="Import a file produced by 'Export for AI Skill' — adds these tasks to your current list, does not replace it">⬆ Import AI Skill JSON<input type="file" id="importActiveTasksFile" accept=".json" style="display:none;"></label>
-        </div>
+        <span id="resultsCount" class="hint-text results-count"></span>
       </div>
 
       <div id="boardView" class="view-content">
@@ -431,6 +427,14 @@
 </div>
 
 <div class="dropdown-panel card-dep-popover hidden" id="calTasksPopover"></div>
+
+<div class="dropdown-panel settings-popover hidden" id="settingsPopover">
+  <button type="button" id="exportBtn" class="filter-btn">⬇ Export</button>
+  <button type="button" id="exportCsvBtn" class="filter-btn">⬇ Export to Excel</button>
+  <button type="button" id="exportActiveJsonBtn" class="filter-btn" title="Export Not Started / In Progress tasks as JSON, for a Claude Skill">⬇ Export for AI Skill</button>
+  <label class="filter-btn" style="cursor:pointer;" title="Import backup">⬆ Import<input type="file" id="importFile" accept=".json" style="display:none;"></label>
+  <label class="filter-btn" style="cursor:pointer;" title="Import a file produced by 'Export for AI Skill' — adds these tasks to your current list, does not replace it">⬆ Import AI Skill JSON<input type="file" id="importActiveTasksFile" accept=".json" style="display:none;"></label>
+</div>
 
 <div class="notes-popover hidden" id="notesPopover"></div>
 
