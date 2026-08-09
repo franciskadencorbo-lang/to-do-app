@@ -53,6 +53,25 @@ function labelColor(name) {
 const PRIORITY_ICON = '⚑';
 const STATUS_LABELS = { not_started: 'Not started', in_progress: 'In Progress', completed: 'Completed' };
 
+// Custom orange starburst — not a reproduction of Anthropic's Claude logo, just a
+// generic "AI-assisted" sparkle marker (an 8-ray asterisk) tinted with --ai-color.
+const AI_ICON_SVG = `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+  <g stroke="currentColor" stroke-width="3" stroke-linecap="round">
+    <line x1="12" y1="3" x2="12" y2="9"/>
+    <line x1="12" y1="15" x2="12" y2="21"/>
+    <line x1="3" y1="12" x2="9" y2="12"/>
+    <line x1="15" y1="12" x2="21" y2="12"/>
+    <line x1="5.5" y1="5.5" x2="9.5" y2="9.5"/>
+    <line x1="14.5" y1="14.5" x2="18.5" y2="18.5"/>
+    <line x1="18.5" y1="5.5" x2="14.5" y2="9.5"/>
+    <line x1="9.5" y1="14.5" x2="5.5" y2="18.5"/>
+  </g>
+</svg>`;
+
+function aiIconHtml(extraClass = '') {
+  return `<span class="ai-badge ${extraClass}" title="AI-assisted">${AI_ICON_SVG}</span>`;
+}
+
 // Creation form elements
 const taskForm = document.getElementById('taskForm');
 const taskTitle = document.getElementById('taskTitle');
@@ -64,9 +83,11 @@ const taskStartDate = document.getElementById('taskStartDate');
 const taskDue = document.getElementById('taskDue');
 const taskPriority = document.getElementById('taskPriority');
 const taskEstimatedTime = document.getElementById('taskEstimatedTime');
+const taskAiCheckbox = document.getElementById('taskAiCheckbox');
 const labelPicker = document.getElementById('labelPicker');
 const subtaskInput = document.getElementById('subtaskInput');
 const subtaskMinutesInput = document.getElementById('subtaskMinutesInput');
+const subtaskAiInput = document.getElementById('subtaskAiInput');
 const subtaskDraftList = document.getElementById('subtaskDraftList');
 const emailLinkInput = document.getElementById('emailLinkInput');
 const taskNotes = document.getElementById('taskNotes');
@@ -118,9 +139,11 @@ const editStartDate = document.getElementById('editStartDate');
 const editDue = document.getElementById('editDue');
 const editPriority = document.getElementById('editPriority');
 const editEstimatedTime = document.getElementById('editEstimatedTime');
+const editAiCheckbox = document.getElementById('editAiCheckbox');
 const editLabelPicker = document.getElementById('editLabelPicker');
 const editSubtaskInput = document.getElementById('editSubtaskInput');
 const editSubtaskMinutesInput = document.getElementById('editSubtaskMinutesInput');
+const editSubtaskAiInput = document.getElementById('editSubtaskAiInput');
 const editSubtaskDraftList = document.getElementById('editSubtaskDraftList');
 const editEmailLinkInput = document.getElementById('editEmailLinkInput');
 const editNotes = document.getElementById('editNotes');
@@ -504,7 +527,7 @@ labelQuickFilterBar.addEventListener('click', (e) => {
 
 function buildSubtaskDraftHtml(draft) {
   return draft.map((s) => `
-    <li class="draft-chip">${escapeHtml(s.title)}${s.minutes ? `<span class="draft-chip-time">${formatMinutes(s.minutes)}</span>` : ''}<button type="button" class="remove-draft-btn" data-id="${s.id}">×</button></li>
+    <li class="draft-chip">${s.ai ? aiIconHtml('ai-badge-sm') : ''}${escapeHtml(s.title)}${s.minutes ? `<span class="draft-chip-time">${formatMinutes(s.minutes)}</span>` : ''}<button type="button" class="remove-draft-btn" data-id="${s.id}">×</button></li>
   `).join('');
 }
 
@@ -512,9 +535,11 @@ function addSubtaskDraftEntry() {
   const title = subtaskInput.value.trim();
   if (!title) return;
   const minutes = Number(subtaskMinutesInput.value) || 0;
-  subtaskDraft.push({ id: uid(), title, completed: false, minutes });
+  const ai = subtaskAiInput.checked;
+  subtaskDraft.push({ id: uid(), title, completed: false, minutes, ai });
   subtaskInput.value = '';
   subtaskMinutesInput.value = '';
+  subtaskAiInput.checked = false;
   subtaskDraftList.innerHTML = buildSubtaskDraftHtml(subtaskDraft);
   subtaskInput.focus();
 }
@@ -542,9 +567,11 @@ function addEditSubtaskDraftEntry() {
   const title = editSubtaskInput.value.trim();
   if (!title) return;
   const minutes = Number(editSubtaskMinutesInput.value) || 0;
-  editSubtaskDraft.push({ id: uid(), title, completed: false, minutes });
+  const ai = editSubtaskAiInput.checked;
+  editSubtaskDraft.push({ id: uid(), title, completed: false, minutes, ai });
   editSubtaskInput.value = '';
   editSubtaskMinutesInput.value = '';
+  editSubtaskAiInput.checked = false;
   editSubtaskDraftList.innerHTML = buildSubtaskDraftHtml(editSubtaskDraft);
   editSubtaskInput.focus();
 }
@@ -932,6 +959,7 @@ taskForm.addEventListener('submit', (e) => {
     labels: [...selectedLabels],
     subtasks: subtaskDraft,
     estimatedMinutes: Number(taskEstimatedTime.value) || 0,
+    ai: taskAiCheckbox.checked,
     email: linkValue ? { link: linkValue } : null,
     notes: taskNotes.value.trim() || null,
     startDate: taskStartDate.value || null,
@@ -964,6 +992,7 @@ function openEditModal(id) {
   editDue.value = task.due || '';
   editPriority.value = task.priority;
   editEstimatedTime.value = task.estimatedMinutes || '';
+  editAiCheckbox.checked = !!task.ai;
 
   editSelectedLabels.clear();
   (task.labels || []).forEach((l) => editSelectedLabels.add(l));
@@ -1016,6 +1045,7 @@ editForm.addEventListener('submit', (e) => {
   task.due = editDue.value || null;
   task.priority = editPriority.value;
   task.estimatedMinutes = Number(editEstimatedTime.value) || 0;
+  task.ai = editAiCheckbox.checked;
   task.labels = [...editSelectedLabels];
   task.subtasks = editSubtaskDraft;
   recalcStatus(task);
@@ -1168,14 +1198,16 @@ function handleSubtaskAddSubmit(e) {
   e.preventDefault();
   const input = form.querySelector('.subtask-add-input');
   const minutesInput = form.querySelector('.subtask-add-minutes-input');
+  const aiInput = form.querySelector('.subtask-add-ai-input');
   const title = input.value.trim();
   if (!title) return;
   const minutes = Number(minutesInput.value) || 0;
+  const ai = aiInput.checked;
   const taskId = form.dataset.taskId;
   const task = getTaskById(taskId);
   if (task) {
     task.subtasks = task.subtasks || [];
-    task.subtasks.push({ id: uid(), title, completed: false, minutes });
+    task.subtasks.push({ id: uid(), title, completed: false, minutes, ai });
     saveTasks();
     render();
     // Keep the add form open and focused so several sub-tasks can be typed in a row.
@@ -1212,7 +1244,7 @@ function openSubtaskHoverPreview(taskId, anchorEl) {
   if (!subtasks.length) return;
   subtaskHoverPreview.innerHTML = subtasks.map((s) => `
     <div class="subtask-preview-row ${s.completed ? 'subtask-done' : ''}">
-      <span>${s.completed ? '✓' : '○'} ${escapeHtml(s.title)}</span>
+      <span>${s.completed ? '✓' : '○'} ${s.ai ? aiIconHtml('ai-badge-sm ai-badge-before') : ''}${escapeHtml(s.title)}</span>
       ${s.minutes ? `<span class="time-badge subtask-time-badge">${formatMinutesBadge(s.minutes)}</span>` : ''}
     </div>
   `).join('');
@@ -1568,6 +1600,7 @@ function subtaskSectionHtml(task) {
   const rows = subtasks.map((s) => `
     <label class="subtask-row">
       <input type="checkbox" class="subtask-checkbox" data-subtask-id="${s.id}" ${s.completed ? 'checked' : ''}>
+      ${s.ai ? aiIconHtml('ai-badge-sm') : ''}
       <span class="${s.completed ? 'subtask-done' : ''}">${escapeHtml(s.title)}</span>
       ${s.minutes ? `<span class="time-badge subtask-time-badge">${formatMinutesBadge(s.minutes)}</span>` : ''}
     </label>
@@ -1587,6 +1620,7 @@ function subtaskSectionHtml(task) {
       <form class="subtask-add-form ${addFormOpen ? '' : 'hidden'}" data-task-id="${task.id}">
         <input type="text" class="subtask-add-input" placeholder="Sub-task name">
         <input type="number" class="subtask-add-minutes-input" placeholder="Min" min="0" step="5">
+        <label class="ai-checkbox-label" title="AI-assisted sub-task"><input type="checkbox" class="subtask-add-ai-input">AI</label>
       </form>
     </div>
   `;
@@ -1642,7 +1676,7 @@ function taskItemHtml(task) {
         <div class="card-title-row">
           <span class="priority-tag priority-${task.priority}">${PRIORITY_ICON}</span>
           ${statusCircleHtml(task)}
-          <span class="task-title">${escapeHtml(task.title)}</span>
+          <span class="task-title">${escapeHtml(task.title)}${task.ai ? aiIconHtml('ai-badge-after') : ''}</span>
           <span class="card-header-meta">
             ${dateLabel ? `<span class="date-pill ${isOverdue(task) ? 'overdue' : ''}" title="Click to edit dates">📅 ${dateLabel}</span>` : ''}
             ${projectTagHtml(task)}
@@ -1739,7 +1773,7 @@ function taskRowHtml(task, { estTimeCol = false } = {}) {
   return `
     <tr class="task-item ${task.completed ? 'completed' : ''}" data-id="${task.id}" data-priority="${task.priority}">
       <td><input type="checkbox" class="task-checkbox" ${task.completed ? 'checked' : ''}></td>
-      <td class="week-task-name">${escapeHtml(task.title)}</td>
+      <td class="week-task-name">${task.ai ? aiIconHtml('ai-badge-sm ai-badge-before') : ''}${escapeHtml(task.title)}</td>
       <td class="email-col">${emailBadgeHtml(task) || '—'}</td>
       <td class="centered-col">${task.project ? escapeHtml(task.project) : '—'}</td>
       <td>${categoryTag(task.category)}</td>
@@ -2029,13 +2063,13 @@ function toCsvField(value) {
 document.getElementById('exportCsvBtn').addEventListener('click', () => {
   const headers = [
     'Title', 'Category', 'Project', 'Status', 'Priority', 'Start Date', 'Due Date',
-    'Estimated Time (min)', 'Labels', 'Subtasks', 'Notes', 'Email Link', 'Completed', 'Created At',
+    'Estimated Time (min)', 'AI', 'Labels', 'Subtasks', 'Notes', 'Email Link', 'Completed', 'Created At',
   ];
 
   const rows = tasks.map((task) => {
     const status = task.completed ? 'Completed' : (STATUS_LABELS[task.status] || task.status || '');
     const subtasks = (task.subtasks || [])
-      .map((s) => `${s.completed ? '[x]' : '[ ]'} ${s.title}${s.minutes ? ` (${s.minutes}m)` : ''}`).join('; ');
+      .map((s) => `${s.completed ? '[x]' : '[ ]'}${s.ai ? ' [AI]' : ''} ${s.title}${s.minutes ? ` (${s.minutes}m)` : ''}`).join('; ');
 
     return [
       task.title,
@@ -2046,6 +2080,7 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
       task.startDate || '',
       task.due || '',
       taskTotalMinutes(task) || '',
+      task.ai ? 'Yes' : 'No',
       (task.labels || []).join('; '),
       subtasks,
       task.notes || '',
@@ -2085,11 +2120,13 @@ document.getElementById('exportActiveJsonBtn').addEventListener('click', () => {
     overdue: isOverdue(task),
     estimatedMinutes: taskTotalMinutes(task) || null,
     remainingMinutes: taskRemainingMinutes(task) || null,
+    aiAssisted: !!task.ai,
     labels: task.labels || [],
     subtasks: (task.subtasks || []).map((s) => ({
       title: s.title,
       completed: s.completed,
       minutes: s.minutes || null,
+      aiAssisted: !!s.ai,
     })),
     dependsOn: (task.dependsOn || [])
       .map((depId) => { const dep = getTaskById(depId); return dep ? dep.title : null; })
