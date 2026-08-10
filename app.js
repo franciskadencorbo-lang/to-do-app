@@ -455,6 +455,17 @@ function getContrastText(hex) {
   return yiq >= 150 ? '#1c1e21' : '#ffffff';
 }
 
+// Pulls a hex toward black by `amount` (0-1). Used to derive readable text from
+// a category color when that color sits on a pale tint of itself — pale
+// quadrant colors like NOT URGENT's #FCDCBD are unreadable used as-is.
+function darkenHex(hex, amount) {
+  const channel = (start) => {
+    const v = Math.round(parseInt(hex.slice(start, start + 2), 16) * (1 - amount));
+    return Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0');
+  };
+  return `#${channel(1)}${channel(3)}${channel(5)}`;
+}
+
 function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str;
@@ -1590,11 +1601,13 @@ function labelBadges(task) {
   }).join('');
 }
 
-function subtaskSectionLabel(task) {
+// The completed count rides in its own inner pill rather than being baked into
+// the label string, so the toggle can render as a chip with a badge on it.
+function subtaskCountBadgeHtml(task) {
   const subtasks = task.subtasks || [];
-  if (!subtasks.length) return 'Sub-tasks';
+  if (!subtasks.length) return '';
   const done = subtasks.filter((s) => s.completed).length;
-  return `Sub-tasks · ${done}/${subtasks.length}`;
+  return `<span class="subtask-count-badge">${done}/${subtasks.length}</span>`;
 }
 
 // Total estimated time for a task: the sum of its sub-tasks' estimates when it
@@ -1645,7 +1658,26 @@ function subtaskToggleHtml(task) {
   const subtasks = task.subtasks || [];
   if (!subtasks.length) return '';
   const collapsed = !expandedSubtaskIds.has(task.id);
-  return `<span class="subtask-section-toggle" data-toggle-subtasks="${task.id}" data-subtask-hover="${task.id}"><span class="subtask-toggle-arrow">${collapsed ? '▸' : '▾'}</span>${subtaskSectionLabel(task)}</span>`;
+  return `<span class="subtask-section-toggle" data-toggle-subtasks="${task.id}" data-subtask-hover="${task.id}"><span class="subtask-toggle-arrow">${collapsed ? '▸' : '▾'}</span>Sub-tasks${subtaskCountBadgeHtml(task)}</span>`;
+}
+
+// Share of sub-tasks checked off — counted by item, not by minutes (the
+// remaining-time badge already covers the minutes view). Renders inside the
+// expandable region, so it only appears once a card is expanded.
+function subtaskProgressHtml(task) {
+  const subtasks = task.subtasks || [];
+  if (!subtasks.length) return '';
+  const done = subtasks.filter((s) => s.completed).length;
+  const percent = Math.round((done / subtasks.length) * 100);
+  return `
+    <div class="subtask-progress">
+      <div class="subtask-progress-label">
+        <span>Progress</span>
+        <span>${percent}%</span>
+      </div>
+      <div class="subtask-progress-track"><div class="subtask-progress-fill" style="width: ${percent}%"></div></div>
+    </div>
+  `;
 }
 
 function subtaskRowsHtml(task) {
@@ -1662,7 +1694,7 @@ function subtaskRowsHtml(task) {
     </label>
   `).join('');
 
-  return `<div class="subtasks"><div class="subtask-rows ${collapsed ? 'hidden' : ''}">${rows}</div></div>`;
+  return `<div class="subtasks"><div class="subtask-expand ${collapsed ? 'hidden' : ''}">${subtaskProgressHtml(task)}<div class="subtask-rows">${rows}</div></div></div>`;
 }
 
 // True if the task itself, or any of its sub-tasks, is AI-assisted — the
@@ -1722,9 +1754,10 @@ function taskItemHtml(task) {
   const dateLabel = dateRangeLabel(task);
   const subtaskToggle = subtaskToggleHtml(task);
   const showRow2 = !!subtaskToggle || hasLabels;
+  const overdue = isOverdue(task);
 
   return `
-    <li class="task-item ${task.completed ? 'completed' : ''}" data-id="${task.id}" data-priority="${task.priority}" title="Click to edit">
+    <li class="task-item ${task.completed ? 'completed' : ''} ${overdue ? 'overdue' : ''}" data-id="${task.id}" data-priority="${task.priority}" title="Click to edit">
       <div class="card-hover-actions">
         <button class="mark-complete-btn" title="${task.completed ? 'Mark incomplete' : 'Mark complete'}">${task.completed ? '↺' : '✓'}</button>
         <button class="edit-btn" title="Edit">✏️</button>
@@ -1735,12 +1768,12 @@ function taskItemHtml(task) {
           <span class="priority-tag priority-${task.priority}">${PRIORITY_ICON}</span>
           ${statusCircleHtml(task)}
           <span class="task-title">${escapeHtml(task.title)}</span>
-          ${remainingTimeBadgeHtml(task)}
           <span class="card-header-meta">
             ${emailBadgeHtml(task)}
             ${taskHasAi(task) ? aiIconHtml() : ''}
             ${projectTagHtml(task)}
-            ${dateLabel ? `<span class="date-pill ${isOverdue(task) ? 'overdue' : ''}" title="Click to edit dates">📅 ${dateLabel}</span>` : ''}
+            ${dateLabel ? `<span class="date-pill ${overdue ? 'overdue' : ''}" title="Click to edit dates">📅 ${overdue ? 'Overdue · ' : ''}${dateLabel}</span>` : ''}
+            ${remainingTimeBadgeHtml(task)}
             ${notesBadgeHtml(task)}
           </span>
         </div>
@@ -1756,10 +1789,17 @@ function taskItemHtml(task) {
   `;
 }
 
+// Each column header is a pale wash of its own category color. The wash and the
+// border come straight from the color; the text is a darkened derivation of it,
+// so pale quadrant colors stay legible on their own tint.
 function initColumnHeaders() {
   CATEGORIES.forEach((cat) => {
     const column = board.querySelector(`.board-column[data-category="${cat}"]`);
-    column.style.setProperty('--column-color', CATEGORY_COLORS[cat]);
+    const color = CATEGORY_COLORS[cat];
+    column.style.setProperty('--column-color', color);
+    column.style.setProperty('--column-tint', hexToRgba(color, 0.14));
+    column.style.setProperty('--column-edge', hexToRgba(color, 0.35));
+    column.style.setProperty('--column-ink', darkenHex(color, 0.45));
   });
 }
 
@@ -1786,6 +1826,12 @@ function renderBoard(list) {
     if (collapseBtn) {
       collapseBtn.textContent = isCollapsed ? '+' : '−';
       collapseBtn.title = isCollapsed ? 'Expand column' : 'Collapse column';
+    }
+
+    // Only visible while collapsed (CSS), so it's safe to keep in sync always.
+    const collapsedNote = column.querySelector('.column-collapsed-note');
+    if (collapsedNote) {
+      collapsedNote.textContent = `Column collapsed (${catTasks.length} ${catTasks.length === 1 ? 'task' : 'tasks'})`;
     }
 
     listEl.innerHTML = activeTasks.length

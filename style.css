@@ -755,7 +755,7 @@ body {
 .board-column-body {
   overflow-y: auto;
   flex: 1;
-  padding: 4px 14px 14px;
+  padding: 12px 14px 14px;
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
 }
@@ -773,13 +773,18 @@ body {
   border-radius: 3px;
 }
 
+/* A pale wash of the category's own color, with the color's darkened
+   derivation (--column-ink) as text so pale quadrant colors stay legible. */
 .board-column-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 14px 14px 10px;
+  padding: 12px 14px;
   flex-shrink: 0;
+  background: var(--column-tint, transparent);
+  border-bottom: 1px solid var(--column-edge, var(--border));
+  border-radius: var(--radius) var(--radius) 0 0;
 }
 
 .column-title-group {
@@ -798,14 +803,16 @@ body {
 .column-title {
   font-weight: 700;
   font-size: 0.95rem;
-  color: var(--column-color, var(--text));
-  letter-spacing: 0.01em;
+  color: var(--column-ink, var(--text));
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 .column-subtitle {
   font-weight: 500;
   font-size: 0.76rem;
-  color: var(--column-color, var(--text-muted));
+  color: var(--column-ink, var(--text-muted));
+  opacity: 0.75;
   white-space: nowrap;
 }
 
@@ -819,12 +826,13 @@ body {
 .column-count {
   font-size: 0.75rem;
   font-weight: 700;
-  color: var(--column-color, var(--text));
-  background: var(--bg);
+  color: var(--column-ink, var(--text));
+  background: var(--surface);
   border: none;
   border-radius: var(--radius-pill);
   padding: 1px 9px;
   flex-shrink: 0;
+  box-shadow: var(--shadow);
 }
 
 .column-collapse-btn {
@@ -836,13 +844,14 @@ body {
   font-size: 0.85rem;
   line-height: 1;
   font-weight: 700;
-  color: var(--column-color, var(--text-muted));
-  background: var(--bg);
+  color: var(--column-ink, var(--text-muted));
+  background: var(--surface);
   border: none;
   border-radius: var(--radius-pill);
   cursor: pointer;
   flex-shrink: 0;
   padding: 0;
+  box-shadow: var(--shadow);
 }
 
 .column-collapse-btn:hover {
@@ -856,6 +865,21 @@ body {
 
 .board-column.collapsed {
   max-height: none;
+}
+
+/* Placeholder standing in for the hidden card list, so a collapsed quadrant
+   still reports what it's holding. Text is kept in sync by renderBoard. */
+.column-collapsed-note {
+  display: none;
+  padding: 12px 14px;
+  text-align: center;
+  font-size: 0.78rem;
+  font-style: italic;
+  color: var(--text-faint);
+}
+
+.board-column.collapsed .column-collapsed-note {
+  display: block;
 }
 
 .column-empty {
@@ -911,7 +935,7 @@ body {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 12px 14px;
+  padding: 13px 14px;
   display: flex;
   align-items: flex-start;
   gap: 10px;
@@ -930,9 +954,22 @@ body {
 li.task-item {
   position: relative;
   cursor: pointer;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
 }
 li.task-item:hover {
   border-color: var(--accent);
+  box-shadow: var(--shadow-md);
+}
+
+/* An overdue card is flagged on the card edge itself, not just on its date
+   pill — the ring makes it findable while scanning a full quadrant. */
+li.task-item.overdue {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px var(--danger-soft);
+}
+li.task-item.overdue:hover {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px var(--danger-soft), var(--shadow-md);
 }
 
 .card-hover-actions {
@@ -1009,11 +1046,22 @@ li.task-item:focus-within .card-hover-actions {
   min-width: 0;
 }
 
+/* Zone 1. The hairline separates the identity of the task (flag, status,
+   title) from its context row below, which is what stops the card reading as
+   one long horizontal run of badges. */
 .card-title-row {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* No second row to divide from — drop the rule rather than leave it hanging. */
+.card-title-row:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
 }
 
 .task-title {
@@ -1041,7 +1089,9 @@ li.task-item:focus-within .card-hover-actions {
   margin-top: 8px;
 }
 
-.card-row-2-labels {
+/* Labels sit opposite the sub-tasks toggle. With no toggle to balance against
+   they'd be stranded across an empty gutter, so they stay left instead. */
+.card-row-2-labels:not(:only-child) {
   margin-left: auto;
 }
 
@@ -1080,7 +1130,12 @@ li.task-item:focus-within .card-hover-actions {
   background: var(--low);
 }
 
+/* Zone 2. Reads as a chip so it looks pressable, with the done/total count in
+   its own inner pill (the mockup's grey button + darker badge). */
 .subtask-section-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   cursor: pointer;
   user-select: none;
   font-size: 0.68rem;
@@ -1088,14 +1143,77 @@ li.task-item:focus-within .card-hover-actions {
   text-transform: uppercase;
   letter-spacing: 0.03em;
   color: var(--text-muted);
+  background: var(--surface-alt);
+  border-radius: var(--radius-pill);
+  padding: 3px 9px;
 }
 .subtask-section-toggle:hover {
   color: var(--text);
+  background: var(--border);
+}
+
+.subtask-count-badge {
+  font-size: 0.64rem;
+  font-weight: 700;
+  color: var(--text);
+  background: var(--border);
+  border-radius: var(--radius-pill);
+  padding: 0 6px;
+}
+.subtask-section-toggle:hover .subtask-count-badge {
+  background: var(--surface);
 }
 
 .subtask-toggle-arrow {
   display: inline-block;
-  margin-right: 3px;
+}
+
+/* Zone 3. Share of sub-tasks checked off, by item count. */
+.subtask-progress {
+  margin-bottom: 7px;
+}
+
+.subtask-progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.66rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.subtask-progress-track {
+  height: 6px;
+  background: var(--surface-alt);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.subtask-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: var(--radius-pill);
+  transition: width 0.15s ease;
+}
+
+/* The checklist sits in an inset panel so the expanded rows read as a distinct
+   surface rather than as more card body. */
+.subtask-expand {
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px solid var(--border);
+}
+
+.subtask-rows {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px 6px;
+}
+
+.subtask-row:hover {
+  background: var(--surface);
+  border-radius: 5px;
 }
 
 .due-tag {
@@ -1127,6 +1245,7 @@ li.task-item:focus-within .card-hover-actions {
 }
 .date-pill.overdue {
   color: var(--danger);
+  background: var(--danger-soft);
   border-color: var(--danger);
   font-weight: 600;
 }
@@ -1249,6 +1368,7 @@ li.task-item:focus-within .card-hover-actions {
   background: var(--chip-bg, var(--bg));
   color: var(--chip-color, var(--text));
   border-color: transparent;
+  border-radius: var(--radius-pill);
   font-weight: 600;
 }
 
@@ -1263,7 +1383,7 @@ li.task-item:focus-within .card-hover-actions {
   align-items: center;
   gap: 7px;
   font-size: 0.76rem;
-  padding: 3px 0;
+  padding: 3px 5px;
   cursor: pointer;
 }
 
