@@ -16,18 +16,16 @@ const CATEGORY_COLORS = {
 const CATEGORIES = Object.keys(CATEGORY_COLORS);
 
 // Category is derived from Effort × Impact × Priority (a simple Eisenhower-style
-// matrix). Low Effort + Low Impact splits three ways by Priority: Low priority
-// is genuinely not urgent (still needs doing, just no rush), Medium priority is
-// worth handing off, and High/Urgent priority is quick enough to just knock out
-// yourself despite the low impact — hence DO.
+// matrix). Low Effort + Low Impact splits two ways by Priority: Low priority is
+// genuinely not urgent (still needs doing, just no rush), while Medium/High/
+// Urgent priority is worth handing off — hence DELEGATE.
 function computeCategory(effort, impact, priority) {
   if (effort === 'high' && impact === 'high') return 'PLAN';
   if (effort === 'high' && impact === 'low') return 'DO';
   if (effort === 'low' && impact === 'high') return 'DO';
   if (effort === 'low' && impact === 'low') {
     if (priority === 'low') return 'NOT URGENT';
-    if (priority === 'medium') return 'DELEGATE';
-    if (priority === 'high' || priority === 'urgent') return 'DO';
+    if (priority === 'medium' || priority === 'high' || priority === 'urgent') return 'DELEGATE';
   }
   return null;
 }
@@ -218,9 +216,9 @@ const CATEGORY_MIGRATION = { Do: 'DO', Decide: 'PLAN', Delegate: 'DELEGATE', 'To
 
 // Runs on every load (cheap, idempotent) so category always reflects the
 // current Effort/Impact/Priority rules — not just at creation time. That's
-// the actual fix for tasks that were stuck DELEGATE under the old "Low
-// Effort + Low Impact = always Delegate" rule but should now split out to
-// NOT URGENT or DO by Priority. Tasks with real Effort+Impact get recomputed;
+// the actual fix for tasks whose category went stale after a rule change —
+// e.g. Low Effort + Low Impact now splits into NOT URGENT (Priority=Low) vs
+// DELEGATE (anything else). Tasks with real Effort+Impact get recomputed;
 // tasks with neither (no signal to recompute from) AND no valid existing
 // category (genuinely untriaged, e.g. old Triage Log promotions) default to
 // Low/Low/Low, landing in NOT URGENT. Tasks with a valid category but no
