@@ -300,6 +300,11 @@ body {
   flex: 0 0 8ch;
   width: 8ch;
 }
+.task-form-row .estimated-time-input:disabled {
+  background: var(--surface-alt);
+  color: var(--text-faint);
+  cursor: not-allowed;
+}
 
 .ai-checkbox-label {
   flex: 0 0 auto;
@@ -1270,62 +1275,6 @@ li.task-item:focus-within .card-hover-actions {
   gap: 8px;
 }
 
-.subtask-add-toggle-btn {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text-muted);
-  font-size: 0.7rem;
-  line-height: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  flex-shrink: 0;
-  padding: 0;
-}
-.subtask-add-toggle-btn:hover {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-contrast);
-}
-
-.subtask-add-form {
-  margin-top: 4px;
-  display: flex;
-  gap: 6px;
-}
-
-.subtask-add-input {
-  flex: 1 1 auto;
-  min-width: 0;
-  border: none;
-  background: none;
-  color: var(--text-muted);
-  font-size: 0.76rem;
-  padding: 4px 0;
-}
-.subtask-add-input:focus {
-  color: var(--text);
-  outline: none;
-}
-
-.subtask-add-minutes-input {
-  flex: 0 0 44px;
-  border: none;
-  border-bottom: 1px solid var(--border);
-  background: none;
-  color: var(--text-muted);
-  font-size: 0.76rem;
-  padding: 4px 0;
-}
-.subtask-add-minutes-input:focus {
-  color: var(--text);
-  outline: none;
-}
-
 .card-dep-popover {
   position: fixed;
   max-width: 260px;
@@ -1389,6 +1338,11 @@ li.task-item:focus-within .card-hover-actions {
   justify-content: space-between;
   gap: 8px;
   padding: 3px 2px;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.subtask-preview-row:hover {
+  background: var(--surface-alt);
 }
 .subtask-preview-row.subtask-done {
   color: var(--text-muted);
