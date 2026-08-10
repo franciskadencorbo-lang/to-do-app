@@ -62,13 +62,20 @@
             <option value="DO">DO</option>
             <option value="PLAN">PLAN</option>
             <option value="DELEGATE">DELEGATE</option>
-            <option value="TO ALLOCATE">TO ALLOCATE</option>
+            <option value="NOT URGENT">NOT URGENT</option>
           </select>
           <select id="projectFilter">
             <option value="all">All projects</option>
           </select>
           <select id="labelFilter">
             <option value="all">All labels</option>
+          </select>
+          <select id="timeFilter">
+            <option value="all">All time</option>
+            <option value="0-15">0 to 15 mins</option>
+            <option value="15-60">15 to 60 mins</option>
+            <option value="60-120">60 to 120 mins</option>
+            <option value="120+">120 mins+</option>
           </select>
           <select id="sortBy">
             <option value="created">Sort: Newest</option>
@@ -126,7 +133,7 @@
               <span class="column-title-group">
                 <span class="column-icon">👥</span>
                 <span class="column-title">DELEGATE</span>
-                <span class="column-subtitle">(Low Impact / Low Effort)</span>
+                <span class="column-subtitle">(Low Impact / Low Effort / Medium Priority)</span>
               </span>
               <span class="column-header-right">
                 <span class="column-count" id="countDELEGATE">0</span>
@@ -141,23 +148,23 @@
               </details>
             </div>
           </div>
-          <div class="board-column" data-category="TO ALLOCATE">
+          <div class="board-column" data-category="NOT URGENT">
             <div class="board-column-header">
               <span class="column-title-group">
-                <span class="column-icon">ⓘ</span>
-                <span class="column-title">TO ALLOCATE</span>
-                <span class="column-subtitle">(Un-triaged Staging)</span>
+                <span class="column-icon">🕒</span>
+                <span class="column-title">NOT URGENT</span>
+                <span class="column-subtitle">(Low Impact / Low Effort / Low Priority)</span>
               </span>
               <span class="column-header-right">
-                <span class="column-count" id="countTOALLOCATE">0</span>
-                <button type="button" class="column-collapse-btn" data-collapse-toggle="TO ALLOCATE" title="Collapse column">−</button>
+                <span class="column-count" id="countNOTURGENT">0</span>
+                <button type="button" class="column-collapse-btn" data-collapse-toggle="NOT URGENT" title="Collapse column">−</button>
               </span>
             </div>
             <div class="board-column-body">
-              <ul class="task-list" id="listTOALLOCATE"></ul>
-              <details class="completed-group hidden" id="completedGroupTOALLOCATE">
-                <summary>Completed (<span id="completedCountTOALLOCATE">0</span>)</summary>
-                <ul class="task-list completed-list" id="completedListTOALLOCATE"></ul>
+              <ul class="task-list" id="listNOTURGENT"></ul>
+              <details class="completed-group hidden" id="completedGroupNOTURGENT">
+                <summary>Completed (<span id="completedCountNOTURGENT">0</span>)</summary>
+                <ul class="task-list completed-list" id="completedListNOTURGENT"></ul>
               </details>
             </div>
           </div>
@@ -177,7 +184,6 @@
                 <th class="centered-col">Project</th>
                 <th>Category</th>
                 <th class="centered-col">Priority</th>
-                <th class="centered-col">Start Date</th>
                 <th class="centered-col">Due Date</th>
                 <th class="centered-col">Est. Time</th>
                 <th>Labels</th>
@@ -188,7 +194,7 @@
             <tbody id="listTableBody"></tbody>
             <tbody id="listCompletedToggleBody" class="hidden">
               <tr class="completed-toggle-row">
-                <td colspan="12"><span class="completed-toggle-arrow">▸</span> Completed (<span id="listCompletedCount">0</span>)</td>
+                <td colspan="11"><span class="completed-toggle-arrow">▸</span> Completed (<span id="listCompletedCount">0</span>)</td>
               </tr>
             </tbody>
             <tbody id="listCompletedTableBody" class="hidden"></tbody>
@@ -209,7 +215,6 @@
                 <th class="centered-col">Project</th>
                 <th>Category</th>
                 <th class="centered-col">Priority</th>
-                <th class="centered-col">Start Date</th>
                 <th class="centered-col">Due Date</th>
                 <th>Labels</th>
                 <th class="centered-col">Sub-tasks</th>
@@ -219,7 +224,7 @@
             <tbody id="weekTableBody"></tbody>
             <tbody id="weekCompletedToggleBody" class="hidden">
               <tr class="completed-toggle-row">
-                <td colspan="11"><span class="completed-toggle-arrow">▸</span> Completed (<span id="weekCompletedCount">0</span>)</td>
+                <td colspan="10"><span class="completed-toggle-arrow">▸</span> Completed (<span id="weekCompletedCount">0</span>)</td>
               </tr>
             </tbody>
             <tbody id="weekCompletedTableBody" class="hidden"></tbody>
@@ -239,7 +244,6 @@
                 <th class="centered-col">Project</th>
                 <th>Category</th>
                 <th class="centered-col">Priority</th>
-                <th class="centered-col">Start Date</th>
                 <th class="centered-col">Due Date</th>
                 <th>Labels</th>
                 <th class="centered-col">Sub-tasks</th>
@@ -271,7 +275,7 @@
               ⬆ Import Triage Log
               <input type="file" id="importTriageLogFile" accept=".json" style="display:none;">
             </label>
-            <button type="button" id="promoteSelectedBtn" class="filter-btn">Promote Selected → To Allocate</button>
+            <button type="button" id="promoteSelectedBtn" class="filter-btn">Promote Selected → Not Urgent</button>
           </div>
           <div class="filter-group">
             <span id="triageCount" class="hint-text"></span>
@@ -328,7 +332,6 @@
           <option value="">No project</option>
         </select>
         <button type="button" class="project-manage-btn" id="taskProjectManageBtn" title="Add / manage projects">+</button>
-        <input type="date" id="taskStartDate" title="Start date">
         <input type="date" id="taskDue" title="Due date">
         <select id="taskPriority" title="Priority">
           <option value="low">Low</option>
@@ -388,7 +391,6 @@
           <option value="">No project</option>
         </select>
         <button type="button" class="project-manage-btn" id="editProjectManageBtn" title="Add / manage projects">+</button>
-        <input type="date" id="editStartDate" title="Start date">
         <input type="date" id="editDue" title="Due date">
         <select id="editPriority" title="Priority">
           <option value="low">Low</option>
@@ -426,7 +428,6 @@
 </div>
 
 <div class="date-edit-popover hidden" id="dateEditPopover">
-  <label class="date-edit-field">Start<input type="date" id="dateEditStart"></label>
   <label class="date-edit-field">Due<input type="date" id="dateEditDue"></label>
 </div>
 
