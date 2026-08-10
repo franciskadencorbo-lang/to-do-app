@@ -1639,7 +1639,16 @@ function formatMinutesBadge(totalMins) {
 // expands them in place for interactive checking); hovering the count shows
 // the same list via subtaskHoverPreview without needing to expand. Sub-tasks
 // are only added/removed via the Edit Task modal — there's no inline add here.
-function subtaskSectionHtml(task) {
+// Split into a toggle (shares the card's second row with Labels) and the
+// expandable rows themselves (render below that row when expanded).
+function subtaskToggleHtml(task) {
+  const subtasks = task.subtasks || [];
+  if (!subtasks.length) return '';
+  const collapsed = !expandedSubtaskIds.has(task.id);
+  return `<span class="subtask-section-toggle" data-toggle-subtasks="${task.id}" data-subtask-hover="${task.id}"><span class="subtask-toggle-arrow">${collapsed ? '▸' : '▾'}</span>${subtaskSectionLabel(task)}</span>`;
+}
+
+function subtaskRowsHtml(task) {
   const subtasks = task.subtasks || [];
   if (!subtasks.length) return '';
   const collapsed = !expandedSubtaskIds.has(task.id);
@@ -1653,14 +1662,27 @@ function subtaskSectionHtml(task) {
     </label>
   `).join('');
 
-  return `
-    <div class="card-section-label subtask-label-row">
-      <span class="subtask-section-toggle" data-toggle-subtasks="${task.id}" data-subtask-hover="${task.id}"><span class="subtask-toggle-arrow">${collapsed ? '▸' : '▾'}</span>${subtaskSectionLabel(task)}</span>
-    </div>
-    <div class="subtasks">
-      <div class="subtask-rows ${collapsed ? 'hidden' : ''}">${rows}</div>
-    </div>
-  `;
+  return `<div class="subtasks"><div class="subtask-rows ${collapsed ? 'hidden' : ''}">${rows}</div></div>`;
+}
+
+// True if the task itself, or any of its sub-tasks, is AI-assisted — the
+// card shows one combined AI badge in the header meta rather than one per
+// sub-task (those still show individually once the sub-tasks are expanded).
+function taskHasAi(task) {
+  return !!task.ai || (task.subtasks || []).some((s) => s.ai);
+}
+
+// Remaining-time badge for the card header — bucketed the same way as the
+// time filter (0-15 / 15-60 / 60-120 / 120+ mins) and color-coded so load
+// is readable at a glance. Hidden entirely when a task has no time tracked
+// at all (e.g. a Delegate task with no sub-tasks).
+function remainingTimeBadgeHtml(task) {
+  const total = taskTotalMinutes(task);
+  if (!total) return '';
+  const remaining = taskRemainingMinutes(task);
+  const rangeKey = Object.keys(TIME_RANGES).find((key) => TIME_RANGES[key](remaining)) || '120+';
+  const bucketClass = `bucket-${rangeKey.replace('+', '-plus')}`;
+  return `<span class="time-badge remaining-time-badge ${bucketClass}" title="Estimated time remaining">${formatMinutesBadge(remaining)}</span>`;
 }
 
 function emailBadgeHtml(task) {
@@ -1698,6 +1720,8 @@ function dateRangeLabel(task) {
 function taskItemHtml(task) {
   const hasLabels = (task.labels || []).length > 0;
   const dateLabel = dateRangeLabel(task);
+  const subtaskToggle = subtaskToggleHtml(task);
+  const showRow2 = !!subtaskToggle || hasLabels;
 
   return `
     <li class="task-item ${task.completed ? 'completed' : ''}" data-id="${task.id}" data-priority="${task.priority}" title="Click to edit">
@@ -1710,21 +1734,23 @@ function taskItemHtml(task) {
         <div class="card-title-row">
           <span class="priority-tag priority-${task.priority}">${PRIORITY_ICON}</span>
           ${statusCircleHtml(task)}
-          <span class="task-title">${escapeHtml(task.title)}${task.ai ? aiIconHtml('ai-badge-after') : ''}</span>
+          <span class="task-title">${escapeHtml(task.title)}</span>
+          ${remainingTimeBadgeHtml(task)}
           <span class="card-header-meta">
-            ${dateLabel ? `<span class="date-pill ${isOverdue(task) ? 'overdue' : ''}" title="Click to edit dates">📅 ${dateLabel}</span>` : ''}
-            ${projectTagHtml(task)}
             ${emailBadgeHtml(task)}
+            ${taskHasAi(task) ? aiIconHtml() : ''}
+            ${projectTagHtml(task)}
+            ${dateLabel ? `<span class="date-pill ${isOverdue(task) ? 'overdue' : ''}" title="Click to edit dates">📅 ${dateLabel}</span>` : ''}
             ${notesBadgeHtml(task)}
           </span>
         </div>
 
-        ${hasLabels ? `
-        <div class="card-sub-row task-meta">${labelBadges(task)}</div>` : ''}
-
-        <div class="card-section card-section-tight">
-          ${subtaskSectionHtml(task)}
-        </div>
+        ${showRow2 ? `
+        <div class="card-row-2">
+          ${subtaskToggle}
+          ${hasLabels ? `<div class="task-meta card-row-2-labels">${labelBadges(task)}</div>` : ''}
+        </div>` : ''}
+        ${subtaskRowsHtml(task)}
       </div>
     </li>
   `;
