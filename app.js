@@ -11,18 +11,24 @@ const CATEGORY_COLORS = {
   DO: '#2f5fed',
   PLAN: '#88B917',
   DELEGATE: '#00A9A3',
-  'TO ALLOCATE': '#FCDCBD',
+  'NOT URGENT': '#FCDCBD',
 };
 const CATEGORIES = Object.keys(CATEGORY_COLORS);
 
-// Category is derived from Effort × Impact (a simple Eisenhower-style matrix),
-// not chosen directly — "TO ALLOCATE" is reserved for tasks that haven't been
-// triaged with an Effort/Impact yet (e.g. Quick Add captures).
-function computeCategory(effort, impact) {
+// Category is derived from Effort × Impact × Priority (a simple Eisenhower-style
+// matrix). Low Effort + Low Impact splits three ways by Priority: Low priority
+// is genuinely not urgent (still needs doing, just no rush), Medium priority is
+// worth handing off, and High/Urgent priority is quick enough to just knock out
+// yourself despite the low impact — hence DO.
+function computeCategory(effort, impact, priority) {
   if (effort === 'high' && impact === 'high') return 'PLAN';
   if (effort === 'high' && impact === 'low') return 'DO';
   if (effort === 'low' && impact === 'high') return 'DO';
-  if (effort === 'low' && impact === 'low') return 'DELEGATE';
+  if (effort === 'low' && impact === 'low') {
+    if (priority === 'low') return 'NOT URGENT';
+    if (priority === 'medium') return 'DELEGATE';
+    if (priority === 'high' || priority === 'urgent') return 'DO';
+  }
   return null;
 }
 
@@ -79,7 +85,6 @@ const taskEffort = document.getElementById('taskEffort');
 const taskImpact = document.getElementById('taskImpact');
 const taskCategoryPreview = document.getElementById('taskCategoryPreview');
 const taskProject = document.getElementById('taskProject');
-const taskStartDate = document.getElementById('taskStartDate');
 const taskDue = document.getElementById('taskDue');
 const taskPriority = document.getElementById('taskPriority');
 const taskEstimatedTime = document.getElementById('taskEstimatedTime');
@@ -135,7 +140,6 @@ const editEffort = document.getElementById('editEffort');
 const editImpact = document.getElementById('editImpact');
 const editCategoryPreview = document.getElementById('editCategoryPreview');
 const editProject = document.getElementById('editProject');
-const editStartDate = document.getElementById('editStartDate');
 const editDue = document.getElementById('editDue');
 const editPriority = document.getElementById('editPriority');
 const editEstimatedTime = document.getElementById('editEstimatedTime');
@@ -154,6 +158,7 @@ const editModalClose = document.getElementById('editModalClose');
 const categoryFilter = document.getElementById('categoryFilter');
 const projectFilter = document.getElementById('projectFilter');
 const labelFilter = document.getElementById('labelFilter');
+const timeFilter = document.getElementById('timeFilter');
 const sortBy = document.getElementById('sortBy');
 const statusFilters = document.getElementById('statusFilters');
 const board = document.getElementById('board');
@@ -198,7 +203,6 @@ const promoteSelectedBtn = document.getElementById('promoteSelectedBtn');
 
 // Board card date-edit popover (shared, positioned near whichever date pill was clicked)
 const dateEditPopover = document.getElementById('dateEditPopover');
-const dateEditStart = document.getElementById('dateEditStart');
 const dateEditDue = document.getElementById('dateEditDue');
 
 // Board card notes popover (shared, read-only, positioned near whichever notes icon was clicked)
@@ -208,13 +212,59 @@ const notesPopover = document.getElementById('notesPopover');
 const calTasksPopover = document.getElementById('calTasksPopover');
 
 // One-time migration: old category names -> the new Effort/Impact-derived
-// set, and the DECIDE column's tasks specifically move to PLAN.
-const CATEGORY_MIGRATION = { Do: 'DO', Decide: 'PLAN', Delegate: 'DELEGATE', 'To Allocate': 'TO ALLOCATE' };
-function migrateCategories(list) {
+// set, and the DECIDE column's tasks specifically move to PLAN. "TO ALLOCATE"
+// (the old untriaged-staging column) folds into "NOT URGENT".
+const CATEGORY_MIGRATION = { Do: 'DO', Decide: 'PLAN', Delegate: 'DELEGATE', 'To Allocate': 'NOT URGENT', 'TO ALLOCATE': 'NOT URGENT' };
+
+// Runs on every load (cheap, idempotent) so category always reflects the
+// current Effort/Impact/Priority rules — not just at creation time. That's
+// the actual fix for tasks that were stuck DELEGATE under the old "Low
+// Effort + Low Impact = always Delegate" rule but should now split out to
+// NOT URGENT or DO by Priority. Tasks with real Effort+Impact get recomputed;
+// tasks with neither (no signal to recompute from) AND no valid existing
+// category (genuinely untriaged, e.g. old Triage Log promotions) default to
+// Low/Low/Low, landing in NOT URGENT. Tasks with a valid category but no
+// Effort/Impact on file (e.g. some "Import for AI Skill" entries never carry
+// those fields) are left exactly as categorized, since there's nothing to
+// recompute from. Delegate tasks always carry 0 estimated minutes — that
+// time isn't yours to track. Start Date is no longer user-editable and
+// always mirrors Due Date.
+function normalizeTasks(list) {
   let changed = false;
   list.forEach((t) => {
-    if (CATEGORY_MIGRATION[t.category]) {
-      t.category = CATEGORY_MIGRATION[t.category];
+    // Captured before the name migration below overwrites t.category, since
+    // the old "TO ALLOCATE" / "To Allocate" name is itself the untriaged
+    // signal — once renamed to "NOT URGENT" it would look like a valid,
+    // deliberately-chosen category and be mistaken for one.
+    const rawCategory = t.category;
+    const wasLegacyStaging = rawCategory === 'To Allocate' || rawCategory === 'TO ALLOCATE';
+
+    if (CATEGORY_MIGRATION[rawCategory]) {
+      t.category = CATEGORY_MIGRATION[rawCategory];
+      changed = true;
+    }
+
+    const hasEffortImpact = !!(t.effort && t.impact);
+    if (!hasEffortImpact && (wasLegacyStaging || !CATEGORIES.includes(rawCategory))) {
+      t.effort = 'low';
+      t.impact = 'low';
+      t.priority = 'low';
+      t.category = 'NOT URGENT';
+      changed = true;
+    } else if (hasEffortImpact) {
+      const recomputed = computeCategory(t.effort, t.impact, t.priority);
+      if (recomputed && t.category !== recomputed) {
+        t.category = recomputed;
+        changed = true;
+      }
+    }
+
+    if (t.category === 'DELEGATE' && t.estimatedMinutes) {
+      t.estimatedMinutes = 0;
+      changed = true;
+    }
+    if (t.startDate !== (t.due || null)) {
+      t.startDate = t.due || null;
       changed = true;
     }
   });
@@ -222,7 +272,7 @@ function migrateCategories(list) {
 }
 
 let tasks = loadTasks();
-if (migrateCategories(tasks)) saveTasks();
+if (normalizeTasks(tasks)) saveTasks();
 let projects = loadProjects();
 let labels = loadLabels();
 let triageLog = loadTriageLog();
@@ -238,7 +288,6 @@ let editSelectedLabels = new Set();
 let editSubtaskDraft = [];
 
 let expandedSubtaskIds = new Set();
-let openSubtaskAddIds = new Set();
 let dateEditTaskId = null;
 let calTasksDayKey = null;
 let collapsedColumns = loadCollapsedColumns();
@@ -527,7 +576,7 @@ labelQuickFilterBar.addEventListener('click', (e) => {
 
 function buildSubtaskDraftHtml(draft) {
   return draft.map((s) => `
-    <li class="draft-chip">${s.ai ? aiIconHtml('ai-badge-sm') : ''}${escapeHtml(s.title)}${s.minutes ? `<span class="draft-chip-time">${formatMinutes(s.minutes)}</span>` : ''}<button type="button" class="remove-draft-btn" data-id="${s.id}">×</button></li>
+    <li class="draft-chip">${s.ai ? aiIconHtml('ai-badge-sm') : ''}<span class="${s.completed ? 'subtask-done' : ''}">${escapeHtml(s.title)}</span>${s.minutes ? `<span class="draft-chip-time">${formatMinutes(s.minutes)}</span>` : ''}<button type="button" class="remove-draft-btn" data-id="${s.id}">×</button></li>
   `).join('');
 }
 
@@ -891,23 +940,34 @@ manageLabelsBtn.addEventListener('click', (e) => {
   openLabelManagePopover(settingsBtn);
 });
 
-// ---------- Effort/Impact -> Category preview (create + edit forms) ----------
+// ---------- Effort/Impact/Priority -> Category preview (create + edit forms) ----------
+// Delegate tasks track 0 minutes — that time isn't yours to spend, so the
+// Estimated Time field is locked to 0 the moment the matrix resolves to Delegate.
 
-function updateCategoryPreview(effortEl, impactEl, previewEl) {
-  const cat = computeCategory(effortEl.value, impactEl.value);
+function updateCategoryPreview(effortEl, impactEl, priorityEl, previewEl, estInputEl) {
+  const cat = computeCategory(effortEl.value, impactEl.value, priorityEl.value);
   if (!cat) {
     previewEl.textContent = '';
     previewEl.style.removeProperty('--chip-color');
-    return;
+  } else {
+    previewEl.textContent = cat;
+    previewEl.style.setProperty('--chip-color', CATEGORY_COLORS[cat]);
   }
-  previewEl.textContent = cat;
-  previewEl.style.setProperty('--chip-color', CATEGORY_COLORS[cat]);
+
+  const isDelegate = cat === 'DELEGATE';
+  estInputEl.disabled = isDelegate;
+  estInputEl.title = isDelegate
+    ? 'Delegated tasks always track 0 minutes — that time isn\'t yours to spend'
+    : 'Estimated Time (minutes)';
+  if (isDelegate) estInputEl.value = '0';
 }
 
-taskEffort.addEventListener('change', () => updateCategoryPreview(taskEffort, taskImpact, taskCategoryPreview));
-taskImpact.addEventListener('change', () => updateCategoryPreview(taskEffort, taskImpact, taskCategoryPreview));
-editEffort.addEventListener('change', () => updateCategoryPreview(editEffort, editImpact, editCategoryPreview));
-editImpact.addEventListener('change', () => updateCategoryPreview(editEffort, editImpact, editCategoryPreview));
+taskEffort.addEventListener('change', () => updateCategoryPreview(taskEffort, taskImpact, taskPriority, taskCategoryPreview, taskEstimatedTime));
+taskImpact.addEventListener('change', () => updateCategoryPreview(taskEffort, taskImpact, taskPriority, taskCategoryPreview, taskEstimatedTime));
+taskPriority.addEventListener('change', () => updateCategoryPreview(taskEffort, taskImpact, taskPriority, taskCategoryPreview, taskEstimatedTime));
+editEffort.addEventListener('change', () => updateCategoryPreview(editEffort, editImpact, editPriority, editCategoryPreview, editEstimatedTime));
+editImpact.addEventListener('change', () => updateCategoryPreview(editEffort, editImpact, editPriority, editCategoryPreview, editEstimatedTime));
+editPriority.addEventListener('change', () => updateCategoryPreview(editEffort, editImpact, editPriority, editCategoryPreview, editEstimatedTime));
 
 // ---------- Create task (Add Task modal) ----------
 
@@ -916,6 +976,7 @@ function resetTaskForm() {
   taskPriority.value = 'medium';
   taskCategoryPreview.textContent = '';
   taskCategoryPreview.style.removeProperty('--chip-color');
+  taskEstimatedTime.disabled = false;
 
   selectedLabels.clear();
   labelPicker.innerHTML = buildLabelPickerHtml(selectedLabels);
@@ -944,10 +1005,11 @@ addTaskModalOverlay.addEventListener('click', (e) => {
 taskForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const title = taskTitle.value.trim();
-  const category = computeCategory(taskEffort.value, taskImpact.value);
+  const category = computeCategory(taskEffort.value, taskImpact.value, taskPriority.value);
   if (!title || !category) return;
 
   const linkValue = normalizeEmailLink(emailLinkInput.value.trim()) || null;
+  const due = taskDue.value || null;
 
   const task = {
     id: uid(),
@@ -958,12 +1020,12 @@ taskForm.addEventListener('submit', (e) => {
     project: taskProject.value || null,
     labels: [...selectedLabels],
     subtasks: subtaskDraft,
-    estimatedMinutes: Number(taskEstimatedTime.value) || 0,
+    estimatedMinutes: category === 'DELEGATE' ? 0 : (Number(taskEstimatedTime.value) || 0),
     ai: taskAiCheckbox.checked,
     email: linkValue ? { link: linkValue } : null,
     notes: taskNotes.value.trim() || null,
-    startDate: taskStartDate.value || null,
-    due: taskDue.value || null,
+    startDate: due,
+    due,
     priority: taskPriority.value,
     completed: false,
     createdAt: Date.now(),
@@ -986,12 +1048,12 @@ function openEditModal(id) {
   editTitle.value = task.title;
   editEffort.value = task.effort || '';
   editImpact.value = task.impact || '';
-  updateCategoryPreview(editEffort, editImpact, editCategoryPreview);
   editProject.value = task.project || '';
-  editStartDate.value = task.startDate || '';
   editDue.value = task.due || '';
   editPriority.value = task.priority;
   editEstimatedTime.value = task.estimatedMinutes || '';
+  editEstimatedTime.disabled = false;
+  updateCategoryPreview(editEffort, editImpact, editPriority, editCategoryPreview, editEstimatedTime);
   editAiCheckbox.checked = !!task.ai;
 
   editSelectedLabels.clear();
@@ -1021,7 +1083,7 @@ editModalOverlay.addEventListener('click', (e) => {
 editForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const title = editTitle.value.trim();
-  const category = computeCategory(editEffort.value, editImpact.value);
+  const category = computeCategory(editEffort.value, editImpact.value, editPriority.value);
   if (!title || !category || !editingTaskId) return;
 
   const task = getTaskById(editingTaskId);
@@ -1041,10 +1103,10 @@ editForm.addEventListener('submit', (e) => {
   task.effort = editEffort.value;
   task.impact = editImpact.value;
   task.project = editProject.value || null;
-  task.startDate = editStartDate.value || null;
   task.due = editDue.value || null;
+  task.startDate = task.due;
   task.priority = editPriority.value;
-  task.estimatedMinutes = Number(editEstimatedTime.value) || 0;
+  task.estimatedMinutes = category === 'DELEGATE' ? 0 : (Number(editEstimatedTime.value) || 0);
   task.ai = editAiCheckbox.checked;
   task.labels = [...editSelectedLabels];
   task.subtasks = editSubtaskDraft;
@@ -1069,6 +1131,7 @@ statusFilters.addEventListener('click', (e) => {
 categoryFilter.addEventListener('change', render);
 projectFilter.addEventListener('change', () => { updateProjectPillBarActive(); render(); });
 labelFilter.addEventListener('change', () => { updateLabelPillBarActive(); render(); });
+timeFilter.addEventListener('change', render);
 sortBy.addEventListener('change', render);
 
 clearCompletedBtn.addEventListener('click', () => {
@@ -1117,20 +1180,6 @@ function handleTaskListClick(e) {
     return;
   }
 
-  if (e.target.closest('[data-add-subtask-toggle]')) {
-    const toggleId = e.target.closest('[data-add-subtask-toggle]').dataset.addSubtaskToggle;
-    if (openSubtaskAddIds.has(toggleId)) openSubtaskAddIds.delete(toggleId);
-    else openSubtaskAddIds.add(toggleId);
-    render();
-    if (openSubtaskAddIds.has(toggleId)) {
-      requestAnimationFrame(() => {
-        const input = document.querySelector(`.subtask-add-form[data-task-id="${toggleId}"] .subtask-add-input`);
-        if (input) input.focus();
-      });
-    }
-    return;
-  }
-
   if (e.target.closest('.mark-complete-btn')) {
     const task = getTaskById(id);
     if (task) {
@@ -1167,7 +1216,6 @@ function handleTaskListClick(e) {
     const task = getTaskById(id);
     if (task && task.email && task.email.id) deleteEmailFile(task.email.id);
     expandedSubtaskIds.delete(id);
-    openSubtaskAddIds.delete(id);
     if (dateEditTaskId === id) closeDateEditPopover();
     tasks = tasks.filter((t) => t.id !== id);
     tasks.forEach((t) => {
@@ -1184,37 +1232,11 @@ function handleTaskListClick(e) {
   }
 
   // Fallback: clicking anywhere else on a Matrix Grid card (not a table row)
-  // opens the edit modal. Excludes the inline sub-task add form and the
-  // sub-task rows themselves, whose label text would otherwise both toggle
-  // the checkbox (via the native <label>/<input> association) and open the modal.
-  if (item.tagName === 'LI' && !e.target.closest('.subtask-add-form') && !e.target.closest('.subtask-row')) {
+  // opens the edit modal. Excludes the sub-task rows themselves, whose label
+  // text would otherwise both toggle the checkbox (via the native
+  // <label>/<input> association) and open the modal.
+  if (item.tagName === 'LI' && !e.target.closest('.subtask-row')) {
     openEditModal(id);
-  }
-}
-
-function handleSubtaskAddSubmit(e) {
-  const form = e.target.closest('.subtask-add-form');
-  if (!form) return;
-  e.preventDefault();
-  const input = form.querySelector('.subtask-add-input');
-  const minutesInput = form.querySelector('.subtask-add-minutes-input');
-  const aiInput = form.querySelector('.subtask-add-ai-input');
-  const title = input.value.trim();
-  if (!title) return;
-  const minutes = Number(minutesInput.value) || 0;
-  const ai = aiInput.checked;
-  const taskId = form.dataset.taskId;
-  const task = getTaskById(taskId);
-  if (task) {
-    task.subtasks = task.subtasks || [];
-    task.subtasks.push({ id: uid(), title, completed: false, minutes, ai });
-    saveTasks();
-    render();
-    // Keep the add form open and focused so several sub-tasks can be typed in a row.
-    requestAnimationFrame(() => {
-      const newInput = document.querySelector(`.subtask-add-form[data-task-id="${taskId}"] .subtask-add-input`);
-      if (newInput) newInput.focus();
-    });
   }
 }
 
@@ -1229,21 +1251,21 @@ board.addEventListener('click', (e) => {
   saveCollapsedColumns();
   render();
 });
-board.addEventListener('submit', handleSubtaskAddSubmit);
 listTableBody.addEventListener('click', handleTaskListClick);
 weekTableBody.addEventListener('click', handleTaskListClick);
 overdueTableBody.addEventListener('click', handleTaskListClick);
 
 // ---------- Sub-task hover preview (Matrix Grid cards) ----------
-// A quick read-only glance at a card's sub-tasks on hover, without needing to
-// click the arrow and expand them in place.
+// A quick glance at a card's sub-tasks on hover, without needing to click the
+// arrow and expand them in place. Clicking a row's circle toggles that
+// sub-task complete right from the preview (see click handler below).
 
 function openSubtaskHoverPreview(taskId, anchorEl) {
   const task = getTaskById(taskId);
   const subtasks = (task && task.subtasks) || [];
   if (!subtasks.length) return;
   subtaskHoverPreview.innerHTML = subtasks.map((s) => `
-    <div class="subtask-preview-row ${s.completed ? 'subtask-done' : ''}">
+    <div class="subtask-preview-row ${s.completed ? 'subtask-done' : ''}" data-subtask-id="${s.id}" title="Click to mark ${s.completed ? 'incomplete' : 'complete'}">
       <span>${s.completed ? '✓' : '○'} ${s.ai ? aiIconHtml('ai-badge-sm ai-badge-before') : ''}${escapeHtml(s.title)}</span>
       ${s.minutes ? `<span class="time-badge subtask-time-badge">${formatMinutesBadge(s.minutes)}</span>` : ''}
     </div>
@@ -1254,6 +1276,27 @@ function openSubtaskHoverPreview(taskId, anchorEl) {
   subtaskHoverPreview.style.left = `${rect.left}px`;
   subtaskHoverPreview.classList.remove('hidden');
 }
+
+// Toggling from the preview re-renders the whole app (status circle, board
+// counts, etc. all depend on this), which closes the preview along with
+// everything else — so it's explicitly reopened against the freshly-rendered
+// trigger element afterward instead of just patching the popover in place.
+subtaskHoverPreview.addEventListener('click', (e) => {
+  const row = e.target.closest('.subtask-preview-row');
+  if (!row) return;
+  const taskId = subtaskHoverPreview.dataset.taskId;
+  const task = getTaskById(taskId);
+  const subtask = task && (task.subtasks || []).find((s) => s.id === row.dataset.subtaskId);
+  if (!subtask) return;
+
+  subtask.completed = !subtask.completed;
+  recalcStatus(task);
+  saveTasks();
+  render();
+
+  const trigger = document.querySelector(`[data-subtask-hover="${taskId}"]`);
+  if (trigger) openSubtaskHoverPreview(taskId, trigger);
+});
 
 function closeSubtaskHoverPreview() {
   clearTimeout(subtaskHoverCloseTimer);
@@ -1406,14 +1449,14 @@ document.addEventListener('keydown', (e) => {
 
 
 // ---------- Board card date-edit popover ----------
-// Lets you update just Start/Due from the board card's date pill via native
-// <input type="date"> pickers, without opening the full edit modal.
+// Lets you update Due Date from the board card's date pill via a native
+// <input type="date"> picker, without opening the full edit modal. Start
+// Date is no longer separately tracked — it always mirrors Due Date.
 
 function openDateEditPopover(taskId, anchorEl) {
   const task = getTaskById(taskId);
   if (!task) return;
   dateEditTaskId = taskId;
-  dateEditStart.value = task.startDate || '';
   dateEditDue.value = task.due || '';
 
   const rect = anchorEl.getBoundingClientRect();
@@ -1430,13 +1473,12 @@ function closeDateEditPopover() {
 function saveDateEdit() {
   const task = getTaskById(dateEditTaskId);
   if (!task) return;
-  task.startDate = dateEditStart.value || null;
   task.due = dateEditDue.value || null;
+  task.startDate = task.due;
   saveTasks();
   render();
 }
 
-dateEditStart.addEventListener('change', saveDateEdit);
 dateEditDue.addEventListener('change', saveDateEdit);
 dateEditPopover.addEventListener('click', (e) => e.stopPropagation());
 document.addEventListener('click', () => closeDateEditPopover());
@@ -1481,6 +1523,22 @@ function isOverdue(task) {
 
 const priorityRank = { urgent: 0, high: 1, medium: 2, low: 3 };
 
+// Estimated-time buckets for the time filter, keyed the same way the
+// <select> options are — checked against a task's total estimated minutes
+// (taskTotalMinutes), consistent with what the List view's Est. Time column shows.
+const TIME_RANGES = {
+  '0-15': (m) => m >= 0 && m <= 15,
+  '15-60': (m) => m > 15 && m <= 60,
+  '60-120': (m) => m > 60 && m <= 120,
+  '120+': (m) => m > 120,
+};
+
+function matchesTimeFilter(task, rangeKey) {
+  if (!rangeKey || rangeKey === 'all') return true;
+  const test = TIME_RANGES[rangeKey];
+  return test ? test(taskTotalMinutes(task)) : true;
+}
+
 function getFilteredSortedTasks() {
   let list = [...tasks];
 
@@ -1495,6 +1553,8 @@ function getFilteredSortedTasks() {
 
   const label = labelFilter.value;
   if (label && label !== 'all') list = list.filter((t) => (t.labels || []).includes(label));
+
+  list = list.filter((t) => matchesTimeFilter(t, timeFilter.value));
 
   const sort = sortBy.value;
   if (sort === 'due') {
@@ -1577,25 +1637,14 @@ function formatMinutesBadge(totalMins) {
   return `${m} mins`;
 }
 
-// Shows the task's remaining estimated time in a badge, next to the
-// date pill — deducts completed sub-tasks' minutes so it counts down as work finishes.
-function estimatedTimeBadgeHtml(task) {
-  const total = taskTotalMinutes(task);
-  if (!total) return '';
-  const remaining = taskRemainingMinutes(task);
-  return `<span class="time-badge" title="Estimated time remaining">${formatMinutesBadge(remaining)}</span>`;
-}
-
 // Sub-tasks start collapsed to just a count on every card (arrow toggle
 // expands them in place for interactive checking); hovering the count shows
-// a read-only preview via subtaskHoverPreview without needing to expand.
-// The add-subtask form is hidden by default and revealed via the "+" button —
-// it stays open across renders (and after adding one) for fast multi-add.
+// the same list via subtaskHoverPreview without needing to expand. Sub-tasks
+// are only added/removed via the Edit Task modal — there's no inline add here.
 function subtaskSectionHtml(task) {
   const subtasks = task.subtasks || [];
-  const hasSubtasks = subtasks.length > 0;
-  const collapsed = hasSubtasks && !expandedSubtaskIds.has(task.id);
-  const addFormOpen = openSubtaskAddIds.has(task.id);
+  if (!subtasks.length) return '';
+  const collapsed = !expandedSubtaskIds.has(task.id);
 
   const rows = subtasks.map((s) => `
     <label class="subtask-row">
@@ -1606,22 +1655,12 @@ function subtaskSectionHtml(task) {
     </label>
   `).join('');
 
-  const labelText = hasSubtasks
-    ? `<span class="subtask-section-toggle" data-toggle-subtasks="${task.id}" data-subtask-hover="${task.id}"><span class="subtask-toggle-arrow">${collapsed ? '▸' : '▾'}</span>${subtaskSectionLabel(task)}</span>`
-    : `<span>${subtaskSectionLabel(task)}</span>`;
-
   return `
     <div class="card-section-label subtask-label-row">
-      ${labelText}
-      <button type="button" class="subtask-add-toggle-btn" data-add-subtask-toggle="${task.id}" title="Add sub-task">+</button>
+      <span class="subtask-section-toggle" data-toggle-subtasks="${task.id}" data-subtask-hover="${task.id}"><span class="subtask-toggle-arrow">${collapsed ? '▸' : '▾'}</span>${subtaskSectionLabel(task)}</span>
     </div>
     <div class="subtasks">
       <div class="subtask-rows ${collapsed ? 'hidden' : ''}">${rows}</div>
-      <form class="subtask-add-form ${addFormOpen ? '' : 'hidden'}" data-task-id="${task.id}">
-        <input type="text" class="subtask-add-input" placeholder="Sub-task name">
-        <input type="number" class="subtask-add-minutes-input" placeholder="Min" min="0" step="5">
-        <label class="ai-checkbox-label" title="AI-assisted sub-task"><input type="checkbox" class="subtask-add-ai-input">AI</label>
-      </form>
     </div>
   `;
 }
@@ -1655,10 +1694,7 @@ function projectTagHtml(task) {
 }
 
 function dateRangeLabel(task) {
-  if (task.startDate && task.due) return `${formatDue(task.startDate)} - ${formatDue(task.due)}`;
-  if (task.due) return formatDue(task.due);
-  if (task.startDate) return formatDue(task.startDate);
-  return null;
+  return task.due ? formatDue(task.due) : null;
 }
 
 function taskItemHtml(task) {
@@ -1680,7 +1716,6 @@ function taskItemHtml(task) {
           <span class="card-header-meta">
             ${dateLabel ? `<span class="date-pill ${isOverdue(task) ? 'overdue' : ''}" title="Click to edit dates">📅 ${dateLabel}</span>` : ''}
             ${projectTagHtml(task)}
-            ${estimatedTimeBadgeHtml(task)}
             ${emailBadgeHtml(task)}
             ${notesBadgeHtml(task)}
           </span>
@@ -1764,7 +1799,6 @@ function getWeekDateKeys(date = new Date()) {
 function taskRowHtml(task, { estTimeCol = false } = {}) {
   const subtasks = task.subtasks || [];
   const subtaskSummary = subtasks.length ? `${subtasks.filter((s) => s.completed).length}/${subtasks.length}` : '—';
-  const startCell = task.startDate ? `<span class="due-tag">${formatDue(task.startDate)}</span>` : '—';
   const dueCell = task.due
     ? `<span class="due-tag ${isOverdue(task) ? 'overdue' : ''}">${isOverdue(task) ? '⚠ ' : ''}${formatDue(task.due)}</span>`
     : '—';
@@ -1778,7 +1812,6 @@ function taskRowHtml(task, { estTimeCol = false } = {}) {
       <td class="centered-col">${task.project ? escapeHtml(task.project) : '—'}</td>
       <td>${categoryTag(task.category)}</td>
       <td class="centered-col"><span class="priority-tag priority-${task.priority}">${PRIORITY_ICON}</span></td>
-      <td class="centered-col">${startCell}</td>
       <td class="centered-col">${dueCell}</td>
       ${estTimeCell}
       <td><div class="task-meta">${labelBadges(task) || '—'}</div></td>
@@ -1870,7 +1903,7 @@ function renderOverdueView(overdueTasks) {
 
 // The calendar always shows all tasks (active + completed) on their due date,
 // regardless of the status filter, so progress is always visible.
-// Structural filters (category / project / label) are still respected.
+// Structural filters (category / project / label / time) are still respected.
 // Shared by the month grid render and the "View Tasks" popover (which needs
 // the same day's tasks again at click time).
 function computeCalTasksByDay() {
@@ -1881,6 +1914,7 @@ function computeCalTasksByDay() {
     if (proj && proj !== 'all' && t.project !== proj) return false;
     const lbl = labelFilter.value;
     if (lbl && lbl !== 'all' && !(t.labels || []).includes(lbl)) return false;
+    if (!matchesTimeFilter(t, timeFilter.value)) return false;
     return true;
   });
 
@@ -2062,7 +2096,7 @@ function toCsvField(value) {
 
 document.getElementById('exportCsvBtn').addEventListener('click', () => {
   const headers = [
-    'Title', 'Category', 'Project', 'Status', 'Priority', 'Start Date', 'Due Date',
+    'Title', 'Category', 'Project', 'Status', 'Priority', 'Due Date',
     'Estimated Time (min)', 'AI', 'Labels', 'Subtasks', 'Notes', 'Email Link', 'Completed', 'Created At',
   ];
 
@@ -2077,7 +2111,6 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
       task.project || '',
       status,
       task.priority,
-      task.startDate || '',
       task.due || '',
       taskTotalMinutes(task) || '',
       task.ai ? 'Yes' : 'No',
@@ -2211,7 +2244,7 @@ importActiveTasksFile.addEventListener('change', (e) => {
       const task = {
         id: uid(),
         title: (entry.title || '').trim(),
-        category: CATEGORIES.includes(entry.category) ? entry.category : 'TO ALLOCATE',
+        category: CATEGORIES.includes(entry.category) ? entry.category : 'NOT URGENT',
         effort: null,
         impact: null,
         project: entry.project || null,
@@ -2258,7 +2291,7 @@ importActiveTasksFile.addEventListener('change', (e) => {
 // the "Import backup" control above, which replaces the entire task list.
 // Nothing here becomes a real task until the user checks it and clicks
 // "Promote Selected", so a bad LLM judgment call can, at worst, sit in this
-// list — it can never silently alter DO/PLAN/DELEGATE/TO ALLOCATE.
+// list — it can never silently alter DO/PLAN/DELEGATE/NOT URGENT.
 
 function triageRowHtml(entry) {
   const emailCell = entry.link
@@ -2367,8 +2400,11 @@ importTriageLogFile.addEventListener('change', (e) => {
 });
 
 // The only path from the Triage Log into the real task list — explicit,
-// user-triggered, one click. Mirrors Quick Add's task shape exactly, except
-// priority carries over from triage instead of defaulting to medium.
+// user-triggered, one click. Mirrors Quick Add's task shape, except every
+// promoted task lands as Effort=Low/Impact=Low/Priority=Low (NOT URGENT) —
+// untriaged captures default to "still need to do it, no rush" rather than
+// carrying over the Triage Log's own priority, so category always reflects
+// its stated Effort/Impact/Priority. Re-triage anytime via Edit.
 promoteSelectedBtn.addEventListener('click', () => {
   const checkedIds = [...triageLogTableBody.querySelectorAll('.triage-checkbox:checked')].map((cb) => cb.dataset.id);
   if (!checkedIds.length) { alert('Select at least one item to promote.'); return; }
@@ -2380,9 +2416,9 @@ promoteSelectedBtn.addEventListener('click', () => {
     const task = {
       id: uid(),
       title: entry.title,
-      category: 'TO ALLOCATE',
-      effort: null,
-      impact: null,
+      category: 'NOT URGENT',
+      effort: 'low',
+      impact: 'low',
       project: null,
       labels: [],
       subtasks: [],
@@ -2391,7 +2427,7 @@ promoteSelectedBtn.addEventListener('click', () => {
       notes: entry.notes,
       startDate: null,
       due: null,
-      priority: entry.priority,
+      priority: 'low',
       completed: false,
       createdAt: Date.now(),
     };
