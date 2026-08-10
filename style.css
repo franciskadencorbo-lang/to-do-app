@@ -1033,13 +1033,16 @@ li.task-item:focus-within .card-hover-actions {
   justify-content: flex-end;
 }
 
-.card-sub-row {
-  margin-top: 6px;
-  justify-content: flex-end;
+.card-row-2 {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
 }
 
-.card-section-tight {
-  margin-top: 8px;
+.card-row-2-labels {
+  margin-left: auto;
 }
 
 .priority-tag {
@@ -1080,6 +1083,11 @@ li.task-item:focus-within .card-hover-actions {
 .subtask-section-toggle {
   cursor: pointer;
   user-select: none;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
 }
 .subtask-section-toggle:hover {
   color: var(--text);
@@ -1153,6 +1161,29 @@ li.task-item:focus-within .card-hover-actions {
   white-space: nowrap;
 }
 
+/* Card-header remaining-time badge, bucketed the same way as the time
+   filter (0-15 / 15-60 / 60-120 / 120+ mins) so load reads at a glance. */
+.remaining-time-badge.bucket-0-15 {
+  color: #0b8a5c;
+  background: #e3f7ef;
+  border-color: #b9e8d3;
+}
+.remaining-time-badge.bucket-15-60 {
+  color: #2f5fed;
+  background: #eaf0ff;
+  border-color: #c9d8ff;
+}
+.remaining-time-badge.bucket-60-120 {
+  color: #9c36b5;
+  background: #f6e8fa;
+  border-color: #e3bdee;
+}
+.remaining-time-badge.bucket-120-plus {
+  color: #c23a2a;
+  background: #fdeceb;
+  border-color: #f5c6c0;
+}
+
 .subtask-time-badge {
   margin-left: auto;
   font-size: 0.62rem;
@@ -1197,15 +1228,6 @@ li.task-item:focus-within .card-hover-actions {
   border: none;
   border-top: 1px solid var(--border);
   margin: 9px 0;
-}
-
-.card-section-label {
-  font-size: 0.68rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--text-muted);
-  margin-bottom: 5px;
 }
 
 .task-meta {
@@ -1266,13 +1288,6 @@ li.task-item:focus-within .card-hover-actions {
 .subtask-done {
   text-decoration: line-through;
   color: var(--text-muted);
-}
-
-.subtask-label-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
 }
 
 .card-dep-popover {
