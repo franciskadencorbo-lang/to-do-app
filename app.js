@@ -91,6 +91,9 @@ const labelPicker = document.getElementById('labelPicker');
 const subtaskInput = document.getElementById('subtaskInput');
 const subtaskMinutesInput = document.getElementById('subtaskMinutesInput');
 const subtaskAiInput = document.getElementById('subtaskAiInput');
+const subtaskDateInput = document.getElementById('subtaskDateInput');
+const subtaskDelegatedInput = document.getElementById('subtaskDelegatedInput');
+const subtaskDelegatedWrap = document.getElementById('subtaskDelegatedWrap');
 const subtaskDraftList = document.getElementById('subtaskDraftList');
 const emailLinkInput = document.getElementById('emailLinkInput');
 const taskNotes = document.getElementById('taskNotes');
@@ -146,6 +149,9 @@ const editLabelPicker = document.getElementById('editLabelPicker');
 const editSubtaskInput = document.getElementById('editSubtaskInput');
 const editSubtaskMinutesInput = document.getElementById('editSubtaskMinutesInput');
 const editSubtaskAiInput = document.getElementById('editSubtaskAiInput');
+const editSubtaskDateInput = document.getElementById('editSubtaskDateInput');
+const editSubtaskDelegatedInput = document.getElementById('editSubtaskDelegatedInput');
+const editSubtaskDelegatedWrap = document.getElementById('editSubtaskDelegatedWrap');
 const editSubtaskDraftList = document.getElementById('editSubtaskDraftList');
 const editEmailLinkInput = document.getElementById('editEmailLinkInput');
 const editNotes = document.getElementById('editNotes');
@@ -265,6 +271,14 @@ function normalizeTasks(list) {
       t.startDate = t.due || null;
       changed = true;
     }
+
+    // Sub-tasks predating per-sub-task scheduling/delegation get the fields
+    // filled in with their no-op defaults: no date (counted on the task's Due
+    // Date) and not delegated.
+    (t.subtasks || []).forEach((s) => {
+      if (s.date === undefined) { s.date = null; changed = true; }
+      if (s.delegated === undefined) { s.delegated = false; changed = true; }
+    });
   });
   return changed;
 }
@@ -491,6 +505,33 @@ function toDateKey(date) {
   return `${y}-${m}-${d}`;
 }
 
+// Compact day label for sub-task date badges, e.g. "Aug 20".
+function formatShortDate(dateKey) {
+  if (!dateKey) return '';
+  return fromDateKey(dateKey).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+// ---------- Sub-task delegation ----------
+// A sub-task's `delegated` flag only means anything on a DELEGATE task: it
+// marks the work as the delegate's, not yours, so its minutes drop out of your
+// remaining time. On DO/PLAN/NOT URGENT tasks the flag is ignored (it isn't
+// even shown in the forms) — the whole task is yours by definition there.
+// New sub-tasks on a DELEGATE task default to delegated, matching the old
+// all-or-nothing "DELEGATE tasks cost you 0 minutes" behavior; you uncheck the
+// ones you're personally doing.
+const DELEGATED_SUBTASK_DEFAULT = true;
+
+function isDelegateTask(task) {
+  return task.category === 'DELEGATE';
+}
+
+// True when a sub-task's minutes count toward *your* workload: it isn't done
+// yet, and it isn't handed off to a delegate.
+function subtaskCountsForMe(subtask, isDelegate) {
+  if (subtask.completed) return false;
+  return !(isDelegate && subtask.delegated);
+}
+
 // ---------- Label picker (shared by create + edit forms) ----------
 
 function buildLabelPickerHtml(selectedSet) {
@@ -583,10 +624,44 @@ labelQuickFilterBar.addEventListener('click', (e) => {
 
 // ---------- Sub-task draft list (shared pattern by create + edit forms) ----------
 
-function buildSubtaskDraftHtml(draft) {
+// Each chip carries its own date picker (and, on a DELEGATE task, its own
+// "delegated" toggle) so both fields stay editable after the sub-task has been
+// added — there's no other place to set them on an existing sub-task.
+// `showDelegated` mirrors the parent task's category as currently selected in
+// the form: the toggle is hidden outside DELEGATE rather than disabled, since
+// delegation-tracking is meaningless there and the row is already crowded.
+function buildSubtaskDraftHtml(draft, showDelegated = false) {
   return draft.map((s) => `
-    <li class="draft-chip">${s.ai ? aiIconHtml('ai-badge-sm') : ''}<span class="${s.completed ? 'subtask-done' : ''}">${escapeHtml(s.title)}</span>${s.minutes ? `<span class="draft-chip-time">${formatMinutes(s.minutes)}</span>` : ''}<button type="button" class="remove-draft-btn" data-id="${s.id}">×</button></li>
+    <li class="draft-chip${showDelegated && s.delegated ? ' draft-chip-delegated' : ''}">${s.ai ? aiIconHtml('ai-badge-sm') : ''}<span class="draft-chip-title ${s.completed ? 'subtask-done' : ''}">${escapeHtml(s.title)}</span>${s.minutes ? `<span class="draft-chip-time">${formatMinutes(s.minutes)}</span>` : ''}<input type="date" class="draft-chip-date" data-id="${s.id}" value="${s.date || ''}" title="Day this sub-task is worked on — blank counts it on the task's Due Date">${showDelegated ? `<label class="ai-checkbox-label delegated-checkbox-label" title="Done by the delegate, not by you"><input type="checkbox" class="draft-chip-delegated-toggle" data-id="${s.id}" ${s.delegated ? 'checked' : ''}>Deleg.</label>` : ''}<button type="button" class="remove-draft-btn" data-id="${s.id}">×</button></li>
   `).join('');
+}
+
+// The forms need to know whether the *currently selected* Effort/Impact/
+// Priority resolves to DELEGATE (not what the saved task's category is), since
+// that's what decides whether the delegation toggles are shown.
+let addFormIsDelegate = false;
+let editFormIsDelegate = false;
+
+function renderSubtaskDraftList() {
+  subtaskDraftList.innerHTML = buildSubtaskDraftHtml(subtaskDraft, addFormIsDelegate);
+}
+
+function renderEditSubtaskDraftList() {
+  editSubtaskDraftList.innerHTML = buildSubtaskDraftHtml(editSubtaskDraft, editFormIsDelegate);
+}
+
+// Shows/hides the delegation controls in one form and re-renders its chips.
+// The new-entry checkbox is reset to the category's default each time, so a
+// DELEGATE task's sub-tasks come in pre-flagged as the delegate's.
+function refreshSubtaskDelegateUi(scope) {
+  const isEdit = scope === 'edit';
+  const isDelegate = isEdit ? editFormIsDelegate : addFormIsDelegate;
+  const wrap = isEdit ? editSubtaskDelegatedWrap : subtaskDelegatedWrap;
+  const checkbox = isEdit ? editSubtaskDelegatedInput : subtaskDelegatedInput;
+  wrap.classList.toggle('hidden', !isDelegate);
+  checkbox.checked = isDelegate && DELEGATED_SUBTASK_DEFAULT;
+  if (isEdit) renderEditSubtaskDraftList();
+  else renderSubtaskDraftList();
 }
 
 function addSubtaskDraftEntry() {
@@ -594,11 +669,15 @@ function addSubtaskDraftEntry() {
   if (!title) return;
   const minutes = Number(subtaskMinutesInput.value) || 0;
   const ai = subtaskAiInput.checked;
-  subtaskDraft.push({ id: uid(), title, completed: false, minutes, ai });
+  const date = subtaskDateInput.value || null;
+  const delegated = addFormIsDelegate && subtaskDelegatedInput.checked;
+  subtaskDraft.push({ id: uid(), title, completed: false, minutes, ai, date, delegated });
   subtaskInput.value = '';
   subtaskMinutesInput.value = '';
   subtaskAiInput.checked = false;
-  subtaskDraftList.innerHTML = buildSubtaskDraftHtml(subtaskDraft);
+  subtaskDateInput.value = '';
+  subtaskDelegatedInput.checked = addFormIsDelegate && DELEGATED_SUBTASK_DEFAULT;
+  renderSubtaskDraftList();
   subtaskInput.focus();
 }
 
@@ -614,11 +693,35 @@ subtaskMinutesInput.addEventListener('keydown', (e) => {
   addSubtaskDraftEntry();
 });
 
+subtaskDateInput.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  addSubtaskDraftEntry();
+});
+
 subtaskDraftList.addEventListener('click', (e) => {
   const btn = e.target.closest('.remove-draft-btn');
   if (!btn) return;
   subtaskDraft = subtaskDraft.filter((s) => s.id !== btn.dataset.id);
-  subtaskDraftList.innerHTML = buildSubtaskDraftHtml(subtaskDraft);
+  renderSubtaskDraftList();
+});
+
+// Chip-level edits write straight into the draft object. Only the delegated
+// toggle re-renders (it restyles its own chip); re-rendering on a date change
+// would tear the open date picker out from under the cursor.
+subtaskDraftList.addEventListener('change', (e) => {
+  const dateEl = e.target.closest('.draft-chip-date');
+  if (dateEl) {
+    const entry = subtaskDraft.find((s) => s.id === dateEl.dataset.id);
+    if (entry) entry.date = dateEl.value || null;
+    return;
+  }
+  const delegatedEl = e.target.closest('.draft-chip-delegated-toggle');
+  if (delegatedEl) {
+    const entry = subtaskDraft.find((s) => s.id === delegatedEl.dataset.id);
+    if (entry) entry.delegated = delegatedEl.checked;
+    renderSubtaskDraftList();
+  }
 });
 
 function addEditSubtaskDraftEntry() {
@@ -626,11 +729,15 @@ function addEditSubtaskDraftEntry() {
   if (!title) return;
   const minutes = Number(editSubtaskMinutesInput.value) || 0;
   const ai = editSubtaskAiInput.checked;
-  editSubtaskDraft.push({ id: uid(), title, completed: false, minutes, ai });
+  const date = editSubtaskDateInput.value || null;
+  const delegated = editFormIsDelegate && editSubtaskDelegatedInput.checked;
+  editSubtaskDraft.push({ id: uid(), title, completed: false, minutes, ai, date, delegated });
   editSubtaskInput.value = '';
   editSubtaskMinutesInput.value = '';
   editSubtaskAiInput.checked = false;
-  editSubtaskDraftList.innerHTML = buildSubtaskDraftHtml(editSubtaskDraft);
+  editSubtaskDateInput.value = '';
+  editSubtaskDelegatedInput.checked = editFormIsDelegate && DELEGATED_SUBTASK_DEFAULT;
+  renderEditSubtaskDraftList();
   editSubtaskInput.focus();
 }
 
@@ -646,11 +753,32 @@ editSubtaskMinutesInput.addEventListener('keydown', (e) => {
   addEditSubtaskDraftEntry();
 });
 
+editSubtaskDateInput.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  addEditSubtaskDraftEntry();
+});
+
 editSubtaskDraftList.addEventListener('click', (e) => {
   const btn = e.target.closest('.remove-draft-btn');
   if (!btn) return;
   editSubtaskDraft = editSubtaskDraft.filter((s) => s.id !== btn.dataset.id);
-  editSubtaskDraftList.innerHTML = buildSubtaskDraftHtml(editSubtaskDraft);
+  renderEditSubtaskDraftList();
+});
+
+editSubtaskDraftList.addEventListener('change', (e) => {
+  const dateEl = e.target.closest('.draft-chip-date');
+  if (dateEl) {
+    const entry = editSubtaskDraft.find((s) => s.id === dateEl.dataset.id);
+    if (entry) entry.date = dateEl.value || null;
+    return;
+  }
+  const delegatedEl = e.target.closest('.draft-chip-delegated-toggle');
+  if (delegatedEl) {
+    const entry = editSubtaskDraft.find((s) => s.id === delegatedEl.dataset.id);
+    if (entry) entry.delegated = delegatedEl.checked;
+    renderEditSubtaskDraftList();
+  }
 });
 
 // ---------- Outlook Web URL (create + edit forms) ----------
@@ -953,7 +1081,7 @@ manageLabelsBtn.addEventListener('click', (e) => {
 // Delegate tasks track 0 minutes — that time isn't yours to spend, so the
 // Estimated Time field is locked to 0 the moment the matrix resolves to Delegate.
 
-function updateCategoryPreview(effortEl, impactEl, priorityEl, previewEl, estInputEl) {
+function updateCategoryPreview(effortEl, impactEl, priorityEl, previewEl, estInputEl, scope) {
   const cat = computeCategory(effortEl.value, impactEl.value, priorityEl.value);
   if (!cat) {
     previewEl.textContent = '';
@@ -969,14 +1097,20 @@ function updateCategoryPreview(effortEl, impactEl, priorityEl, previewEl, estInp
     ? 'Delegated tasks always track 0 minutes — that time isn\'t yours to spend'
     : 'Estimated Time (minutes)';
   if (isDelegate) estInputEl.value = '0';
+
+  // The per-sub-task delegation toggles follow the same switch — they only
+  // appear once the matrix resolves to Delegate.
+  if (scope === 'edit') editFormIsDelegate = isDelegate;
+  else if (scope === 'add') addFormIsDelegate = isDelegate;
+  if (scope) refreshSubtaskDelegateUi(scope);
 }
 
-taskEffort.addEventListener('change', () => updateCategoryPreview(taskEffort, taskImpact, taskPriority, taskCategoryPreview, taskEstimatedTime));
-taskImpact.addEventListener('change', () => updateCategoryPreview(taskEffort, taskImpact, taskPriority, taskCategoryPreview, taskEstimatedTime));
-taskPriority.addEventListener('change', () => updateCategoryPreview(taskEffort, taskImpact, taskPriority, taskCategoryPreview, taskEstimatedTime));
-editEffort.addEventListener('change', () => updateCategoryPreview(editEffort, editImpact, editPriority, editCategoryPreview, editEstimatedTime));
-editImpact.addEventListener('change', () => updateCategoryPreview(editEffort, editImpact, editPriority, editCategoryPreview, editEstimatedTime));
-editPriority.addEventListener('change', () => updateCategoryPreview(editEffort, editImpact, editPriority, editCategoryPreview, editEstimatedTime));
+taskEffort.addEventListener('change', () => updateCategoryPreview(taskEffort, taskImpact, taskPriority, taskCategoryPreview, taskEstimatedTime, 'add'));
+taskImpact.addEventListener('change', () => updateCategoryPreview(taskEffort, taskImpact, taskPriority, taskCategoryPreview, taskEstimatedTime, 'add'));
+taskPriority.addEventListener('change', () => updateCategoryPreview(taskEffort, taskImpact, taskPriority, taskCategoryPreview, taskEstimatedTime, 'add'));
+editEffort.addEventListener('change', () => updateCategoryPreview(editEffort, editImpact, editPriority, editCategoryPreview, editEstimatedTime, 'edit'));
+editImpact.addEventListener('change', () => updateCategoryPreview(editEffort, editImpact, editPriority, editCategoryPreview, editEstimatedTime, 'edit'));
+editPriority.addEventListener('change', () => updateCategoryPreview(editEffort, editImpact, editPriority, editCategoryPreview, editEstimatedTime, 'edit'));
 
 // ---------- Create task (Add Task modal) ----------
 
@@ -991,7 +1125,9 @@ function resetTaskForm() {
   labelPicker.innerHTML = buildLabelPickerHtml(selectedLabels);
 
   subtaskDraft = [];
-  subtaskDraftList.innerHTML = '';
+  addFormIsDelegate = false;
+  subtaskDateInput.value = '';
+  refreshSubtaskDelegateUi('add');
 }
 
 function openAddTaskModal() {
@@ -1062,15 +1198,17 @@ function openEditModal(id) {
   editPriority.value = task.priority;
   editEstimatedTime.value = task.estimatedMinutes || '';
   editEstimatedTime.disabled = false;
-  updateCategoryPreview(editEffort, editImpact, editPriority, editCategoryPreview, editEstimatedTime);
   editAiCheckbox.checked = !!task.ai;
 
   editSelectedLabels.clear();
   (task.labels || []).forEach((l) => editSelectedLabels.add(l));
   editLabelPicker.innerHTML = buildLabelPickerHtml(editSelectedLabels);
 
+  // Populated before the category preview runs — it re-renders the draft chips
+  // with (or without) the per-sub-task delegation toggles.
   editSubtaskDraft = (task.subtasks || []).map((s) => ({ ...s }));
-  editSubtaskDraftList.innerHTML = buildSubtaskDraftHtml(editSubtaskDraft);
+  editSubtaskDateInput.value = '';
+  updateCategoryPreview(editEffort, editImpact, editPriority, editCategoryPreview, editEstimatedTime, 'edit');
 
   editEmailLinkInput.value = (task.email && task.email.link) || '';
   editNotes.value = task.notes || '';
@@ -1273,10 +1411,11 @@ function openSubtaskHoverPreview(taskId, anchorEl) {
   const task = getTaskById(taskId);
   const subtasks = (task && task.subtasks) || [];
   if (!subtasks.length) return;
+  const isDelegate = isDelegateTask(task);
   subtaskHoverPreview.innerHTML = subtasks.map((s) => `
-    <div class="subtask-preview-row ${s.completed ? 'subtask-done' : ''}" data-subtask-id="${s.id}" title="Click to mark ${s.completed ? 'incomplete' : 'complete'}">
-      <span>${s.completed ? '✓' : '○'} ${s.ai ? aiIconHtml('ai-badge-sm ai-badge-before') : ''}${escapeHtml(s.title)}</span>
-      ${s.minutes ? `<span class="time-badge subtask-time-badge">${formatMinutesBadge(s.minutes)}</span>` : ''}
+    <div class="subtask-preview-row ${s.completed ? 'subtask-done' : ''}${isDelegate && s.delegated ? ' subtask-delegated' : ''}" data-subtask-id="${s.id}" title="Click to mark ${s.completed ? 'incomplete' : 'complete'}">
+      <span class="subtask-title">${s.completed ? '✓' : '○'} ${s.ai ? aiIconHtml('ai-badge-sm ai-badge-before') : ''}${escapeHtml(s.title)}</span>
+      <span class="subtask-preview-meta">${subtaskDateBadgeHtml(s)}${s.minutes ? `<span class="time-badge subtask-time-badge">${formatMinutesBadge(s.minutes)}</span>` : ''}</span>
     </div>
   `).join('');
   subtaskHoverPreview.dataset.taskId = taskId;
@@ -1398,10 +1537,10 @@ calendarGrid.addEventListener('click', (e) => {
 // mid-move.
 let calTasksHideTimer = null;
 
-function openCalTasksPopover(dayKey, anchorEl, dayTasks) {
+function openCalTasksPopover(dayKey, anchorEl, dayEntries) {
   clearTimeout(calTasksHideTimer);
   calTasksDayKey = dayKey;
-  calTasksPopover.innerHTML = buildCalTasksPopoverHtml(dayTasks);
+  calTasksPopover.innerHTML = buildCalTasksPopoverHtml(dayEntries);
 
   const rect = anchorEl.getBoundingClientRect();
   calTasksPopover.style.top = `${rect.bottom + 6}px`;
@@ -1619,11 +1758,18 @@ function taskTotalMinutes(task) {
   return Number(task.estimatedMinutes) || 0;
 }
 
-// Remaining estimated time: completed sub-tasks' minutes are deducted from the total.
+// Remaining estimated time *for you*: completed sub-tasks' minutes are deducted
+// from the total, and on a DELEGATE task so are the sub-tasks flagged as the
+// delegate's — only the ones you kept for yourself are time you still owe.
+// A DELEGATE task with no sub-tasks falls through to estimatedMinutes, which is
+// forced to 0 for that category, so it still reads as 0 as before.
 function taskRemainingMinutes(task) {
   const subtasks = task.subtasks || [];
   if (subtasks.length) {
-    return subtasks.filter((s) => !s.completed).reduce((sum, s) => sum + (Number(s.minutes) || 0), 0);
+    const isDelegate = isDelegateTask(task);
+    return subtasks
+      .filter((s) => subtaskCountsForMe(s, isDelegate))
+      .reduce((sum, s) => sum + (Number(s.minutes) || 0), 0);
   }
   return Number(task.estimatedMinutes) || 0;
 }
@@ -1680,16 +1826,27 @@ function subtaskProgressHtml(task) {
   `;
 }
 
+// A sub-task's own work day, shown wherever sub-tasks are listed. Undated
+// sub-tasks show nothing — they're implicitly on the task's Due Date, which the
+// card already displays.
+function subtaskDateBadgeHtml(subtask) {
+  if (!subtask.date) return '';
+  return `<span class="subtask-date-badge" title="Scheduled for ${subtask.date}">${formatShortDate(subtask.date)}</span>`;
+}
+
 function subtaskRowsHtml(task) {
   const subtasks = task.subtasks || [];
   if (!subtasks.length) return '';
   const collapsed = !expandedSubtaskIds.has(task.id);
 
+  const isDelegate = isDelegateTask(task);
+
   const rows = subtasks.map((s) => `
-    <label class="subtask-row">
+    <label class="subtask-row${isDelegate && s.delegated ? ' subtask-delegated' : ''}"${isDelegate && s.delegated ? ' title="Done by the delegate — not counted in your remaining time"' : ''}>
       <input type="checkbox" class="subtask-checkbox" data-subtask-id="${s.id}" ${s.completed ? 'checked' : ''}>
       ${s.ai ? aiIconHtml('ai-badge-sm') : ''}
-      <span class="${s.completed ? 'subtask-done' : ''}">${escapeHtml(s.title)}</span>
+      <span class="subtask-title ${s.completed ? 'subtask-done' : ''}">${escapeHtml(s.title)}</span>
+      ${subtaskDateBadgeHtml(s)}
       ${s.minutes ? `<span class="time-badge subtask-time-badge">${formatMinutesBadge(s.minutes)}</span>` : ''}
     </label>
   `).join('');
@@ -1976,6 +2133,16 @@ function renderOverdueView(overdueTasks) {
 // Structural filters (category / project / label / time) are still respected.
 // Shared by the month grid render and the "View Tasks" popover (which needs
 // the same day's tasks again at click time).
+//
+// Multi-day work is spread by sub-task rather than by duplicating the task: a
+// task with sub-tasks is bucketed once per day its sub-tasks fall on (their own
+// `date`, or the task's `due` when they have none), and each day only carries
+// the sub-tasks that belong to it. A task with no sub-tasks is bucketed whole
+// under its due date, as before. Board/List views are untouched — the task is
+// still a single card there.
+//
+// Each day maps to a list of { task, subtasks } entries; `subtasks` is empty
+// for a whole-task (no sub-tasks) entry.
 function computeCalTasksByDay() {
   const calTasks = tasks.filter((t) => {
     const cat = categoryFilter.value;
@@ -1989,27 +2156,67 @@ function computeCalTasksByDay() {
   });
 
   const tasksByDay = {};
+
+  // Same task + same day always merges into one entry, so a task never shows
+  // up twice on a single day no matter how many of its sub-tasks land there.
+  const addToDay = (dayKey, task, subtask) => {
+    const dayEntries = tasksByDay[dayKey] = tasksByDay[dayKey] || [];
+    let entry = dayEntries.find((e) => e.task.id === task.id);
+    if (!entry) {
+      entry = { task, subtasks: [] };
+      dayEntries.push(entry);
+    }
+    if (subtask) entry.subtasks.push(subtask);
+  };
+
   calTasks.forEach((t) => {
-    if (!t.due) return;
-    (tasksByDay[t.due] = tasksByDay[t.due] || []).push(t);
+    const subtasks = t.subtasks || [];
+    if (!subtasks.length) {
+      if (t.due) addToDay(t.due, t, null);
+      return;
+    }
+    subtasks.forEach((s) => {
+      const dayKey = s.date || t.due;
+      // An undated sub-task on a task with no due date has no day to land on.
+      if (!dayKey) return;
+      addToDay(dayKey, t, s);
+    });
   });
+
   return tasksByDay;
 }
 
-// DELEGATE tasks render italicized in the category color with their time
-// forced to 0 — that time isn't yours to spend, so it's excluded from the
-// day's Estimated Time total too (see renderCalendarView below). Completed
-// tasks are struck through and aren't a click target, since there's nothing
-// left to rebalance. Everything else is a link that opens the Edit panel
-// directly, so a day can be rebalanced without leaving the calendar.
-function buildCalTasksPopoverHtml(dayTasks) {
-  const activeDayTasks = dayTasks.filter((t) => !t.completed);
-  const completedDayTasks = dayTasks.filter((t) => t.completed);
+// What a task costs *you* on one specific calendar day: only the sub-tasks
+// scheduled for that day, and of those only the ones still open and not handed
+// to a delegate. A whole-task entry (no sub-tasks) falls back to the task's own
+// estimate, which is 0 for DELEGATE tasks — so a fully-delegated task still
+// reads as 0, exactly as before.
+function calEntryMinutes(entry) {
+  const { task, subtasks } = entry;
+  if (!subtasks.length) return taskRemainingMinutes(task);
+  const isDelegate = isDelegateTask(task);
+  return subtasks
+    .filter((s) => subtaskCountsForMe(s, isDelegate))
+    .reduce((sum, s) => sum + (Number(s.minutes) || 0), 0);
+}
 
-  return [...activeDayTasks, ...completedDayTasks].map((t) => {
-    const isDelegate = t.category === 'DELEGATE';
-    const mins = isDelegate ? 0 : taskRemainingMinutes(t);
-    const timeLabel = isDelegate ? '0 mins' : (mins ? formatMinutes(mins) : null);
+// DELEGATE tasks render italicized in the category color, and their delegated
+// sub-tasks contribute no time — that time isn't yours to spend, so it's
+// excluded from the day's Estimated Time total too (see renderCalendarView
+// below). Completed tasks are struck through and aren't a click target, since
+// there's nothing left to rebalance. Everything else is a link that opens the
+// Edit panel directly, so a day can be rebalanced without leaving the calendar.
+// Sub-tasks are listed under their parent task, but only the ones scheduled for
+// this day — the parent title stays visible so it's clear what they belong to.
+function buildCalTasksPopoverHtml(dayEntries) {
+  const activeEntries = dayEntries.filter((e) => !e.task.completed);
+  const completedEntries = dayEntries.filter((e) => e.task.completed);
+
+  return [...activeEntries, ...completedEntries].map((entry) => {
+    const t = entry.task;
+    const isDelegate = isDelegateTask(t);
+    const mins = calEntryMinutes(entry);
+    const timeLabel = mins ? formatMinutes(mins) : (isDelegate ? '0 mins' : null);
 
     const styleParts = ['font-weight: normal;'];
     if (t.completed) styleParts.push('text-decoration: line-through; cursor: default;');
@@ -2018,10 +2225,20 @@ function buildCalTasksPopoverHtml(dayTasks) {
 
     const nameAttr = t.completed ? '' : ` data-cal-edit-task="${t.id}"`;
 
-    return `<div class="cal-tooltip-task${t.completed ? ' cal-tooltip-done' : ''}">
-      <span class="cal-flag flag-${t.priority}">⚑</span>
-      <span class="cal-tooltip-name" style="${styleParts.join(' ')}"${nameAttr}>${escapeHtml(t.title)}</span>
-      ${timeLabel ? `<span class="cal-tooltip-time">(${timeLabel})</span>` : ''}
+    const subtaskLines = entry.subtasks.map((s) => `
+      <div class="cal-tooltip-subtask${s.completed ? ' cal-tooltip-done' : ''}${isDelegate && s.delegated ? ' subtask-delegated' : ''}">
+        <span class="cal-tooltip-subtask-name">${s.completed ? '✓' : '○'} ${escapeHtml(s.title)}</span>
+        ${s.minutes ? `<span class="cal-tooltip-time">(${formatMinutes(s.minutes)})</span>` : ''}
+      </div>
+    `).join('');
+
+    return `<div class="cal-tooltip-entry">
+      <div class="cal-tooltip-task${t.completed ? ' cal-tooltip-done' : ''}">
+        <span class="cal-flag flag-${t.priority}">⚑</span>
+        <span class="cal-tooltip-name" style="${styleParts.join(' ')}"${nameAttr}>${escapeHtml(t.title)}</span>
+        ${timeLabel ? `<span class="cal-tooltip-time">(${timeLabel})</span>` : ''}
+      </div>
+      ${subtaskLines}
     </div>`;
   }).join('');
 }
@@ -2055,28 +2272,27 @@ function renderCalendarView(list = getFilteredSortedTasks()) {
         continue;
       }
       const dateKey = toDateKey(new Date(year, month, dayNum));
-      const dayTasks = tasksByDay[dateKey] || [];
-      const activeDayTasks = dayTasks.filter((t) => !t.completed);
+      const dayEntries = tasksByDay[dateKey] || [];
+      const activeEntries = dayEntries.filter((e) => !e.task.completed);
 
       // --- Daily load summary (active tasks only) ---
-      // Uses remaining (not total) minutes so completed sub-tasks' time drops
-      // off the calendar as soon as they're checked off. DELEGATE tasks are
-      // excluded — that time isn't yours to spend, so counting it here would
+      // Counts only what's actually scheduled for this day: the sub-tasks that
+      // land here (a multi-day task contributes only its share, not its whole
+      // remaining time), minus completed ones and minus anything a delegate is
+      // doing — that time isn't yours to spend, so counting it here would
       // misrepresent your own workload for the day.
-      const totalMins = activeDayTasks
-        .filter((t) => t.category !== 'DELEGATE')
-        .reduce((sum, t) => sum + taskRemainingMinutes(t), 0);
-      const subtaskCount = activeDayTasks.reduce((sum, t) => sum + (t.subtasks || []).length, 0);
-      const urgentHighCount = activeDayTasks.filter((t) => t.priority === 'urgent' || t.priority === 'high').length;
+      const totalMins = activeEntries.reduce((sum, e) => sum + calEntryMinutes(e), 0);
+      const subtaskCount = activeEntries.reduce((sum, e) => sum + e.subtasks.length, 0);
+      const urgentHighCount = activeEntries.filter((e) => e.task.priority === 'urgent' || e.task.priority === 'high').length;
 
       // "View Tasks" opens a click-triggered popover (see openCalTasksPopover)
       // instead of a CSS hover tooltip — hover tooltips here used to vanish the
       // moment the mouse moved off the trigger, before you could reach a link
       // inside them.
-      const summaryHtml = dayTasks.length ? `
+      const summaryHtml = dayEntries.length ? `
         <div class="cal-day-summary">
           <div class="cal-day-stat">Estimated Time: <strong>${formatMinutes(totalMins)}</strong></div>
-          <div class="cal-day-stat"># of Tasks: <strong>${activeDayTasks.length}</strong></div>
+          <div class="cal-day-stat"># of Tasks: <strong>${activeEntries.length}</strong></div>
           <div class="cal-day-stat"># of Sub-tasks: <strong>${subtaskCount}</strong></div>
           <div class="cal-day-stat"># of Tasks Urgent/High: <strong>${urgentHighCount}</strong></div>
           <div class="cal-view-tasks-wrap">
@@ -2173,7 +2389,7 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
   const rows = tasks.map((task) => {
     const status = task.completed ? 'Completed' : (STATUS_LABELS[task.status] || task.status || '');
     const subtasks = (task.subtasks || [])
-      .map((s) => `${s.completed ? '[x]' : '[ ]'}${s.ai ? ' [AI]' : ''} ${s.title}${s.minutes ? ` (${s.minutes}m)` : ''}`).join('; ');
+      .map((s) => `${s.completed ? '[x]' : '[ ]'}${s.ai ? ' [AI]' : ''}${isDelegateTask(task) && s.delegated ? ' [DELEGATED]' : ''} ${s.title}${s.minutes ? ` (${s.minutes}m)` : ''}${s.date ? ` @${s.date}` : ''}`).join('; ');
 
     return [
       task.title,
@@ -2230,6 +2446,8 @@ document.getElementById('exportActiveJsonBtn').addEventListener('click', () => {
       completed: s.completed,
       minutes: s.minutes || null,
       aiAssisted: !!s.ai,
+      date: s.date || null,
+      delegated: !!s.delegated,
     })),
     dependsOn: (task.dependsOn || [])
       .map((depId) => { const dep = getTaskById(depId); return dep ? dep.title : null; })
@@ -2324,6 +2542,9 @@ importActiveTasksFile.addEventListener('change', (e) => {
           title: s.title,
           completed: !!s.completed,
           minutes: s.minutes || null,
+          ai: !!s.aiAssisted,
+          date: s.date || null,
+          delegated: !!s.delegated,
         })),
         estimatedMinutes: Number(entry.estimatedMinutes) || 0,
         dependsOn: [],
