@@ -2225,12 +2225,16 @@ function buildCalTasksPopoverHtml(dayEntries) {
 
     const nameAttr = t.completed ? '' : ` data-cal-edit-task="${t.id}"`;
 
-    const subtaskLines = entry.subtasks.map((s) => `
-      <div class="cal-tooltip-subtask${s.completed ? ' cal-tooltip-done' : ''}${isDelegate && s.delegated ? ' subtask-delegated' : ''}">
+    const subtaskLines = entry.subtasks.map((s) => {
+      const subtaskDelegated = isDelegate && s.delegated;
+      const subtaskTimeLabel = subtaskDelegated ? '0 mins' : (s.minutes ? formatMinutes(s.minutes) : '');
+      return `
+      <div class="cal-tooltip-subtask${s.completed ? ' cal-tooltip-done' : ''}${subtaskDelegated ? ' subtask-delegated' : ''}">
         <span class="cal-tooltip-subtask-name">${s.completed ? '✓' : '○'} ${escapeHtml(s.title)}</span>
-        ${s.minutes ? `<span class="cal-tooltip-time">(${formatMinutes(s.minutes)})</span>` : ''}
+        ${subtaskTimeLabel ? `<span class="cal-tooltip-time">(${subtaskTimeLabel})</span>` : ''}
       </div>
-    `).join('');
+    `;
+    }).join('');
 
     return `<div class="cal-tooltip-entry">
       <div class="cal-tooltip-task${t.completed ? ' cal-tooltip-done' : ''}">
