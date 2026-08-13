@@ -353,7 +353,9 @@
       <div class="subtask-input-row">
         <input type="text" id="subtaskInput" class="subtask-input" placeholder="Enter Sub-Task Name" autocomplete="off">
         <input type="number" id="subtaskMinutesInput" class="subtask-minutes-input" placeholder="Min" min="0" step="5">
+        <input type="date" id="subtaskDateInput" class="subtask-date-input" title="Optional day this sub-task is worked on — leave blank to count it on the task's Due Date">
         <label class="ai-checkbox-label" title="AI-assisted sub-task"><input type="checkbox" id="subtaskAiInput">AI</label>
+        <label class="ai-checkbox-label delegated-checkbox-label hidden" id="subtaskDelegatedWrap" title="This sub-task is done by the delegate, not by you"><input type="checkbox" id="subtaskDelegatedInput">Deleg.</label>
       </div>
       <ul id="subtaskDraftList" class="subtask-draft-list"></ul>
 
@@ -413,7 +415,9 @@
       <div class="subtask-input-row">
         <input type="text" id="editSubtaskInput" class="subtask-input" placeholder="Enter Sub-Task Name" autocomplete="off">
         <input type="number" id="editSubtaskMinutesInput" class="subtask-minutes-input" placeholder="Min" min="0" step="5">
+        <input type="date" id="editSubtaskDateInput" class="subtask-date-input" title="Optional day this sub-task is worked on — leave blank to count it on the task's Due Date">
         <label class="ai-checkbox-label" title="AI-assisted sub-task"><input type="checkbox" id="editSubtaskAiInput">AI</label>
+        <label class="ai-checkbox-label delegated-checkbox-label hidden" id="editSubtaskDelegatedWrap" title="This sub-task is done by the delegate, not by you"><input type="checkbox" id="editSubtaskDelegatedInput">Deleg.</label>
       </div>
       <ul id="editSubtaskDraftList" class="subtask-draft-list"></ul>
 

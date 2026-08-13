@@ -44,6 +44,7 @@
   --prio-high: #c48a1a;
   --prio-medium: #2f5fed;
   --prio-low: #9aa3b4;
+  --delegate-color: #00A9A3;
   --status-not-started: #767675;
   --status-in-progress: #2f5fed;
   --shadow: 0 1px 2px rgba(20,24,40,0.05);
@@ -397,6 +398,8 @@ body {
 
 .subtask-input-row {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
 }
 
@@ -427,6 +430,28 @@ body {
 .subtask-minutes-input::placeholder {
   color: var(--text-muted);
   opacity: 1;
+}
+
+/* Optional per-sub-task work day — sits between the minutes box and the AI
+   toggle in the sub-task entry row. */
+.subtask-date-input {
+  flex: 0 0 auto;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: var(--form-font-size);
+  font-family: inherit;
+}
+
+/* Delegation toggle borrows the AI toggle's layout but the DELEGATE color, so
+   it reads as part of the same family without being mistaken for it. */
+.delegated-checkbox-label {
+  color: var(--delegate-color);
+}
+.delegated-checkbox-label input {
+  accent-color: var(--delegate-color);
 }
 
 .notes-input {
@@ -470,6 +495,31 @@ body {
   font-size: 0.72rem;
   font-weight: 700;
   color: var(--accent);
+}
+
+/* Date and delegation stay editable on the chip itself — there's nowhere else
+   to change them once a sub-task has been added. */
+.draft-chip-date {
+  padding: 2px 5px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.72rem;
+}
+
+.draft-chip .delegated-checkbox-label {
+  font-size: 0.7rem;
+  padding: 0;
+}
+
+.draft-chip-delegated {
+  border-color: var(--delegate-color);
+}
+.draft-chip-delegated .draft-chip-title {
+  font-style: italic;
+  color: var(--delegate-color);
 }
 
 .remove-draft-btn {
@@ -1313,6 +1363,35 @@ li.task-item:focus-within .card-hover-actions {
   padding: 0;
 }
 
+/* The sub-task's own work day, when it differs from the parent's Due Date.
+   Sits just before the time badge, which keeps its margin-left: auto. */
+.subtask-date-badge {
+  margin-left: auto;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.subtask-date-badge + .subtask-time-badge {
+  margin-left: 0;
+}
+
+/* Work owned by the delegate, not by you — italic + the DELEGATE color, the
+   same treatment delegated tasks get in the calendar. */
+.subtask-delegated .subtask-date-badge,
+.subtask-delegated .subtask-title,
+.subtask-delegated .cal-tooltip-subtask-name {
+  font-style: italic;
+  color: var(--delegate-color);
+}
+
+.subtask-preview-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
 .date-edit-popover {
   position: fixed;
   z-index: 150;
@@ -1848,6 +1927,31 @@ li.task-item:focus-within .card-hover-actions {
   font-size: 0.67rem;
   flex-shrink: 0;
   white-space: nowrap;
+}
+
+/* One task, plus whichever of its sub-tasks land on this particular day */
+.cal-tooltip-entry + .cal-tooltip-entry {
+  margin-top: 5px;
+}
+
+.cal-tooltip-subtask {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  padding-left: 16px;
+  font-size: 0.67rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.cal-tooltip-subtask-name {
+  flex: 1;
+  word-break: break-word;
+}
+
+.cal-tooltip-subtask.cal-tooltip-done .cal-tooltip-subtask-name {
+  text-decoration: line-through;
+  opacity: 0.7;
 }
 
 /* Completed tasks in the tooltip show as muted strikethrough */
