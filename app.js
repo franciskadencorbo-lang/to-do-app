@@ -2227,7 +2227,7 @@ function buildCalTasksPopoverHtml(dayEntries) {
 
     const subtaskLines = entry.subtasks.map((s) => {
       const subtaskDelegated = isDelegate && s.delegated;
-      const subtaskTimeLabel = subtaskDelegated ? '0 mins' : (s.minutes ? formatMinutes(s.minutes) : '');
+      const subtaskTimeLabel = (s.completed || subtaskDelegated) ? '0 mins' : (s.minutes ? formatMinutes(s.minutes) : '');
       return `
       <div class="cal-tooltip-subtask${s.completed ? ' cal-tooltip-done' : ''}${subtaskDelegated ? ' subtask-delegated' : ''}">
         <span class="cal-tooltip-subtask-name">${s.completed ? '✓' : '○'} ${escapeHtml(s.title)}</span>
