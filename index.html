@@ -337,6 +337,7 @@
         </select>
         <button type="button" class="project-manage-btn" id="taskProjectManageBtn" title="Add / manage projects">+</button>
         <input type="date" id="taskDue" title="Due date">
+        <span class="due-derived-hint hidden" id="taskDueHint" title="A sub-task is due later than this task, so the task's Due Date follows it">⤴ from sub-task</span>
         <select id="taskPriority" title="Priority">
           <option value="low">Low</option>
           <option value="medium" selected>Medium</option>
@@ -353,7 +354,7 @@
       <div class="subtask-input-row">
         <input type="text" id="subtaskInput" class="subtask-input" placeholder="Enter Sub-Task Name" autocomplete="off">
         <input type="number" id="subtaskMinutesInput" class="subtask-minutes-input" placeholder="Min" min="0" step="5">
-        <input type="date" id="subtaskDateInput" class="subtask-date-input" title="Optional day this sub-task is worked on — leave blank to count it on the task's Due Date">
+        <input type="date" id="subtaskDateInput" class="subtask-date-input" title="Optional sub-task Due Date — the task's own Due Date follows the latest one. Leave blank to count it on the task's Due Date">
         <label class="ai-checkbox-label" title="AI-assisted sub-task"><input type="checkbox" id="subtaskAiInput">AI</label>
         <label class="ai-checkbox-label delegated-checkbox-label hidden" id="subtaskDelegatedWrap" title="This sub-task is done by the delegate, not by you"><input type="checkbox" id="subtaskDelegatedInput">Deleg.</label>
       </div>
@@ -398,6 +399,7 @@
         </select>
         <button type="button" class="project-manage-btn" id="editProjectManageBtn" title="Add / manage projects">+</button>
         <input type="date" id="editDue" title="Due date">
+        <span class="due-derived-hint hidden" id="editDueHint" title="A sub-task is due later than this task, so the task's Due Date follows it">⤴ from sub-task</span>
         <select id="editPriority" title="Priority">
           <option value="low">Low</option>
           <option value="medium">Medium</option>
@@ -415,7 +417,7 @@
       <div class="subtask-input-row">
         <input type="text" id="editSubtaskInput" class="subtask-input" placeholder="Enter Sub-Task Name" autocomplete="off">
         <input type="number" id="editSubtaskMinutesInput" class="subtask-minutes-input" placeholder="Min" min="0" step="5">
-        <input type="date" id="editSubtaskDateInput" class="subtask-date-input" title="Optional day this sub-task is worked on — leave blank to count it on the task's Due Date">
+        <input type="date" id="editSubtaskDateInput" class="subtask-date-input" title="Optional sub-task Due Date — the task's own Due Date follows the latest one. Leave blank to count it on the task's Due Date">
         <label class="ai-checkbox-label" title="AI-assisted sub-task"><input type="checkbox" id="editSubtaskAiInput">AI</label>
         <label class="ai-checkbox-label delegated-checkbox-label hidden" id="editSubtaskDelegatedWrap" title="This sub-task is done by the delegate, not by you"><input type="checkbox" id="editSubtaskDelegatedInput">Deleg.</label>
       </div>
@@ -437,6 +439,7 @@
 
 <div class="date-edit-popover hidden" id="dateEditPopover">
   <label class="date-edit-field">Due<input type="date" id="dateEditDue"></label>
+  <span class="due-derived-hint hidden" id="dateEditHint">⤴ from latest sub-task</span>
 </div>
 
 <div class="dropdown-panel card-dep-popover hidden" id="calTasksPopover"></div>
