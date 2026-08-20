@@ -33,9 +33,9 @@ Add an optional field to every sub-task object:
 }
 ```
 
-- `date` is independent of the parent task's `due`.
+- ~~`date` is independent of the parent task's `due`.~~ **Superseded — see "Amendment: Due Date roll-up" at the end of this document.**
 - `date` is optional. If left blank, the sub-task keeps its current behavior (counted on the task's Due Date).
-- No change to task-level `due` or `startDate` behavior is required by this ticket — leave `startDate` as-is (currently force-synced to `due` in `normalizeTasks()`). Do not repurpose it.
+- ~~No change to task-level `due` or `startDate` behavior is required by this ticket — leave `startDate` as-is (currently force-synced to `due` in `normalizeTasks()`). Do not repurpose it.~~ **Superseded — see the amendment below.**
 
 ### 1.2 UI — Add Task modal & Edit Task modal
 
@@ -164,3 +164,64 @@ Expected calendar result:
 
 1. Default value of `delegated` for newly added sub-tasks on a DELEGATE task — default to `true` (assume delegated unless unchecked) or `false` (assume mine unless checked)? See §2.2.
 2. Should `taskRemainingMinutes()` (used on Board/List view task cards) apply the same delegated-sub-task exclusion as the calendar, or should Board/List view keep showing full sub-task time regardless of delegation, with only Calendar View applying the filter? See §2.3.
+
+---
+
+## Amendment: Due Date roll-up (supersedes §1.1)
+
+Shipped after the above. Sub-task `date` is no longer independent of the parent task's `due`, and it
+is now understood as a **Sub-Task Due Date** rather than only a work day.
+
+### Rule
+
+> A Task's Due Date is always the latest of its own Due Date and its Sub-Tasks' Due Dates.
+> With no Sub-Tasks — or no dated Sub-Tasks — it is simply the Task's own Due Date.
+
+A task cannot be finished before its last sub-task, so the old independence let `due` under-report
+completion, which in turn corrupted Overdue detection, the This Week view, due-date sorting and the
+calendar.
+
+### Data model
+
+A third field joins `date` / `delegated` on the **task** object:
+
+```
+baseDue: string | null   // 'YYYY-MM-DD' — the date entered at Task level
+```
+
+- `due` now stores the **effective (rolled-up)** date, so every existing reader — sorting, Overdue,
+  This Week, List view, calendar bucketing — is correct without change.
+- `baseDue` stores the date the user actually typed at Task level, which keeps the roll-up
+  reversible: remove the late sub-task and `due` falls back to `baseDue` instead of being stranded
+  on an orphaned sub-task's date.
+- `startDate` now tracks `baseDue` rather than being force-synced to `due`, so a task spans from the
+  date you set to the date its last sub-task lands on.
+
+### Semantics
+
+- Sub-tasks with no `date` are ignored by the roll-up.
+- Completed sub-tasks still count — the work landed on that day either way.
+- A task with no `baseDue` but dated sub-tasks takes the latest sub-task date as its `due`.
+- Two levels only (Task → Sub-Task). There is no deeper nesting to roll up.
+- Dates are `YYYY-MM-DD` strings throughout, so string comparison is date comparison.
+
+### Implementation
+
+`applyDueRollup(task)` in `app.js` is the single write point for `due` / `startDate`; nothing else
+assigns them. It is called from every path that changes a task's own date or its sub-task list:
+Add Task submit, Edit Task submit, the board card's date-pill popover, backup import, and
+`normalizeTasks()` — which also backfills `baseDue` onto pre-existing tasks and corrects any task
+whose sub-task already outran its `due`. Because it runs on every load, the rule is self-healing.
+
+### UI
+
+While a sub-task is due later than the task's own date, the task-level Due Date input is **disabled**
+and displays the derived date, in both modals and in the date-pill popover, with a "⤴ from sub-task"
+hint. The typed base date is parked in `addBaseDue` / `editBaseDue` rather than in the input, so
+removing the late sub-task restores it immediately. Board cards mark a derived date with `⤴`.
+
+### Calendar exception
+
+`computeCalTasksByDay()` buckets an **undated** sub-task on `task.baseDue`, not `task.due`. Using
+`due` there would drag undated sub-tasks forward onto whatever date a *different* sub-task pushed the
+roll-up out to, breaking §1.3's rule that undated sub-tasks show on the task's own Due Date.
