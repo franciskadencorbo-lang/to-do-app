@@ -84,6 +84,7 @@ const taskImpact = document.getElementById('taskImpact');
 const taskCategoryPreview = document.getElementById('taskCategoryPreview');
 const taskProject = document.getElementById('taskProject');
 const taskDue = document.getElementById('taskDue');
+const taskDueHint = document.getElementById('taskDueHint');
 const taskPriority = document.getElementById('taskPriority');
 const taskEstimatedTime = document.getElementById('taskEstimatedTime');
 const taskAiCheckbox = document.getElementById('taskAiCheckbox');
@@ -142,6 +143,7 @@ const editImpact = document.getElementById('editImpact');
 const editCategoryPreview = document.getElementById('editCategoryPreview');
 const editProject = document.getElementById('editProject');
 const editDue = document.getElementById('editDue');
+const editDueHint = document.getElementById('editDueHint');
 const editPriority = document.getElementById('editPriority');
 const editEstimatedTime = document.getElementById('editEstimatedTime');
 const editAiCheckbox = document.getElementById('editAiCheckbox');
@@ -208,6 +210,7 @@ const promoteSelectedBtn = document.getElementById('promoteSelectedBtn');
 // Board card date-edit popover (shared, positioned near whichever date pill was clicked)
 const dateEditPopover = document.getElementById('dateEditPopover');
 const dateEditDue = document.getElementById('dateEditDue');
+const dateEditHint = document.getElementById('dateEditHint');
 
 // Board card notes popover (shared, read-only, positioned near whichever notes icon was clicked)
 const notesPopover = document.getElementById('notesPopover');
@@ -219,6 +222,42 @@ const calTasksPopover = document.getElementById('calTasksPopover');
 // set, and the DECIDE column's tasks specifically move to PLAN. "TO ALLOCATE"
 // (the old untriaged-staging column) folds into "NOT URGENT".
 const CATEGORY_MIGRATION = { Do: 'DO', Decide: 'PLAN', Delegate: 'DELEGATE', 'To Allocate': 'NOT URGENT', 'TO ALLOCATE': 'NOT URGENT' };
+
+// ---------- Due Date roll-up ----------
+// A task can't be finished before its last sub-task, so its Due Date is always
+// the latest of its own date and its sub-tasks' dates. Dates are YYYY-MM-DD
+// strings throughout, so a plain string comparison is a date comparison.
+// Sub-tasks without a date are ignored; completed ones still count, since the
+// work landing on that day is what set the deadline in the first place.
+function latestSubtaskDue(subtasks) {
+  return (subtasks || []).reduce((max, s) => (s.date && s.date > max ? s.date : max), '') || null;
+}
+
+// Resolves the pair (task's own date, sub-task dates) into the effective Due Date.
+function rollupDue(baseDue, subtasks) {
+  const latest = latestSubtaskDue(subtasks);
+  if (!latest) return baseDue || null;
+  if (!baseDue || latest > baseDue) return latest;
+  return baseDue;
+}
+
+// The ONLY place task.due / task.startDate are assigned. `baseDue` keeps the
+// date actually typed at Task level, so the roll-up stays reversible: delete the
+// late sub-tasks and the task falls back to its own date instead of being
+// stranded on an orphaned sub-task's. Call this after any change to a task's own
+// date or to its sub-task list, before saveTasks().
+function applyDueRollup(task) {
+  if (task.baseDue === undefined) task.baseDue = task.due || null;
+  task.due = rollupDue(task.baseDue, task.subtasks);
+  task.startDate = task.baseDue || task.due;
+  return task;
+}
+
+// True when the displayed Due Date comes from a sub-task rather than the task
+// itself — i.e. when the task-level date field should be locked.
+function hasDerivedDue(task) {
+  return !!task && task.due !== (task.baseDue || null);
+}
 
 // Runs on every load (cheap, idempotent) so category always reflects the
 // current Effort/Impact/Priority rules — not just at creation time. That's
@@ -232,7 +271,8 @@ const CATEGORY_MIGRATION = { Do: 'DO', Decide: 'PLAN', Delegate: 'DELEGATE', 'To
 // those fields) are left exactly as categorized, since there's nothing to
 // recompute from. Delegate tasks always carry 0 estimated minutes — that
 // time isn't yours to track. Start Date is no longer user-editable and
-// always mirrors Due Date.
+// always tracks the task's own Due Date (`baseDue`). Also backfills the Due
+// Date roll-up above onto tasks that predate it.
 function normalizeTasks(list) {
   let changed = false;
   list.forEach((t) => {
@@ -267,10 +307,6 @@ function normalizeTasks(list) {
       t.estimatedMinutes = 0;
       changed = true;
     }
-    if (t.startDate !== (t.due || null)) {
-      t.startDate = t.due || null;
-      changed = true;
-    }
 
     // Sub-tasks predating per-sub-task scheduling/delegation get the fields
     // filled in with their no-op defaults: no date (counted on the task's Due
@@ -279,6 +315,18 @@ function normalizeTasks(list) {
       if (s.date === undefined) { s.date = null; changed = true; }
       if (s.delegated === undefined) { s.delegated = false; changed = true; }
     });
+
+    // Backfill the Due Date roll-up. Runs last, after the sub-task defaults
+    // above, so it sees every sub-task date. Tasks predating `baseDue` get it
+    // seeded from their current `due`, so the date they were given at Task level
+    // is preserved even as `due` moves out to the latest sub-task. Also owns
+    // startDate, which used to be force-synced to `due` here and now tracks
+    // baseDue instead — a task starts on your date and ends on the roll-up.
+    const beforeDue = t.due || null;
+    const beforeStart = t.startDate || null;
+    const hadBase = t.baseDue !== undefined;
+    applyDueRollup(t);
+    if (!hadBase || t.due !== beforeDue || t.startDate !== beforeStart) changed = true;
   });
   return changed;
 }
@@ -294,10 +342,16 @@ let calendarViewDate = new Date();
 
 let selectedLabels = new Set();
 let subtaskDraft = [];
+// The Due Date input shows the *rolled-up* date and locks once a sub-task is
+// due later, so the date actually typed at Task level is parked here instead of
+// living in the input — that's what makes the lock reversible when the late
+// sub-task is removed.
+let addBaseDue = null;
 
 let editingTaskId = null;
 let editSelectedLabels = new Set();
 let editSubtaskDraft = [];
+let editBaseDue = null;
 
 let expandedSubtaskIds = new Set();
 let dateEditTaskId = null;
@@ -632,7 +686,7 @@ labelQuickFilterBar.addEventListener('click', (e) => {
 // delegation-tracking is meaningless there and the row is already crowded.
 function buildSubtaskDraftHtml(draft, showDelegated = false) {
   return draft.map((s) => `
-    <li class="draft-chip${showDelegated && s.delegated ? ' draft-chip-delegated' : ''}">${s.ai ? aiIconHtml('ai-badge-sm') : ''}<span class="draft-chip-title ${s.completed ? 'subtask-done' : ''}">${escapeHtml(s.title)}</span>${s.minutes ? `<span class="draft-chip-time">${formatMinutes(s.minutes)}</span>` : ''}<input type="date" class="draft-chip-date" data-id="${s.id}" value="${s.date || ''}" title="Day this sub-task is worked on — blank counts it on the task's Due Date">${showDelegated ? `<label class="ai-checkbox-label delegated-checkbox-label" title="Done by the delegate, not by you"><input type="checkbox" class="draft-chip-delegated-toggle" data-id="${s.id}" ${s.delegated ? 'checked' : ''}>Deleg.</label>` : ''}<button type="button" class="remove-draft-btn" data-id="${s.id}">×</button></li>
+    <li class="draft-chip${showDelegated && s.delegated ? ' draft-chip-delegated' : ''}">${s.ai ? aiIconHtml('ai-badge-sm') : ''}<span class="draft-chip-title ${s.completed ? 'subtask-done' : ''}">${escapeHtml(s.title)}</span>${s.minutes ? `<span class="draft-chip-time">${formatMinutes(s.minutes)}</span>` : ''}<input type="date" class="draft-chip-date" data-id="${s.id}" value="${s.date || ''}" title="Sub-task Due Date — the task's own Due Date follows the latest one. Blank counts it on the task's Due Date">${showDelegated ? `<label class="ai-checkbox-label delegated-checkbox-label" title="Done by the delegate, not by you"><input type="checkbox" class="draft-chip-delegated-toggle" data-id="${s.id}" ${s.delegated ? 'checked' : ''}>Deleg.</label>` : ''}<button type="button" class="remove-draft-btn" data-id="${s.id}">×</button></li>
   `).join('');
 }
 
@@ -642,13 +696,52 @@ function buildSubtaskDraftHtml(draft, showDelegated = false) {
 let addFormIsDelegate = false;
 let editFormIsDelegate = false;
 
+// Mirrors applyDueRollup into an open form: as soon as a draft sub-task is due
+// later than the task's own date, the Due Date input shows that derived date and
+// locks, so what's on screen is always what will be saved. The typed base date
+// lives in add/editBaseDue rather than in the input, so removing the late
+// sub-task puts the original date straight back.
+function refreshDueRollupUi(scope) {
+  const isEdit = scope === 'edit';
+  const input = isEdit ? editDue : taskDue;
+  const hint = isEdit ? editDueHint : taskDueHint;
+  const base = isEdit ? editBaseDue : addBaseDue;
+  const draft = isEdit ? editSubtaskDraft : subtaskDraft;
+
+  const effective = rollupDue(base, draft);
+  const derived = effective !== (base || null);
+  input.value = effective || '';
+  input.disabled = derived;
+  input.classList.toggle('due-derived', derived);
+  input.title = derived
+    ? "Due date — follows the latest sub-task Due Date, so it can't be edited here"
+    : 'Due date';
+  hint.classList.toggle('hidden', !derived);
+}
+
+// Both renders re-run the roll-up, so every draft mutation that re-renders the
+// chips keeps the Due Date input in sync for free.
 function renderSubtaskDraftList() {
   subtaskDraftList.innerHTML = buildSubtaskDraftHtml(subtaskDraft, addFormIsDelegate);
+  refreshDueRollupUi('add');
 }
 
 function renderEditSubtaskDraftList() {
   editSubtaskDraftList.innerHTML = buildSubtaskDraftHtml(editSubtaskDraft, editFormIsDelegate);
+  refreshDueRollupUi('edit');
 }
+
+// The input is disabled whenever the date is derived, so a change event here is
+// always a deliberate task-level edit — safe to record as the new base date.
+taskDue.addEventListener('change', () => {
+  addBaseDue = taskDue.value || null;
+  refreshDueRollupUi('add');
+});
+
+editDue.addEventListener('change', () => {
+  editBaseDue = editDue.value || null;
+  refreshDueRollupUi('edit');
+});
 
 // Shows/hides the delegation controls in one form and re-renders its chips.
 // The new-entry checkbox is reset to the category's default each time, so a
@@ -714,6 +807,7 @@ subtaskDraftList.addEventListener('change', (e) => {
   if (dateEl) {
     const entry = subtaskDraft.find((s) => s.id === dateEl.dataset.id);
     if (entry) entry.date = dateEl.value || null;
+    refreshDueRollupUi('add');
     return;
   }
   const delegatedEl = e.target.closest('.draft-chip-delegated-toggle');
@@ -771,6 +865,7 @@ editSubtaskDraftList.addEventListener('change', (e) => {
   if (dateEl) {
     const entry = editSubtaskDraft.find((s) => s.id === dateEl.dataset.id);
     if (entry) entry.date = dateEl.value || null;
+    refreshDueRollupUi('edit');
     return;
   }
   const delegatedEl = e.target.closest('.draft-chip-delegated-toggle');
@@ -1125,6 +1220,7 @@ function resetTaskForm() {
   labelPicker.innerHTML = buildLabelPickerHtml(selectedLabels);
 
   subtaskDraft = [];
+  addBaseDue = null;
   addFormIsDelegate = false;
   subtaskDateInput.value = '';
   refreshSubtaskDelegateUi('add');
@@ -1154,7 +1250,9 @@ taskForm.addEventListener('submit', (e) => {
   if (!title || !category) return;
 
   const linkValue = normalizeEmailLink(emailLinkInput.value.trim()) || null;
-  const due = taskDue.value || null;
+  // Read from the parked base date, not the input — while a sub-task is due
+  // later the input holds the derived value, and is disabled.
+  const baseDue = addBaseDue;
 
   const task = {
     id: uid(),
@@ -1169,12 +1267,14 @@ taskForm.addEventListener('submit', (e) => {
     ai: taskAiCheckbox.checked,
     email: linkValue ? { link: linkValue } : null,
     notes: taskNotes.value.trim() || null,
-    startDate: due,
-    due,
+    baseDue,
+    startDate: baseDue,
+    due: baseDue,
     priority: taskPriority.value,
     completed: false,
     createdAt: Date.now(),
   };
+  applyDueRollup(task);
   recalcStatus(task);
   tasks.push(task);
 
@@ -1194,7 +1294,8 @@ function openEditModal(id) {
   editEffort.value = task.effort || '';
   editImpact.value = task.impact || '';
   editProject.value = task.project || '';
-  editDue.value = task.due || '';
+  editBaseDue = task.baseDue || null;
+  editDue.value = editBaseDue || '';
   editPriority.value = task.priority;
   editEstimatedTime.value = task.estimatedMinutes || '';
   editEstimatedTime.disabled = false;
@@ -1250,13 +1351,14 @@ editForm.addEventListener('submit', (e) => {
   task.effort = editEffort.value;
   task.impact = editImpact.value;
   task.project = editProject.value || null;
-  task.due = editDue.value || null;
-  task.startDate = task.due;
+  task.baseDue = editBaseDue;
   task.priority = editPriority.value;
   task.estimatedMinutes = category === 'DELEGATE' ? 0 : (Number(editEstimatedTime.value) || 0);
   task.ai = editAiCheckbox.checked;
   task.labels = [...editSelectedLabels];
   task.subtasks = editSubtaskDraft;
+  // After the sub-task list is in place, so the roll-up sees the final dates.
+  applyDueRollup(task);
   recalcStatus(task);
   task.notes = editNotes.value.trim() || null;
 
@@ -1605,7 +1707,13 @@ function openDateEditPopover(taskId, anchorEl) {
   const task = getTaskById(taskId);
   if (!task) return;
   dateEditTaskId = taskId;
+  // Shows the effective date either way; locked when a sub-task is what set it,
+  // matching the Add/Edit modals.
+  const derived = hasDerivedDue(task);
   dateEditDue.value = task.due || '';
+  dateEditDue.disabled = derived;
+  dateEditDue.classList.toggle('due-derived', derived);
+  dateEditHint.classList.toggle('hidden', !derived);
 
   const rect = anchorEl.getBoundingClientRect();
   dateEditPopover.style.top = `${rect.bottom + 6}px`;
@@ -1621,8 +1729,8 @@ function closeDateEditPopover() {
 function saveDateEdit() {
   const task = getTaskById(dateEditTaskId);
   if (!task) return;
-  task.due = dateEditDue.value || null;
-  task.startDate = task.due;
+  task.baseDue = dateEditDue.value || null;
+  applyDueRollup(task);
   saveTasks();
   render();
 }
@@ -1831,7 +1939,7 @@ function subtaskProgressHtml(task) {
 // card already displays.
 function subtaskDateBadgeHtml(subtask) {
   if (!subtask.date) return '';
-  return `<span class="subtask-date-badge" title="Scheduled for ${subtask.date}">${formatShortDate(subtask.date)}</span>`;
+  return `<span class="subtask-date-badge" title="Sub-task due ${subtask.date}">${formatShortDate(subtask.date)}</span>`;
 }
 
 function subtaskRowsHtml(task) {
@@ -1909,6 +2017,7 @@ function dateRangeLabel(task) {
 function taskItemHtml(task) {
   const hasLabels = (task.labels || []).length > 0;
   const dateLabel = dateRangeLabel(task);
+  const derivedDue = hasDerivedDue(task);
   const subtaskToggle = subtaskToggleHtml(task);
   const showRow2 = !!subtaskToggle || hasLabels;
   const overdue = isOverdue(task);
@@ -1929,7 +2038,7 @@ function taskItemHtml(task) {
             ${emailBadgeHtml(task)}
             ${taskHasAi(task) ? aiIconHtml() : ''}
             ${projectTagHtml(task)}
-            ${dateLabel ? `<span class="date-pill ${overdue ? 'overdue' : ''}" title="Click to edit dates">📅 ${overdue ? 'Overdue · ' : ''}${dateLabel}</span>` : ''}
+            ${dateLabel ? `<span class="date-pill ${overdue ? 'overdue' : ''}${derivedDue ? ' date-pill-derived' : ''}" title="${derivedDue ? 'Due Date follows the latest sub-task Due Date' : 'Click to edit dates'}">📅 ${overdue ? 'Overdue · ' : ''}${dateLabel}${derivedDue ? ' ⤴' : ''}</span>` : ''}
             ${remainingTimeBadgeHtml(task)}
             ${notesBadgeHtml(task)}
           </span>
@@ -2176,7 +2285,7 @@ function computeCalTasksByDay() {
       return;
     }
     subtasks.forEach((s) => {
-      const dayKey = s.date || t.due;
+      const dayKey = s.date || t.baseDue || t.due;
       // An undated sub-task on a task with no due date has no day to land on.
       if (!dayKey) return;
       addToDay(dayKey, t, s);
@@ -2439,6 +2548,7 @@ document.getElementById('exportActiveJsonBtn').addEventListener('click', () => {
     project: task.project || null,
     priority: task.priority,
     startDate: task.startDate || null,
+    baseDue: task.baseDue || null,
     due: task.due || null,
     overdue: isOverdue(task),
     estimatedMinutes: taskTotalMinutes(task) || null,
@@ -2555,12 +2665,14 @@ importActiveTasksFile.addEventListener('change', (e) => {
         email: entry.emailLink ? { link: entry.emailLink } : null,
         notes: entry.notes || null,
         startDate: entry.startDate || null,
+        baseDue: entry.baseDue !== undefined ? (entry.baseDue || null) : (entry.due || null),
         due: entry.due || null,
         priority: VALID_IMPORT_PRIORITIES.includes(entry.priority) ? entry.priority : 'medium',
         completed: entry.status === 'Completed',
         createdAt: entry.createdAt && !isNaN(Date.parse(entry.createdAt)) ? Date.parse(entry.createdAt) : Date.now(),
         status: STATUS_LABEL_TO_KEY[entry.status] || 'not_started',
       };
+      applyDueRollup(task);
       if (task.title) titleToId[task.title] = task.id;
       return task;
     });
@@ -2721,6 +2833,7 @@ promoteSelectedBtn.addEventListener('click', () => {
       email: entry.link ? { link: entry.link } : null,
       notes: entry.notes,
       startDate: null,
+      baseDue: null,
       due: null,
       priority: 'low',
       completed: false,
