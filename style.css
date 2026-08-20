@@ -1363,7 +1363,32 @@ li.task-item:focus-within .card-hover-actions {
   padding: 0;
 }
 
-/* The sub-task's own work day, when it differs from the parent's Due Date.
+/* ---- Due Date roll-up ----
+   A task's Due Date always follows its latest sub-task Due Date, so whenever a
+   sub-task pushes it out the task-level date input is disabled and this hint
+   explains why the field can't be typed into. */
+.due-derived-hint {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  white-space: nowrap;
+  align-self: center;
+}
+
+input[type="date"].due-derived {
+  background: var(--bg);
+  color: var(--text-muted);
+  border-style: dashed;
+  cursor: not-allowed;
+}
+
+/* Same signal on the board card: the pill still opens the popover, but the date
+   in it is read-only. */
+.date-pill-derived {
+  font-style: italic;
+}
+
+/* The sub-task's own Due Date, when it differs from the parent's Due Date.
    Sits just before the time badge, which keeps its margin-left: auto. */
 .subtask-date-badge {
   margin-left: auto;
@@ -1401,6 +1426,7 @@ li.task-item:focus-within .card-hover-actions {
   box-shadow: var(--shadow);
   padding: 10px;
   display: flex;
+  align-items: center;
   gap: 10px;
 }
 
