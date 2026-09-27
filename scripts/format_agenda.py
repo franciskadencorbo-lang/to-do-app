@@ -33,7 +33,9 @@ def remaining_subtasks(task):
     return sum(1 for s in subtasks if not s.get("completed"))
 
 
-def format_line(task):
+def format_lines(task):
+    """Returns a list of lines: the task's own line, followed by one
+    indented line per open (incomplete) sub-task."""
     due = parse_due(task)
     due_str = f"{due.strftime('%b')} {due.day}" if due else "no due date"
     project = task.get("project") or "General"
@@ -43,10 +45,16 @@ def format_line(task):
         subtask_note = f" ({remaining} open sub-task{'s' if remaining != 1 else ''})"
     overdue_flag = " [OVERDUE]" if task.get("overdue") else ""
     email_note = " [source email linked]" if task.get("emailLink") else ""
-    return (
+    lines = [
         f"- {task.get('title')} [{project}] - due {due_str}, "
         f"{task.get('priority')} priority{subtask_note}{overdue_flag}{email_note}"
-    )
+    ]
+    for s in task.get("subtasks") or []:
+        if s.get("completed"):
+            continue
+        min_note = f" ({s['minutes']} min)" if s.get("minutes") else ""
+        lines.append(f"    - {s.get('title')}{min_note}")
+    return lines
 
 
 def sort_key(task):
@@ -86,19 +94,19 @@ def build_agenda(tasks, next_meeting, meeting_label, stale_warning=None):
     if overdue_or_due_soon:
         lines.append("## Needs attention -- overdue or due before this meeting")
         for t in sorted(overdue_or_due_soon, key=sort_key):
-            lines.append(format_line(t))
+            lines.extend(format_lines(t))
         lines.append("")
 
     if delegate_items:
         lines.append("## For the team -- delegated items")
         for t in sorted(delegate_items, key=sort_key):
-            lines.append(format_line(t))
+            lines.extend(format_lines(t))
         lines.append("")
 
     if other_active:
         lines.append("## Status updates -- other active work")
         for t in sorted(other_active, key=sort_key):
-            lines.append(format_line(t))
+            lines.extend(format_lines(t))
         lines.append("")
 
     return "\n".join(lines)
