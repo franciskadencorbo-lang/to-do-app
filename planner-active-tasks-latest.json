@@ -2,11 +2,11 @@
   {
     "title": "YOKO SA Tracker",
     "status": "Not started",
-    "category": "PLAN",
-    "project": null,
-    "priority": "medium",
-    "startDate": "2026-08-17",
-    "due": "2026-08-21",
+    "category": "DO",
+    "project": "YOKO",
+    "priority": "low",
+    "startDate": "2026-08-27",
+    "due": "2026-08-27",
     "overdue": false,
     "estimatedMinutes": 120,
     "remainingMinutes": 120,
@@ -27,9 +27,9 @@
     "status": "Not started",
     "category": "DO",
     "project": null,
-    "priority": "medium",
-    "startDate": "2026-08-14",
-    "due": "2026-08-14",
+    "priority": "low",
+    "startDate": "2026-08-21",
+    "due": "2026-08-21",
     "overdue": false,
     "estimatedMinutes": 90,
     "remainingMinutes": 90,
@@ -44,13 +44,17 @@
         "title": "Contact Business France",
         "completed": false,
         "minutes": 30,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": "2026-08-21",
+        "delegated": false
       },
       {
         "title": "Create Dashboard",
         "completed": false,
         "minutes": 60,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": "2026-08-23",
+        "delegated": false
       }
     ],
     "dependsOn": [],
@@ -64,11 +68,11 @@
     "category": "PLAN",
     "project": "YOKO",
     "priority": "high",
-    "startDate": "2026-08-12",
-    "due": "2026-08-12",
+    "startDate": "2026-08-19",
+    "due": "2026-08-19",
     "overdue": false,
-    "estimatedMinutes": 420,
-    "remainingMinutes": 120,
+    "estimatedMinutes": 465,
+    "remainingMinutes": 15,
     "aiAssisted": false,
     "labels": [
       "YOKO",
@@ -80,31 +84,57 @@
         "title": "Quarterly Report",
         "completed": true,
         "minutes": 180,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
       },
       {
         "title": "Monthly Report",
         "completed": true,
         "minutes": 120,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
       },
       {
         "title": "Finish Deck",
-        "completed": false,
+        "completed": true,
         "minutes": 30,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": "2026-08-18",
+        "delegated": false
       },
       {
         "title": "Review Treasury Report",
-        "completed": false,
+        "completed": true,
         "minutes": 60,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
       },
       {
         "title": "Gather Missing Info",
-        "completed": false,
+        "completed": true,
         "minutes": 30,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
+      },
+      {
+        "title": "Share the Reporting Pack",
+        "completed": false,
+        "minutes": 15,
+        "aiAssisted": false,
+        "date": "2026-08-19",
+        "delegated": false
+      },
+      {
+        "title": "Review Treasury Report",
+        "completed": true,
+        "minutes": 30,
+        "aiAssisted": false,
+        "date": "2026-08-18",
+        "delegated": false
       }
     ],
     "dependsOn": [],
@@ -117,12 +147,12 @@
     "status": "In Progress",
     "category": "DELEGATE",
     "project": null,
-    "priority": "medium",
-    "startDate": "2026-08-13",
-    "due": "2026-08-13",
+    "priority": "high",
+    "startDate": "2026-08-21",
+    "due": "2026-08-21",
     "overdue": false,
-    "estimatedMinutes": 95,
-    "remainingMinutes": 45,
+    "estimatedMinutes": 110,
+    "remainingMinutes": 60,
     "aiAssisted": false,
     "labels": [
       "Financing",
@@ -135,31 +165,49 @@
         "title": "Obtain Inverters Cost",
         "completed": true,
         "minutes": 10,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
       },
       {
         "title": "Finalize Calculation",
         "completed": true,
         "minutes": 30,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
       },
       {
         "title": "Send the analysis",
         "completed": true,
         "minutes": 10,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
       },
       {
         "title": "Walk through Hunton",
         "completed": false,
         "minutes": 30,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": "2026-08-20",
+        "delegated": false
       },
       {
         "title": "Share to Lender",
         "completed": false,
         "minutes": 15,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": "2026-08-21",
+        "delegated": false
+      },
+      {
+        "title": "Review Hunton Email",
+        "completed": false,
+        "minutes": 15,
+        "aiAssisted": false,
+        "date": "2026-08-19",
+        "delegated": false
       }
     ],
     "dependsOn": [],
@@ -172,9 +220,9 @@
     "status": "Not started",
     "category": "DO",
     "project": null,
-    "priority": "low",
-    "startDate": "2026-08-10",
-    "due": "2026-08-14",
+    "priority": "medium",
+    "startDate": "2026-08-23",
+    "due": "2026-08-23",
     "overdue": false,
     "estimatedMinutes": 240,
     "remainingMinutes": 240,
@@ -190,19 +238,25 @@
         "title": "Review Template",
         "completed": false,
         "minutes": 60,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": "2026-08-23",
+        "delegated": false
       },
       {
         "title": "Add Thailand",
         "completed": false,
         "minutes": 120,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": "2026-08-23",
+        "delegated": false
       },
       {
         "title": "Create Dashboard",
         "completed": false,
         "minutes": 60,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": "2026-08-23",
+        "delegated": false
       }
     ],
     "dependsOn": [],
@@ -212,15 +266,15 @@
   },
   {
     "title": "EL PwC",
-    "status": "Not started",
+    "status": "In Progress",
     "category": "DO",
     "project": "NEW ASSETCO",
-    "priority": "medium",
-    "startDate": "2026-08-10",
-    "due": "2026-08-10",
-    "overdue": false,
+    "priority": "urgent",
+    "startDate": "2026-08-18",
+    "due": "2026-08-18",
+    "overdue": true,
     "estimatedMinutes": 20,
-    "remainingMinutes": 20,
+    "remainingMinutes": 10,
     "aiAssisted": false,
     "labels": [
       "YOKO",
@@ -231,15 +285,19 @@
     "subtasks": [
       {
         "title": "Review EL",
-        "completed": false,
+        "completed": true,
         "minutes": 10,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
       },
       {
         "title": "Execute EL",
         "completed": false,
         "minutes": 10,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": "2026-08-19",
+        "delegated": false
       }
     ],
     "dependsOn": [],
@@ -251,13 +309,13 @@
     "title": "Holdback Tipco",
     "status": "Not started",
     "category": "DELEGATE",
-    "project": null,
+    "project": "YOKO",
     "priority": "medium",
-    "startDate": "2026-08-10",
-    "due": "2026-08-14",
+    "startDate": "2026-08-29",
+    "due": "2026-08-29",
     "overdue": false,
-    "estimatedMinutes": 60,
-    "remainingMinutes": 60,
+    "estimatedMinutes": 90,
+    "remainingMinutes": 30,
     "aiAssisted": false,
     "labels": [
       "YOKO",
@@ -269,7 +327,17 @@
         "title": "Update Documentation",
         "completed": false,
         "minutes": 60,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": "2026-08-29",
+        "delegated": true
+      },
+      {
+        "title": "Finalize calculation",
+        "completed": false,
+        "minutes": 30,
+        "aiAssisted": false,
+        "date": "2026-08-29",
+        "delegated": false
       }
     ],
     "dependsOn": [],
@@ -283,11 +351,11 @@
     "category": "DELEGATE",
     "project": "SOLAR D",
     "priority": "medium",
-    "startDate": "2026-08-05",
-    "due": "2026-08-11",
+    "startDate": "2026-08-21",
+    "due": "2026-08-21",
     "overdue": false,
     "estimatedMinutes": 45,
-    "remainingMinutes": 45,
+    "remainingMinutes": null,
     "aiAssisted": false,
     "labels": [
       "M&A",
@@ -299,13 +367,17 @@
         "title": "NDA Execution",
         "completed": false,
         "minutes": 15,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": "2026-08-21",
+        "delegated": true
       },
       {
         "title": "Prepare IRL",
         "completed": false,
         "minutes": 30,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": "2026-08-19",
+        "delegated": true
       }
     ],
     "dependsOn": [],
@@ -316,14 +388,14 @@
   {
     "title": "NBO OnePower",
     "status": "Not started",
-    "category": "PLAN",
+    "category": "DO",
     "project": "ONE POWER",
     "priority": "high",
-    "startDate": "2026-08-11",
-    "due": "2026-08-11",
+    "startDate": "2026-08-21",
+    "due": "2026-08-21",
     "overdue": false,
-    "estimatedMinutes": 180,
-    "remainingMinutes": 180,
+    "estimatedMinutes": 195,
+    "remainingMinutes": 195,
     "aiAssisted": false,
     "labels": [
       "M&A",
@@ -333,28 +405,52 @@
     ],
     "subtasks": [
       {
-        "title": "Extract Assumptions",
+        "title": "Extract Key Assumptions",
         "completed": false,
         "minutes": 30,
-        "aiAssisted": false
-      },
-      {
-        "title": "Review FM",
-        "completed": false,
-        "minutes": 60,
-        "aiAssisted": false
+        "aiAssisted": true,
+        "date": null,
+        "delegated": false
       },
       {
         "title": "Valuation Deck",
         "completed": false,
         "minutes": 60,
-        "aiAssisted": false
+        "aiAssisted": true,
+        "date": null,
+        "delegated": false
       },
       {
-        "title": "Issue NBO",
+        "title": "Draft NBO",
+        "completed": false,
+        "minutes": 15,
+        "aiAssisted": true,
+        "date": null,
+        "delegated": false
+      },
+      {
+        "title": "Review FM",
         "completed": false,
         "minutes": 30,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
+      },
+      {
+        "title": "Audit FM",
+        "completed": false,
+        "minutes": 30,
+        "aiAssisted": true,
+        "date": null,
+        "delegated": false
+      },
+      {
+        "title": "Review NBO",
+        "completed": false,
+        "minutes": 30,
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
       }
     ],
     "dependsOn": [],
@@ -363,55 +459,13 @@
     "createdAt": "2026-07-19T11:13:58.443Z"
   },
   {
-    "title": "New AssetCo Plan",
-    "status": "Not started",
-    "category": "PLAN",
-    "project": "NEW ASSETCO",
-    "priority": "urgent",
-    "startDate": "2026-08-10",
-    "due": "2026-08-10",
-    "overdue": false,
-    "estimatedMinutes": 70,
-    "remainingMinutes": 70,
-    "aiAssisted": false,
-    "labels": [
-      "YOKO",
-      "1 hour",
-      "2 hours+"
-    ],
-    "subtasks": [
-      {
-        "title": "Updates the Dates",
-        "completed": false,
-        "minutes": 30,
-        "aiAssisted": false
-      },
-      {
-        "title": "Run the Gantt Chart",
-        "completed": false,
-        "minutes": 10,
-        "aiAssisted": false
-      },
-      {
-        "title": "Rebase Timeline",
-        "completed": false,
-        "minutes": 30,
-        "aiAssisted": false
-      }
-    ],
-    "dependsOn": [],
-    "notes": null,
-    "emailLink": null,
-    "createdAt": "2026-07-19T11:49:34.039Z"
-  },
-  {
     "title": "YOKO Board Plan",
     "status": "In Progress",
     "category": "DO",
     "project": "YOKO",
     "priority": "medium",
-    "startDate": "2026-08-16",
-    "due": "2026-08-16",
+    "startDate": "2026-08-23",
+    "due": "2026-08-23",
     "overdue": false,
     "estimatedMinutes": 360,
     "remainingMinutes": 150,
@@ -426,37 +480,49 @@
         "title": "Build Dashboard",
         "completed": true,
         "minutes": 120,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
       },
       {
         "title": "Gather Comments",
         "completed": true,
         "minutes": 30,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
       },
       {
         "title": "Finalize the UX/UI",
         "completed": true,
         "minutes": 60,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
       },
       {
         "title": "Organize Folder",
         "completed": false,
         "minutes": 60,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": "2026-08-23",
+        "delegated": false
       },
       {
         "title": "Update Dashboard",
         "completed": false,
         "minutes": 30,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": "2026-08-23",
+        "delegated": false
       },
       {
         "title": "Test Dashboard",
         "completed": false,
         "minutes": 60,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": "2026-08-25",
+        "delegated": false
       }
     ],
     "dependsOn": [],
@@ -465,44 +531,13 @@
     "createdAt": "2026-07-24T03:57:44.604Z"
   },
   {
-    "title": "CP List",
-    "status": "Not started",
-    "category": "DELEGATE",
-    "project": "WAYU",
-    "priority": "high",
-    "startDate": "2026-08-13",
-    "due": "2026-08-13",
-    "overdue": false,
-    "estimatedMinutes": 30,
-    "remainingMinutes": 30,
-    "aiAssisted": false,
-    "labels": [
-      "M&A",
-      "Vietnam",
-      "30 mins",
-      "Help"
-    ],
-    "subtasks": [
-      {
-        "title": "Review Tracker",
-        "completed": false,
-        "minutes": 30,
-        "aiAssisted": false
-      }
-    ],
-    "dependsOn": [],
-    "notes": null,
-    "emailLink": null,
-    "createdAt": "2026-07-24T05:57:58.851Z"
-  },
-  {
     "title": "B GRIMM",
     "status": "Not started",
     "category": "DELEGATE",
     "project": null,
     "priority": "medium",
-    "startDate": "2026-08-14",
-    "due": "2026-08-14",
+    "startDate": "2026-08-28",
+    "due": "2026-08-28",
     "overdue": false,
     "estimatedMinutes": 75,
     "remainingMinutes": 75,
@@ -518,19 +553,25 @@
         "title": "Update BCA",
         "completed": false,
         "minutes": 30,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
       },
       {
         "title": "Issue NDA",
         "completed": false,
         "minutes": 15,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
       },
       {
         "title": "Review BCA",
         "completed": false,
         "minutes": 30,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
       }
     ],
     "dependsOn": [],
@@ -544,11 +585,11 @@
     "category": "PLAN",
     "project": "NEW ASSETCO",
     "priority": "urgent",
-    "startDate": "2026-08-12",
-    "due": "2026-08-12",
+    "startDate": "2026-08-20",
+    "due": "2026-08-20",
     "overdue": false,
-    "estimatedMinutes": 60,
-    "remainingMinutes": 60,
+    "estimatedMinutes": 120,
+    "remainingMinutes": 120,
     "aiAssisted": false,
     "labels": [
       "YOKO",
@@ -564,47 +605,16 @@
     "createdAt": "2026-07-28T20:15:49.240Z"
   },
   {
-    "title": "COOP1 Financing",
-    "status": "Not started",
-    "category": "DELEGATE",
-    "project": "COOP FINANCING",
-    "priority": "high",
-    "startDate": "2026-08-10",
-    "due": "2026-08-10",
-    "overdue": false,
-    "estimatedMinutes": 15,
-    "remainingMinutes": 15,
-    "aiAssisted": false,
-    "labels": [
-      "Financing",
-      "Thailand",
-      "Help",
-      "1 hour"
-    ],
-    "subtasks": [
-      {
-        "title": "Issue FM",
-        "completed": false,
-        "minutes": 15,
-        "aiAssisted": false
-      }
-    ],
-    "dependsOn": [],
-    "notes": null,
-    "emailLink": null,
-    "createdAt": "2026-07-28T20:17:44.111Z"
-  },
-  {
     "title": "RfP Legal Advisor",
-    "status": "Not started",
+    "status": "In Progress",
     "category": "DELEGATE",
     "project": "GYS4/6",
     "priority": "medium",
-    "startDate": "2026-08-13",
-    "due": "2026-08-13",
+    "startDate": "2026-08-24",
+    "due": "2026-08-24",
     "overdue": false,
-    "estimatedMinutes": 45,
-    "remainingMinutes": 45,
+    "estimatedMinutes": 75,
+    "remainingMinutes": 30,
     "aiAssisted": false,
     "labels": [
       "Financing",
@@ -615,15 +625,43 @@
     "subtasks": [
       {
         "title": "Review Quotation",
-        "completed": false,
+        "completed": true,
         "minutes": 15,
-        "aiAssisted": true
+        "aiAssisted": true,
+        "date": null,
+        "delegated": false
       },
       {
         "title": "Select Advisor",
+        "completed": true,
+        "minutes": 30,
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
+      },
+      {
+        "title": "Obtain GY Legal Comment",
+        "completed": true,
+        "minutes": null,
+        "aiAssisted": false,
+        "date": "2026-08-17",
+        "delegated": true
+      },
+      {
+        "title": "Obtain Engagement Letter",
+        "completed": false,
+        "minutes": null,
+        "aiAssisted": false,
+        "date": "2026-08-21",
+        "delegated": true
+      },
+      {
+        "title": "Review Engagement Letter",
         "completed": false,
         "minutes": 30,
-        "aiAssisted": false
+        "aiAssisted": true,
+        "date": "2026-08-24",
+        "delegated": false
       }
     ],
     "dependsOn": [],
@@ -632,88 +670,16 @@
     "createdAt": "2026-07-29T07:21:08.422Z"
   },
   {
-    "title": "Project Portiers",
-    "status": "In Progress",
-    "category": "DO",
-    "project": null,
-    "priority": "medium",
-    "startDate": "2026-08-12",
-    "due": "2026-08-12",
-    "overdue": false,
-    "estimatedMinutes": 30,
-    "remainingMinutes": 15,
-    "aiAssisted": false,
-    "labels": [
-      "M&A",
-      "Vietnam",
-      "30 mins"
-    ],
-    "subtasks": [
-      {
-        "title": "Talk to Sébastien",
-        "completed": true,
-        "minutes": 15,
-        "aiAssisted": false
-      },
-      {
-        "title": "Organize Meeting",
-        "completed": false,
-        "minutes": 15,
-        "aiAssisted": false
-      }
-    ],
-    "dependsOn": [],
-    "notes": null,
-    "emailLink": null,
-    "createdAt": "2026-07-30T13:45:28.143Z"
-  },
-  {
-    "title": "PESCO/PRR",
-    "status": "Not started",
-    "category": "DO",
-    "project": null,
-    "priority": "medium",
-    "startDate": "2026-08-10",
-    "due": "2026-08-10",
-    "overdue": false,
-    "estimatedMinutes": 30,
-    "remainingMinutes": 30,
-    "aiAssisted": false,
-    "labels": [
-      "M&A",
-      "Thailand",
-      "30 mins"
-    ],
-    "subtasks": [
-      {
-        "title": "Update Frank",
-        "completed": false,
-        "minutes": 15,
-        "aiAssisted": false
-      },
-      {
-        "title": "Launch Legal",
-        "completed": false,
-        "minutes": 15,
-        "aiAssisted": false
-      }
-    ],
-    "dependsOn": [],
-    "notes": null,
-    "emailLink": null,
-    "createdAt": "2026-07-31T10:47:57.435Z"
-  },
-  {
     "title": "GYS4/6 Financing",
     "status": "In Progress",
     "category": "DELEGATE",
     "project": "GYS4/6",
-    "priority": "high",
-    "startDate": "2026-08-13",
-    "due": "2026-08-13",
+    "priority": "urgent",
+    "startDate": "2026-08-19",
+    "due": "2026-08-19",
     "overdue": false,
-    "estimatedMinutes": 210,
-    "remainingMinutes": 60,
+    "estimatedMinutes": 270,
+    "remainingMinutes": 30,
     "aiAssisted": false,
     "labels": [
       "Financing",
@@ -725,25 +691,49 @@
         "title": "List Action Items",
         "completed": true,
         "minutes": 60,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
       },
       {
         "title": "Update timeline",
         "completed": true,
         "minutes": 60,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
       },
       {
         "title": "Prepare COMEX Slides",
-        "completed": false,
+        "completed": true,
         "minutes": 60,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": "2026-08-19",
+        "delegated": true
       },
       {
         "title": "Review FM UL Comments",
         "completed": true,
         "minutes": 30,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
+      },
+      {
+        "title": "Review Term Sheet",
+        "completed": true,
+        "minutes": 30,
+        "aiAssisted": false,
+        "date": "2026-08-18",
+        "delegated": false
+      },
+      {
+        "title": "Review Slide COMEX",
+        "completed": false,
+        "minutes": 30,
+        "aiAssisted": false,
+        "date": "2026-08-19",
+        "delegated": false
       }
     ],
     "dependsOn": [],
@@ -757,8 +747,8 @@
     "category": "DELEGATE",
     "project": null,
     "priority": "high",
-    "startDate": "2026-08-16",
-    "due": "2026-08-16",
+    "startDate": "2026-08-23",
+    "due": "2026-08-23",
     "overdue": false,
     "estimatedMinutes": 150,
     "remainingMinutes": 150,
@@ -771,19 +761,25 @@
         "title": "Skill for PPT",
         "completed": false,
         "minutes": 60,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
       },
       {
         "title": "Automate Weekly Meetings",
         "completed": false,
         "minutes": 60,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
       },
       {
         "title": "EML to TODO",
         "completed": false,
         "minutes": 30,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
       }
     ],
     "dependsOn": [],
@@ -792,88 +788,13 @@
     "createdAt": "2026-08-01T18:09:18.350Z"
   },
   {
-    "title": "H2 Reporting GreenYellow Thailand",
-    "status": "Not started",
-    "category": "DELEGATE",
-    "project": null,
-    "priority": "medium",
-    "startDate": "2026-08-14",
-    "due": "2026-08-14",
-    "overdue": false,
-    "estimatedMinutes": 15,
-    "remainingMinutes": 15,
-    "aiAssisted": false,
-    "labels": [
-      "Financing",
-      "Thailand"
-    ],
-    "subtasks": [],
-    "dependsOn": [],
-    "notes": "Suhani Saruparia outlines the semi-annual reporting process for ACPF-GreenYellow Thailand, with a stated deadline of 10 August 2026. Francis is asked to prepare and submit the required reporting materials by that date.",
-    "emailLink": "https://outlook.office.com/mail/deeplink/read/AAkALgAAAAAAHYQDEapmEc2byACqAC%2FEWg0AlcvxquWzr0KBsLlnXCNZ7wAGJqR0QgAA?popoutv2=1",
-    "createdAt": "2026-08-01T18:53:21.832Z"
-  },
-  {
-    "title": "NEFIN FM",
-    "status": "Not started",
-    "category": "DO",
-    "project": "NEFIN",
-    "priority": "medium",
-    "startDate": "2026-08-12",
-    "due": "2026-08-12",
-    "overdue": false,
-    "estimatedMinutes": 105,
-    "remainingMinutes": 105,
-    "aiAssisted": false,
-    "labels": [
-      "M&A",
-      "Thailand"
-    ],
-    "subtasks": [
-      {
-        "title": "Extract Key Assumptions",
-        "completed": false,
-        "minutes": 15,
-        "aiAssisted": true
-      },
-      {
-        "title": "Review FM",
-        "completed": false,
-        "minutes": 30,
-        "aiAssisted": false
-      },
-      {
-        "title": "Draft NBO",
-        "completed": false,
-        "minutes": 15,
-        "aiAssisted": true
-      },
-      {
-        "title": "Review NBO",
-        "completed": false,
-        "minutes": 30,
-        "aiAssisted": false
-      },
-      {
-        "title": "Audit Model",
-        "completed": false,
-        "minutes": 15,
-        "aiAssisted": true
-      }
-    ],
-    "dependsOn": [],
-    "notes": null,
-    "emailLink": null,
-    "createdAt": "2026-08-03T04:12:18.850Z"
-  },
-  {
     "title": "DPPA Investors",
     "status": "Not started",
     "category": "DO",
-    "project": null,
-    "priority": "high",
-    "startDate": "2026-08-10",
-    "due": "2026-08-12",
+    "project": "DPPA",
+    "priority": "medium",
+    "startDate": "2026-08-28",
+    "due": "2026-08-28",
     "overdue": false,
     "estimatedMinutes": 60,
     "remainingMinutes": 60,
@@ -884,16 +805,28 @@
     ],
     "subtasks": [
       {
+        "title": "Prepare List Advisor",
+        "completed": false,
+        "minutes": 15,
+        "aiAssisted": false,
+        "date": "2026-08-28",
+        "delegated": false
+      },
+      {
         "title": "Finalize Deck",
         "completed": false,
         "minutes": 30,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": "2026-08-28",
+        "delegated": false
       },
       {
-        "title": "Prepare list Investors",
+        "title": "Gather Advice Pricing",
         "completed": false,
-        "minutes": 30,
-        "aiAssisted": false
+        "minutes": 15,
+        "aiAssisted": false,
+        "date": "2026-08-28",
+        "delegated": false
       }
     ],
     "dependsOn": [],
@@ -906,12 +839,12 @@
     "status": "In Progress",
     "category": "DO",
     "project": "YOKO",
-    "priority": "medium",
-    "startDate": "2026-08-12",
-    "due": "2026-08-12",
+    "priority": "urgent",
+    "startDate": "2026-08-19",
+    "due": "2026-08-19",
     "overdue": false,
-    "estimatedMinutes": 105,
-    "remainingMinutes": 60,
+    "estimatedMinutes": 150,
+    "remainingMinutes": 15,
     "aiAssisted": false,
     "labels": [
       "YOKO"
@@ -921,25 +854,49 @@
         "title": "FIT Thailand",
         "completed": true,
         "minutes": 30,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
       },
       {
         "title": "Staffing",
         "completed": true,
         "minutes": 15,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
       },
       {
         "title": "YAM Financing",
-        "completed": false,
+        "completed": true,
         "minutes": 15,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
       },
       {
         "title": "COD Indemnity",
-        "completed": false,
+        "completed": true,
         "minutes": 45,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
+      },
+      {
+        "title": "Execution Side Letter",
+        "completed": false,
+        "minutes": 15,
+        "aiAssisted": false,
+        "date": "2026-08-19",
+        "delegated": false
+      },
+      {
+        "title": "Issue Notice (2)",
+        "completed": true,
+        "minutes": 30,
+        "aiAssisted": true,
+        "date": "2026-08-19",
+        "delegated": false
       }
     ],
     "dependsOn": [],
@@ -950,87 +907,138 @@
   {
     "title": "YAM Financing",
     "status": "In Progress",
-    "category": "DO",
+    "category": "PLAN",
     "project": "YAM FINANCING",
     "priority": "medium",
-    "startDate": "2026-08-11",
-    "due": "2026-08-11",
+    "startDate": "2026-08-31",
+    "due": "2026-08-31",
     "overdue": false,
-    "estimatedMinutes": 105,
-    "remainingMinutes": 75,
+    "estimatedMinutes": 285,
+    "remainingMinutes": 135,
     "aiAssisted": false,
-    "labels": [],
+    "labels": [
+      "Financing",
+      "YOKO",
+      "Vietnam"
+    ],
     "subtasks": [
       {
         "title": "DBS Account Agreement",
-        "completed": false,
+        "completed": true,
         "minutes": 15,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
       },
       {
         "title": "SocGen Questions",
-        "completed": false,
+        "completed": true,
         "minutes": 15,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
       },
       {
         "title": "O&M Questions",
-        "completed": false,
+        "completed": true,
         "minutes": 15,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
       },
       {
         "title": "Emergency Funding",
-        "completed": false,
+        "completed": true,
         "minutes": 15,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
       },
       {
         "title": "Extract DOIT Example",
-        "completed": false,
+        "completed": true,
         "minutes": 15,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
       },
       {
         "title": "Project Zombies",
         "completed": true,
         "minutes": 30,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
+      },
+      {
+        "title": "Prepare Deck DEG",
+        "completed": true,
+        "minutes": 30,
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
+      },
+      {
+        "title": "WFW to Draft SHL",
+        "completed": false,
+        "minutes": 15,
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
+      },
+      {
+        "title": "Security Documents Translation",
+        "completed": false,
+        "minutes": 15,
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
+      },
+      {
+        "title": "YAM2 Resolution Vistra",
+        "completed": false,
+        "minutes": 30,
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
+      },
+      {
+        "title": "YAM Resolution",
+        "completed": false,
+        "minutes": 30,
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
+      },
+      {
+        "title": "Project Eligible Cost",
+        "completed": false,
+        "minutes": 15,
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
+      },
+      {
+        "title": "Review CPs List",
+        "completed": false,
+        "minutes": 30,
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
+      },
+      {
+        "title": "Impact Review",
+        "completed": true,
+        "minutes": 15,
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
       }
     ],
     "dependsOn": [],
     "notes": null,
     "emailLink": null,
     "createdAt": "2026-08-06T05:11:20.512Z"
-  },
-  {
-    "title": "GYS1 Reporting",
-    "status": "Not started",
-    "category": "DELEGATE",
-    "project": null,
-    "priority": "medium",
-    "startDate": "2026-08-13",
-    "due": "2026-08-13",
-    "overdue": false,
-    "estimatedMinutes": 15,
-    "remainingMinutes": 15,
-    "aiAssisted": false,
-    "labels": [
-      "Financing",
-      "Thailand"
-    ],
-    "subtasks": [
-      {
-        "title": "Semi-Annual FS",
-        "completed": false,
-        "minutes": 15,
-        "aiAssisted": false
-      }
-    ],
-    "dependsOn": [],
-    "notes": null,
-    "emailLink": null,
-    "createdAt": "2026-08-06T06:36:47.514Z"
   },
   {
     "title": "YOKO AESMR",
@@ -1052,19 +1060,25 @@
         "title": "DEG Climate Check",
         "completed": true,
         "minutes": 15,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
       },
       {
         "title": "Gather info",
         "completed": false,
         "minutes": 15,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
       },
       {
         "title": "Review Report",
         "completed": false,
         "minutes": 15,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
       }
     ],
     "dependsOn": [],
@@ -1075,20 +1089,29 @@
   {
     "title": "Review FNG Invoice/Contract",
     "status": "Not started",
-    "category": "DO",
+    "category": "DELEGATE",
     "project": null,
     "priority": "medium",
-    "startDate": "2026-08-14",
-    "due": "2026-08-14",
+    "startDate": "2026-08-24",
+    "due": "2026-08-24",
     "overdue": false,
-    "estimatedMinutes": 30,
-    "remainingMinutes": 30,
+    "estimatedMinutes": 15,
+    "remainingMinutes": 15,
     "aiAssisted": false,
     "labels": [
       "M&A",
       "Thailand"
     ],
-    "subtasks": [],
+    "subtasks": [
+      {
+        "title": "Reconcile Invoice/Contract",
+        "completed": false,
+        "minutes": 15,
+        "aiAssisted": false,
+        "date": "2026-08-24",
+        "delegated": false
+      }
+    ],
     "dependsOn": [],
     "notes": null,
     "emailLink": null,
@@ -1097,9 +1120,9 @@
   {
     "title": "Interest SWAP Rate",
     "status": "Not started",
-    "category": "TO ALLOCATE",
+    "category": "NOT URGENT",
     "project": null,
-    "priority": "medium",
+    "priority": "low",
     "startDate": null,
     "due": null,
     "overdue": false,
@@ -1114,43 +1137,264 @@
     "createdAt": "2026-08-06T09:35:27.217Z"
   },
   {
-    "title": "EY Leakages Mandate",
-    "status": "Not started",
-    "category": "PLAN",
-    "project": "YOKO",
-    "priority": "high",
-    "startDate": "2026-08-10",
-    "due": "2026-08-10",
+    "title": "HOLCIM BDO",
+    "status": "In Progress",
+    "category": "DELEGATE",
+    "project": null,
+    "priority": "medium",
+    "startDate": "2026-08-24",
+    "due": "2026-08-24",
     "overdue": false,
-    "estimatedMinutes": 105,
-    "remainingMinutes": 105,
+    "estimatedMinutes": 75,
+    "remainingMinutes": null,
     "aiAssisted": false,
-    "labels": [
-      "YOKO"
-    ],
+    "labels": [],
     "subtasks": [
       {
-        "title": "Walkthrough FM",
-        "completed": false,
-        "minutes": 60,
-        "aiAssisted": false
+        "title": "Organize Meeting",
+        "completed": true,
+        "minutes": 15,
+        "aiAssisted": false,
+        "date": "2026-08-18",
+        "delegated": false
       },
       {
-        "title": "Research CIT",
+        "title": "Meeting with BDO",
         "completed": false,
         "minutes": 30,
-        "aiAssisted": false
+        "aiAssisted": false,
+        "date": "2026-08-24",
+        "delegated": true
       },
       {
-        "title": "Follow-up Items",
+        "title": "Obtain Project Overview",
         "completed": false,
-        "minutes": 15,
-        "aiAssisted": false
+        "minutes": 30,
+        "aiAssisted": false,
+        "date": "2026-08-24",
+        "delegated": true
       }
     ],
     "dependsOn": [],
     "notes": null,
     "emailLink": null,
-    "createdAt": "2026-08-07T02:17:46.925Z"
+    "createdAt": "2026-08-11T07:18:10.539Z"
+  },
+  {
+    "title": "MCIF Co-Bidding",
+    "status": "In Progress",
+    "category": "PLAN",
+    "project": "CLEANTECH",
+    "priority": "high",
+    "startDate": "2026-08-21",
+    "due": "2026-08-21",
+    "overdue": false,
+    "estimatedMinutes": 45,
+    "remainingMinutes": 15,
+    "aiAssisted": false,
+    "labels": [
+      "M&A",
+      "Thailand"
+    ],
+    "subtasks": [
+      {
+        "title": "Draft HoT",
+        "completed": false,
+        "minutes": 15,
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
+      },
+      {
+        "title": "Meeting with Keppel",
+        "completed": true,
+        "minutes": 30,
+        "aiAssisted": false,
+        "date": null,
+        "delegated": false
+      }
+    ],
+    "dependsOn": [],
+    "notes": null,
+    "emailLink": null,
+    "createdAt": "2026-08-13T10:02:45.171Z"
+  },
+  {
+    "title": "GYS1 Reporting",
+    "status": "Not started",
+    "category": "DELEGATE",
+    "project": null,
+    "priority": "medium",
+    "startDate": "2026-08-19",
+    "due": "2026-08-19",
+    "overdue": false,
+    "estimatedMinutes": 60,
+    "remainingMinutes": 45,
+    "aiAssisted": false,
+    "labels": [
+      "Financing",
+      "Thailand"
+    ],
+    "subtasks": [
+      {
+        "title": "Obtain Quotation PKF / MAP",
+        "completed": false,
+        "minutes": 15,
+        "aiAssisted": false,
+        "date": "2026-08-19",
+        "delegated": true
+      },
+      {
+        "title": "Review Quotation PKF/MAP",
+        "completed": false,
+        "minutes": 30,
+        "aiAssisted": true,
+        "date": "2026-08-24",
+        "delegated": false
+      },
+      {
+        "title": "Select PKF or MAP",
+        "completed": false,
+        "minutes": 15,
+        "aiAssisted": false,
+        "date": "2026-08-24",
+        "delegated": false
+      }
+    ],
+    "dependsOn": [],
+    "notes": null,
+    "emailLink": null,
+    "createdAt": "2026-08-14T06:00:11.451Z"
+  },
+  {
+    "title": "Cleantech DD",
+    "status": "In Progress",
+    "category": "PLAN",
+    "project": "CLEANTECH",
+    "priority": "urgent",
+    "startDate": "2026-08-19",
+    "due": "2026-08-19",
+    "overdue": false,
+    "estimatedMinutes": 180,
+    "remainingMinutes": 135,
+    "aiAssisted": false,
+    "labels": [],
+    "subtasks": [
+      {
+        "title": "Urgent Item List",
+        "completed": true,
+        "minutes": 15,
+        "aiAssisted": false,
+        "date": "2026-08-16",
+        "delegated": false
+      },
+      {
+        "title": "Review DD Plan",
+        "completed": false,
+        "minutes": 30,
+        "aiAssisted": false,
+        "date": "2026-08-19",
+        "delegated": false
+      },
+      {
+        "title": "Follow-Up WFW",
+        "completed": true,
+        "minutes": 15,
+        "aiAssisted": false,
+        "date": "2026-08-16",
+        "delegated": false
+      },
+      {
+        "title": "Review Ardian Deck",
+        "completed": false,
+        "minutes": 30,
+        "aiAssisted": false,
+        "date": "2026-08-19",
+        "delegated": false
+      },
+      {
+        "title": "Contact DFDL",
+        "completed": true,
+        "minutes": 15,
+        "aiAssisted": false,
+        "date": "2026-08-18",
+        "delegated": false
+      },
+      {
+        "title": "Review PPA Table KH",
+        "completed": false,
+        "minutes": 15,
+        "aiAssisted": true,
+        "date": null,
+        "delegated": false
+      },
+      {
+        "title": "Review FDD Report",
+        "completed": false,
+        "minutes": 30,
+        "aiAssisted": false,
+        "date": "2026-08-19",
+        "delegated": false
+      },
+      {
+        "title": "Review Memo KH",
+        "completed": false,
+        "minutes": 30,
+        "aiAssisted": false,
+        "date": "2026-08-24",
+        "delegated": false
+      }
+    ],
+    "dependsOn": [],
+    "notes": null,
+    "emailLink": null,
+    "createdAt": "2026-08-16T10:50:10.859Z"
+  },
+  {
+    "title": "Trinity Thai EL",
+    "status": "Not started",
+    "category": "DO",
+    "project": "COOP FINANCING",
+    "priority": "medium",
+    "startDate": "2026-08-19",
+    "due": "2026-08-19",
+    "overdue": false,
+    "estimatedMinutes": 30,
+    "remainingMinutes": 30,
+    "aiAssisted": false,
+    "labels": [],
+    "subtasks": [
+      {
+        "title": "Review EL",
+        "completed": false,
+        "minutes": 30,
+        "aiAssisted": false,
+        "date": "2026-08-19",
+        "delegated": false
+      }
+    ],
+    "dependsOn": [],
+    "notes": null,
+    "emailLink": null,
+    "createdAt": "2026-08-17T06:25:39.321Z"
+  },
+  {
+    "title": "Organize Email",
+    "status": "Not started",
+    "category": "DO",
+    "project": null,
+    "priority": "high",
+    "startDate": "2026-08-20",
+    "due": "2026-08-20",
+    "overdue": false,
+    "estimatedMinutes": 60,
+    "remainingMinutes": 60,
+    "aiAssisted": true,
+    "labels": [],
+    "subtasks": [],
+    "dependsOn": [],
+    "notes": null,
+    "emailLink": null,
+    "createdAt": "2026-08-18T16:17:01.607Z"
   }
 ]
