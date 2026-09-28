@@ -1835,7 +1835,13 @@ function openSubtaskHoverPreview(taskId, anchorEl) {
   const rect = anchorEl.getBoundingClientRect();
   subtaskHoverPreview.style.top = `${rect.bottom + 6}px`;
   subtaskHoverPreview.style.left = `${rect.left}px`;
+  subtaskHoverPreview.style.right = 'auto';
   subtaskHoverPreview.classList.remove('hidden');
+  // The popover is wider than a board column now (it sizes to its rows), so
+  // pull it back in when the strip sits near the right edge of the window.
+  const width = subtaskHoverPreview.offsetWidth;
+  const overflow = rect.left + width - (window.innerWidth - 12);
+  if (overflow > 0) subtaskHoverPreview.style.left = `${Math.max(12, rect.left - overflow)}px`;
 }
 
 // Toggling from the preview re-renders the whole app (status circle, board
