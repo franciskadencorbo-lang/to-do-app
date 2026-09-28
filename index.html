@@ -445,19 +445,28 @@
       <h2>Paste from Loop</h2>
       <button type="button" class="icon-btn" id="pasteLoopModalClose" aria-label="Close">✕</button>
     </div>
-    <p class="hint-text">Diagnostic mode. Copy the agenda table in Loop, click in the box below and press Ctrl+V. Nothing is changed in your tasks — this only shows what Loop put on the clipboard, so the importer can be built against it.</p>
+    <p class="hint-text">Copy the agenda table(s) in Loop, click in the box below and press Ctrl+V. You'll get a preview of every change found (assignee, due date, minutes, done, new sub-tasks) and nothing is applied until you confirm.</p>
     <textarea id="pasteLoopTarget" class="paste-target" placeholder="Click here, then Ctrl+V" rows="3"></textarea>
     <div id="pasteLoopResult" class="paste-result hidden">
       <div class="paste-result-bar">
         <span id="pasteLoopSummary" class="hint-text"></span>
-        <button type="button" id="pasteLoopCopyBtn" class="filter-btn">Copy diagnostic</button>
+        <span class="paste-result-actions">
+          <button type="button" id="pasteLoopSelectAllBtn" class="link-btn">Select all</button>
+          <button type="button" id="pasteLoopSelectNoneBtn" class="link-btn">None</button>
+          <button type="button" id="pasteLoopApplyBtn" class="add-btn">Apply selected</button>
+        </span>
       </div>
-      <div class="form-section-label">Clipboard formats</div>
-      <pre id="pasteLoopTypes" class="diag-pre"></pre>
-      <div class="form-section-label">Plain text</div>
-      <pre id="pasteLoopText" class="diag-pre"></pre>
-      <div class="form-section-label">HTML</div>
-      <pre id="pasteLoopHtml" class="diag-pre"></pre>
+      <div id="pasteLoopChanges" class="paste-changes"></div>
+      <details class="paste-raw">
+        <summary>Raw clipboard (for troubleshooting)</summary>
+        <button type="button" id="pasteLoopCopyBtn" class="filter-btn">Copy diagnostic</button>
+        <div class="form-section-label">Clipboard formats</div>
+        <pre id="pasteLoopTypes" class="diag-pre"></pre>
+        <div class="form-section-label">Plain text</div>
+        <pre id="pasteLoopText" class="diag-pre"></pre>
+        <div class="form-section-label">HTML</div>
+        <pre id="pasteLoopHtml" class="diag-pre"></pre>
+      </details>
     </div>
   </div>
 </div>

@@ -1483,10 +1483,17 @@ manageAssigneesBtn.addEventListener('click', (e) => {
   openAssigneeManagePopover(settingsBtn);
 });
 
-// ---------- Paste from Loop (diagnostic) ----------
-// First step of the Loop -> app return path. Shows exactly what Loop puts on
-// the clipboard (formats, plain text, HTML) so the importer can be written
-// against Loop's real output. Touches no task data.
+// ---------- Paste from Loop (agenda table -> app) ----------
+// The return path of the meeting agenda. Loop copies its table as real HTML
+// (checked against a real paste): a header row with the column names, one
+// <tr> per row, and blank Task/Project cells on the rows that continue a
+// task. Rows are matched to tasks and sub-tasks by title, every difference
+// becomes a line in a preview, and nothing is written until "Apply selected".
+// Task-level fields and task titles are deliberately not editable this way —
+// the title is what the match relies on.
+
+const LOOP_ME_NAME = 'Francis';        // what the agenda prints for non-delegated rows
+const LOOP_UNASSIGNED = 'Unassigned';
 
 const pasteLoopBtn = document.getElementById('pasteLoopBtn');
 const pasteLoopModalOverlay = document.getElementById('pasteLoopModalOverlay');
@@ -1494,15 +1501,22 @@ const pasteLoopModalClose = document.getElementById('pasteLoopModalClose');
 const pasteLoopTarget = document.getElementById('pasteLoopTarget');
 const pasteLoopResult = document.getElementById('pasteLoopResult');
 const pasteLoopSummary = document.getElementById('pasteLoopSummary');
+const pasteLoopChanges = document.getElementById('pasteLoopChanges');
+const pasteLoopApplyBtn = document.getElementById('pasteLoopApplyBtn');
+const pasteLoopSelectAllBtn = document.getElementById('pasteLoopSelectAllBtn');
+const pasteLoopSelectNoneBtn = document.getElementById('pasteLoopSelectNoneBtn');
 const pasteLoopTypes = document.getElementById('pasteLoopTypes');
 const pasteLoopText = document.getElementById('pasteLoopText');
 const pasteLoopHtml = document.getElementById('pasteLoopHtml');
 const pasteLoopCopyBtn = document.getElementById('pasteLoopCopyBtn');
 let lastLoopDiagnostic = null;
+let loopPlan = null;
 
 function openPasteLoopModal() {
   pasteLoopTarget.value = '';
   pasteLoopResult.classList.add('hidden');
+  pasteLoopChanges.innerHTML = '';
+  loopPlan = null;
   pasteLoopModalOverlay.classList.remove('hidden');
   pasteLoopTarget.focus();
 }
@@ -1521,6 +1535,229 @@ pasteLoopModalOverlay.addEventListener('click', (e) => {
   if (e.target === pasteLoopModalOverlay) closePasteLoopModal();
 });
 
+// Titles are compared without the 📝/✉ markers the agenda appends, case- and
+// whitespace-insensitively.
+function normTitle(s) {
+  return (s || '').replace(/[📝✉]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+function cellText(td) {
+  return (td.textContent || '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+const LOOP_MONTHS = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, sept: 8, oct: 9, nov: 10, dec: 11 };
+
+// Accepts what the agenda prints ("Thu Sep 24 · overdue") and what someone is
+// likely to type into the cell during the meeting: "Oct 3", "3 Oct",
+// "Oct 3, 2026", "3/10/2026" (day first), "2026-10-03". A date with no year
+// gets whichever year puts it nearest to today.
+function parseLoopDate(text) {
+  let s = (text || '').replace(/·.*$/, '').trim();
+  if (!s || s === '—' || s === '-') return null;
+  s = s.replace(/^(mon|tue|wed|thu|fri|sat|sun)[a-z]*\.?,?\s+/i, '');
+  let m;
+  if ((m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))) return toDateKey(new Date(+m[1], +m[2] - 1, +m[3]));
+  if ((m = s.match(/^(\d{1,2})[/.](\d{1,2})[/.](\d{2,4})$/))) {
+    let y = +m[3];
+    if (y < 100) y += 2000;
+    return toDateKey(new Date(y, +m[2] - 1, +m[1]));
+  }
+  let mon; let day; let year = null;
+  if ((m = s.match(/^([a-z]+)\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s+(\d{4}))?$/i))) {
+    mon = LOOP_MONTHS[m[1].toLowerCase()]; day = +m[2]; year = m[3] ? +m[3] : null;
+  } else if ((m = s.match(/^(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]+)\.?(?:,?\s+(\d{4}))?$/i))) {
+    day = +m[1]; mon = LOOP_MONTHS[m[2].toLowerCase()]; year = m[3] ? +m[3] : null;
+  }
+  if (mon === undefined || !day) return null;
+  if (year) return toDateKey(new Date(year, mon, day));
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const y0 = today.getFullYear();
+  let best = null; let bestDist = Infinity;
+  [y0 - 1, y0, y0 + 1].forEach((y) => {
+    const d = new Date(y, mon, day);
+    const dist = Math.abs(d - today);
+    if (dist < bestDist) { best = d; bestDist = dist; }
+  });
+  return toDateKey(best);
+}
+
+// "☐ Prepare COMEX Slides (60 min)" -> title, done flag, minutes. A ticked box
+// (☑ ✓ ✔ [x]) or a struck-through-looking marker means done; a missing marker
+// is treated as open, not as a change.
+function parseSubtaskCell(text) {
+  let s = (text || '').trim();
+  if (!s || s === '—' || s === '-') return null;
+  let done = false;
+  const marker = s.match(/^(\[\s*[xX✓✔]\s*\]|\[\s*\]|[☐☑☒✓✔✅✗✘])\s*/);
+  if (marker) {
+    done = /[xX✓✔☑☒✅]/.test(marker[1]);
+    s = s.slice(marker[0].length);
+  }
+  let minutes = null;
+  const mm = s.match(/\((\d+)\s*mins?\)\s*$/i);
+  if (mm) {
+    minutes = +mm[1];
+    s = s.slice(0, mm.index);
+  }
+  return { title: s.trim(), done, minutes };
+}
+
+// Every table with a "Task" and a sub-task column, in document order. Columns
+// are found by header text, so reordering them in Loop is fine.
+function parseLoopTables(htmlData) {
+  const doc = new DOMParser().parseFromString(htmlData, 'text/html');
+  const rows = [];
+  doc.querySelectorAll('table').forEach((table) => {
+    const trs = [...table.querySelectorAll('tr')];
+    if (trs.length < 2) return;
+    const header = [...trs[0].children].map((c) => cellText(c).toLowerCase());
+    const col = {
+      task: header.findIndex((h) => /^task/.test(h)),
+      project: header.findIndex((h) => /^project/.test(h)),
+      sub: header.findIndex((h) => /sub-?task/.test(h)),
+      assignee: header.findIndex((h) => /^(assignee|owner)/.test(h)),
+      due: header.findIndex((h) => /^due/.test(h)),
+    };
+    if (col.task < 0 || col.sub < 0) return;
+    let currentTask = null;
+    trs.slice(1).forEach((tr) => {
+      const cells = [...tr.children];
+      const get = (i) => (i >= 0 && cells[i] ? cellText(cells[i]) : '');
+      const rawTask = get(col.task);
+      if (rawTask) currentTask = rawTask;
+      if (!currentTask) return;
+      rows.push({ taskTitle: currentTask, project: get(col.project), sub: get(col.sub), assignee: get(col.assignee), due: get(col.due) });
+    });
+  });
+  return rows;
+}
+
+function findTaskByTitle(title) {
+  const key = normTitle(title);
+  if (!key) return null;
+  return tasks.find((t) => !t.completed && normTitle(t.title) === key)
+    || tasks.find((t) => normTitle(t.title) === key)
+    || null;
+}
+
+// Turns parsed rows into a list of independent, individually-selectable
+// changes. Each carries an apply() that writes to the live task object.
+function planLoopImport(rows) {
+  const changes = [];
+  const unmatched = [];
+  const unmatchedSeen = new Set();
+
+  rows.forEach((row) => {
+    const task = findTaskByTitle(row.taskTitle);
+    if (!task) {
+      const key = normTitle(row.taskTitle);
+      if (!unmatchedSeen.has(key)) {
+        unmatchedSeen.add(key);
+        unmatched.push(row.taskTitle.replace(/[📝✉]/g, '').trim());
+      }
+      return;
+    }
+    const parsed = parseSubtaskCell(row.sub);
+    if (!parsed || !parsed.title) return; // task-only row — nothing editable here in v1
+
+    const isDelegate = isDelegateTask(task);
+    const sub = (task.subtasks || []).find((s) => normTitle(s.title) === normTitle(parsed.title));
+    const assigneeText = (row.assignee || '').trim();
+    const wantsPerson = !!assigneeText && ![LOOP_ME_NAME, LOOP_UNASSIGNED, '—', '-'].includes(assigneeText);
+    const newDate = parseLoopDate(row.due);
+    const q = (s) => `“${s}”`;
+
+    if (!sub) {
+      const entry = {
+        id: uid(), title: parsed.title, completed: parsed.done, minutes: parsed.minutes || 0,
+        ai: assigneeText === AI_ASSIGNEE.name, date: newDate, delegated: false, assignee: null,
+      };
+      const notes = [];
+      if (wantsPerson && isDelegate) { entry.delegated = true; entry.assignee = assigneeText; notes.push(`→ ${assigneeText}`); }
+      else if (wantsPerson) notes.push(`(${assigneeText} ignored — task isn't DELEGATE)`);
+      if (entry.minutes) notes.push(`${entry.minutes} min`);
+      if (newDate) notes.push(formatShortDate(newDate));
+      if (parsed.done) notes.push('done');
+      changes.push({
+        task, kind: 'add',
+        label: `New sub-task ${q(parsed.title)}${notes.length ? ' · ' + notes.join(' · ') : ''}`,
+        apply: () => {
+          if (!getAssignee(entry.assignee) && entry.assignee) { assignees.push({ name: entry.assignee, kind: 'person' }); saveAssignees(); }
+          task.subtasks = task.subtasks || [];
+          task.subtasks.push(entry);
+        },
+      });
+      return;
+    }
+
+    if (parsed.done && !sub.completed) {
+      changes.push({ task, kind: 'done', label: `Mark ${q(sub.title)} done`, apply: () => { sub.completed = true; } });
+    }
+    if (parsed.minutes !== null && parsed.minutes !== (sub.minutes || 0)) {
+      changes.push({ task, kind: 'minutes', label: `${q(sub.title)}: ${sub.minutes || 0} → ${parsed.minutes} min`, apply: () => { sub.minutes = parsed.minutes; } });
+    }
+    const effectiveDate = sub.date || task.due || null;
+    if (newDate && newDate !== effectiveDate) {
+      changes.push({
+        task, kind: 'date',
+        label: `${q(sub.title)}: due ${effectiveDate ? formatShortDate(effectiveDate) : '—'} → ${formatShortDate(newDate)}`,
+        apply: () => { sub.date = newDate; },
+      });
+    }
+    if (assigneeText) {
+      if (wantsPerson) {
+        if (!isDelegate) {
+          changes.push({ task, kind: 'warn', disabled: true, label: `${q(sub.title)}: can't assign to ${assigneeText} — the task isn't DELEGATE (change its Effort/Impact first)` });
+        } else if (!(sub.delegated && sub.assignee === assigneeText)) {
+          const known = !!getAssignee(assigneeText);
+          changes.push({
+            task, kind: 'assign',
+            label: `${q(sub.title)}: assign to ${assigneeText}${sub.assignee ? ` (was ${sub.assignee})` : ''}${known ? '' : ' — new name, will be added to Manage Assignees'}`,
+            apply: () => {
+              if (!getAssignee(assigneeText)) { assignees.push({ name: assigneeText, kind: 'person' }); saveAssignees(); }
+              sub.delegated = true;
+              sub.assignee = assigneeText;
+              if (assigneeText === AI_ASSIGNEE.name) sub.ai = true;
+            },
+          });
+        }
+      } else if (assigneeText === LOOP_ME_NAME && isDelegate && sub.delegated) {
+        changes.push({ task, kind: 'assign', label: `${q(sub.title)}: back to ${LOOP_ME_NAME} (no longer delegated)`, apply: () => { sub.delegated = false; } });
+      } else if (assigneeText === LOOP_UNASSIGNED && isDelegate && sub.delegated && sub.assignee) {
+        changes.push({ task, kind: 'assign', label: `${q(sub.title)}: clear assignee (was ${sub.assignee})`, apply: () => { sub.assignee = null; } });
+      }
+    }
+  });
+
+  return { changes, unmatched };
+}
+
+function renderLoopPlan(plan, rowCount) {
+  loopPlan = plan;
+  const byTask = new Map();
+  plan.changes.forEach((c, i) => {
+    c.idx = i;
+    if (!byTask.has(c.task.id)) byTask.set(c.task.id, { task: c.task, items: [] });
+    byTask.get(c.task.id).items.push(c);
+  });
+  let htmlOut = '';
+  byTask.forEach(({ task, items }) => {
+    htmlOut += `<div class="paste-group"><div class="paste-group-title">${escapeHtml(task.title)} <span class="paste-group-cat">${escapeHtml(task.category)}</span></div>`
+      + items.map((c) => (c.disabled
+        ? `<div class="paste-change paste-change-warn">⚠ ${escapeHtml(c.label)}</div>`
+        : `<label class="paste-change"><input type="checkbox" class="paste-change-cb" data-idx="${c.idx}" checked> ${escapeHtml(c.label)}</label>`)).join('')
+      + '</div>';
+  });
+  if (plan.unmatched.length) {
+    htmlOut += `<div class="paste-group"><div class="paste-group-title">Not found in your tasks — skipped</div>${plan.unmatched.map((t) => `<div class="paste-change paste-change-warn">${escapeHtml(t)}</div>`).join('')}</div>`;
+  }
+  const n = plan.changes.filter((c) => !c.disabled).length;
+  pasteLoopChanges.innerHTML = htmlOut || '<p class="hint-text">No differences found — your tasks already match the table.</p>';
+  pasteLoopSummary.textContent = `${rowCount} row(s) read · ${n} change(s) found`;
+  pasteLoopApplyBtn.disabled = n === 0;
+}
+
 pasteLoopTarget.addEventListener('paste', (e) => {
   const cd = e.clipboardData;
   if (!cd) return;
@@ -1528,30 +1765,53 @@ pasteLoopTarget.addEventListener('paste', (e) => {
   const types = [...cd.types];
   const htmlData = cd.getData('text/html') || '';
   const textData = cd.getData('text/plain') || '';
-  // A quick structural read of the HTML so the summary line says something
-  // useful even before the full importer exists.
-  let tables = 0; let rows = 0;
-  try {
-    const doc = new DOMParser().parseFromString(htmlData, 'text/html');
-    tables = doc.querySelectorAll('table').length;
-    rows = doc.querySelectorAll('tr').length;
-  } catch { /* summary only */ }
-
-  lastLoopDiagnostic = {
-    capturedAt: new Date().toISOString(),
-    userAgent: navigator.userAgent,
-    types,
-    tables,
-    rows,
-    text: textData,
-    html: htmlData,
-  };
-  pasteLoopSummary.textContent = `${types.length} format(s) · ${tables} table(s), ${rows} row(s) · HTML ${htmlData.length.toLocaleString()} chars · text ${textData.length.toLocaleString()} chars`;
+  lastLoopDiagnostic = { capturedAt: new Date().toISOString(), userAgent: navigator.userAgent, types, text: textData, html: htmlData };
   pasteLoopTypes.textContent = types.join('\n') || '(none)';
   pasteLoopText.textContent = textData || '(empty)';
   pasteLoopHtml.textContent = htmlData || '(empty)';
   pasteLoopResult.classList.remove('hidden');
-  pasteLoopTarget.value = 'Captured — see below. Paste again to replace.';
+  pasteLoopTarget.value = 'Captured — review the changes below. Paste again to replace.';
+
+  if (!htmlData) {
+    pasteLoopChanges.innerHTML = '<p class="hint-text">The clipboard has no HTML table — copy the table itself in Loop (not the plain text) and paste again.</p>';
+    pasteLoopSummary.textContent = 'No table found';
+    pasteLoopApplyBtn.disabled = true;
+    loopPlan = null;
+    return;
+  }
+  try {
+    const rows = parseLoopTables(htmlData);
+    renderLoopPlan(planLoopImport(rows), rows.length);
+  } catch (err) {
+    pasteLoopChanges.innerHTML = `<p class="hint-text">Could not read the table: ${escapeHtml(err.message)}. The raw clipboard below can be sent for troubleshooting.</p>`;
+    pasteLoopSummary.textContent = 'Error';
+    pasteLoopApplyBtn.disabled = true;
+    loopPlan = null;
+  }
+});
+
+pasteLoopSelectAllBtn.addEventListener('click', () => {
+  pasteLoopChanges.querySelectorAll('.paste-change-cb').forEach((cb) => { cb.checked = true; });
+});
+pasteLoopSelectNoneBtn.addEventListener('click', () => {
+  pasteLoopChanges.querySelectorAll('.paste-change-cb').forEach((cb) => { cb.checked = false; });
+});
+
+pasteLoopApplyBtn.addEventListener('click', () => {
+  if (!loopPlan) return;
+  const selected = [...pasteLoopChanges.querySelectorAll('.paste-change-cb:checked')].map((cb) => loopPlan.changes[+cb.dataset.idx]).filter(Boolean);
+  if (!selected.length) return;
+  const touched = new Set();
+  selected.forEach((c) => { c.apply(); touched.add(c.task); });
+  // Same follow-through as the Edit Task form: dates roll up, status follows sub-tasks.
+  touched.forEach((t) => { applyDueRollup(t); recalcStatus(t); });
+  saveTasks();
+  renderAssigneeOptions();
+  render();
+  pasteLoopChanges.innerHTML = `<p class="hint-text">Applied ${selected.length} change(s) across ${touched.size} task(s). Re-export for the next agenda when you're done.</p>`;
+  pasteLoopSummary.textContent = 'Done';
+  pasteLoopApplyBtn.disabled = true;
+  loopPlan = null;
 });
 
 pasteLoopCopyBtn.addEventListener('click', async () => {
