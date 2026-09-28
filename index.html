@@ -357,6 +357,7 @@
         <input type="date" id="subtaskDateInput" class="subtask-date-input" title="Optional sub-task Due Date — the task's own Due Date follows the latest one. Leave blank to count it on the task's Due Date">
         <label class="ai-checkbox-label" title="AI-assisted sub-task"><input type="checkbox" id="subtaskAiInput">AI</label>
         <label class="ai-checkbox-label delegated-checkbox-label hidden" id="subtaskDelegatedWrap" title="This sub-task is done by the delegate, not by you"><input type="checkbox" id="subtaskDelegatedInput">Deleg.</label>
+        <select id="subtaskAssigneeInput" class="subtask-assignee-select hidden" title="Who this sub-task is delegated to"></select>
       </div>
       <ul id="subtaskDraftList" class="subtask-draft-list"></ul>
 
@@ -420,6 +421,7 @@
         <input type="date" id="editSubtaskDateInput" class="subtask-date-input" title="Optional sub-task Due Date — the task's own Due Date follows the latest one. Leave blank to count it on the task's Due Date">
         <label class="ai-checkbox-label" title="AI-assisted sub-task"><input type="checkbox" id="editSubtaskAiInput">AI</label>
         <label class="ai-checkbox-label delegated-checkbox-label hidden" id="editSubtaskDelegatedWrap" title="This sub-task is done by the delegate, not by you"><input type="checkbox" id="editSubtaskDelegatedInput">Deleg.</label>
+        <select id="editSubtaskAssigneeInput" class="subtask-assignee-select hidden" title="Who this sub-task is delegated to"></select>
       </div>
       <ul id="editSubtaskDraftList" class="subtask-draft-list"></ul>
 
@@ -447,6 +449,7 @@
 <div class="dropdown-panel settings-popover hidden" id="settingsPopover">
   <button type="button" id="manageProjectsBtn" class="filter-btn">🗂 Manage Projects</button>
   <button type="button" id="manageLabelsBtn" class="filter-btn">🏷 Manage Labels</button>
+  <button type="button" id="manageAssigneesBtn" class="filter-btn" title="People and departments you delegate sub-tasks to">👥 Manage Assignees</button>
   <button type="button" id="exportBtn" class="filter-btn">⬇ Export</button>
   <button type="button" id="exportCsvBtn" class="filter-btn">⬇ Export to Excel</button>
   <button type="button" id="exportActiveJsonBtn" class="filter-btn" title="Export Not Started / In Progress tasks as JSON, for a Claude Skill">⬇ Export for AI Skill</button>
@@ -470,6 +473,18 @@
     <button type="button" id="addLabelBtn" class="add-btn">Add</button>
   </div>
   <ul id="labelListUl" class="project-list"></ul>
+</div>
+
+<div class="dropdown-panel assignee-manage-popover hidden" id="assigneeManagePopover">
+  <div class="project-add-row assignee-add-row">
+    <input type="text" id="newAssigneeInput" placeholder="Name or department code" autocomplete="off">
+    <select id="newAssigneeKind" class="assignee-kind-select" title="Person or department">
+      <option value="person">Person</option>
+      <option value="department">Department</option>
+    </select>
+    <button type="button" id="addAssigneeBtn" class="add-btn">Add</button>
+  </div>
+  <ul id="assigneeListUl" class="project-list"></ul>
 </div>
 
 <div class="dropdown-panel subtask-hover-preview hidden" id="subtaskHoverPreview"></div>
