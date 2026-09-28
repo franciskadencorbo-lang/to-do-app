@@ -12,8 +12,9 @@
   table { border-collapse: collapse; width: 100%; }
   th, td { border: 1px solid #cfd4dc; padding: 6px 8px; text-align: left; vertical-align: top; }
   th { background: #f1f4fa; }
-  td:nth-child(1) { white-space: nowrap; }
-  td:nth-child(5), td:nth-child(6) { white-space: nowrap; }
+  tr.first td { border-top: 2px solid #9aa3b4; }
+  td:nth-child(4), td:nth-child(5) { white-space: nowrap; }
+  .mins { color: #666; }
   .howto { color: #666; font-size: 12.5px; margin-top: 28px; }
 </style>
 </head>
@@ -25,54 +26,63 @@
 <h2>Needs attention — overdue or due before this meeting</h2>
 <table>
   <thead>
-    <tr><th>Owner</th><th>Task</th><th>Project</th><th>Open sub-tasks</th><th>Due</th><th>Priority</th></tr>
+    <tr><th>Task</th><th>Project</th><th>Open sub-task</th><th>Assignee</th><th>Due date</th></tr>
   </thead>
   <tbody>
-<tr><td>Unassigned</td><td><strong>GYS4/6 Financing</strong></td><td>GYS4/6</td><td>☐ Prepare COMEX Slides · <em>Unassigned</em> · 60 min</td><td><strong>Thu Sep 24 · overdue</strong></td><td>High</td></tr>
-<tr><td>Francis</td><td><strong>GYS1 BSA/Mortgage</strong></td><td>—</td><td>☐ Engage Hunton · 15 min · Fri Sep 25<br>☐ Launch the mandate · 15 min · Fri Sep 25</td><td><strong>Fri Sep 25 · overdue</strong></td><td>High</td></tr>
-<tr><td>Francis</td><td><strong>COOP1 Financing</strong></td><td>COOP FINANCING</td><td>☐ Review Indicative Offer · 15 min · Fri Sep 25</td><td><strong>Fri Sep 25 · overdue</strong></td><td>High</td></tr>
-<tr><td>Unassigned</td><td><strong>KBANK Reporting</strong></td><td>—</td><td>—</td><td><strong>Fri Sep 25 · overdue</strong></td><td>Medium</td></tr>
-<tr><td>Unassigned</td><td><strong>GYS1 Reporting</strong></td><td>—</td><td>☐ Semi-Annual FS · <em>Unassigned</em> · 15 min · Fri Sep 25</td><td><strong>Fri Sep 25 · overdue</strong></td><td>Medium</td></tr>
-<tr><td>Francis</td><td><strong>Project Equinox</strong> 📝 <a href="https://outlook.office.com/mail/deeplink/read/AQMkADFiMzI0ZDk4LTUzZTYtNDZhZS04OWJjLTBmYTAzYWZlMzU0NQBGAAAD4HEGXQhHc0K6hOaJw51ijAcAlcvxquWzr0KBsLlnXCNZ7wAAAgEMAAAAlcvxquWzr0KBsLlnXCNZ7wAHLyvrxwAAAA%3D%3D?popoutv2=1">✉</a></td><td>CLEANTECH</td><td>☐ Obtain quotation from Marsh · 15 min · Fri Sep 25<br>☐ Test Buy-Out Table · 30 min · Fri Sep 25</td><td><strong>Fri Sep 25 · overdue</strong></td><td>Low</td></tr>
-<tr><td>Unassigned</td><td><strong>NEFIN FM</strong></td><td>NEFIN</td><td>☐ Prepare Suggestion to CEO · <em>Unassigned</em> · 15 min · Sun Sep 27</td><td><strong>Sun Sep 27 · overdue</strong></td><td>Medium</td></tr>
-<tr><td>Francis</td><td><strong>YOKO Board</strong></td><td>YOKO</td><td>☐ Update Dashboard · 60 min · Sat Sep 26<br>☐ Board Pack · 120 min · Sat Sep 26</td><td>Mon Sep 28</td><td>Medium</td></tr>
-<tr><td>Francis</td><td><strong>YAM Financing</strong></td><td>YAM FINANCING</td><td>☐ DBS Account Agreement · 15 min<br>☐ Orrick Overrun · 15 min · Mon Sep 28</td><td>Mon Sep 28</td><td>Medium</td></tr>
+<tr class="first"><td><strong>GYS4/6 Financing</strong></td><td>GYS4/6</td><td>☐ Prepare COMEX Slides <span class="mins">(60 min)</span></td><td>Unassigned</td><td><strong>Thu Sep 24 · overdue</strong></td></tr>
+<tr class="first"><td><strong>GYS1 BSA/Mortgage</strong></td><td>—</td><td>☐ Engage Hunton <span class="mins">(15 min)</span></td><td>Francis</td><td><strong>Fri Sep 25 · overdue</strong></td></tr>
+<tr><td></td><td></td><td>☐ Launch the mandate <span class="mins">(15 min)</span></td><td>Francis</td><td><strong>Fri Sep 25 · overdue</strong></td></tr>
+<tr class="first"><td><strong>COOP1 Financing</strong></td><td>COOP FINANCING</td><td>☐ Review Indicative Offer <span class="mins">(15 min)</span></td><td>Francis</td><td><strong>Fri Sep 25 · overdue</strong></td></tr>
+<tr class="first"><td><strong>KBANK Reporting</strong></td><td>—</td><td>—</td><td>Unassigned</td><td><strong>Fri Sep 25 · overdue</strong></td></tr>
+<tr class="first"><td><strong>GYS1 Reporting</strong></td><td>—</td><td>☐ Semi-Annual FS <span class="mins">(15 min)</span></td><td>Unassigned</td><td><strong>Fri Sep 25 · overdue</strong></td></tr>
+<tr class="first"><td><strong>Project Equinox</strong> 📝 <a href="https://outlook.office.com/mail/deeplink/read/AQMkADFiMzI0ZDk4LTUzZTYtNDZhZS04OWJjLTBmYTAzYWZlMzU0NQBGAAAD4HEGXQhHc0K6hOaJw51ijAcAlcvxquWzr0KBsLlnXCNZ7wAAAgEMAAAAlcvxquWzr0KBsLlnXCNZ7wAHLyvrxwAAAA%3D%3D?popoutv2=1">✉</a></td><td>CLEANTECH</td><td>☐ Obtain quotation from Marsh <span class="mins">(15 min)</span></td><td>Francis</td><td><strong>Fri Sep 25 · overdue</strong></td></tr>
+<tr><td></td><td></td><td>☐ Test Buy-Out Table <span class="mins">(30 min)</span></td><td>Francis</td><td><strong>Fri Sep 25 · overdue</strong></td></tr>
+<tr class="first"><td><strong>NEFIN FM</strong></td><td>NEFIN</td><td>☐ Prepare Suggestion to CEO <span class="mins">(15 min)</span></td><td>Unassigned</td><td><strong>Sun Sep 27 · overdue</strong></td></tr>
+<tr class="first"><td><strong>YOKO Board</strong></td><td>YOKO</td><td>☐ Update Dashboard <span class="mins">(60 min)</span></td><td>Francis</td><td><strong>Sat Sep 26 · overdue</strong></td></tr>
+<tr><td></td><td></td><td>☐ Board Pack <span class="mins">(120 min)</span></td><td>Francis</td><td><strong>Sat Sep 26 · overdue</strong></td></tr>
+<tr class="first"><td><strong>YAM Financing</strong></td><td>YAM FINANCING</td><td>☐ Orrick Overrun <span class="mins">(15 min)</span></td><td>Francis</td><td><strong>Mon Sep 28 · overdue</strong></td></tr>
+<tr><td></td><td></td><td>☐ DBS Account Agreement <span class="mins">(15 min)</span></td><td>Francis</td><td><strong>Mon Sep 28 · overdue</strong></td></tr>
   </tbody>
 </table>
 
 <h2>For the team — delegated items</h2>
 <table>
   <thead>
-    <tr><th>Owner</th><th>Task</th><th>Project</th><th>Open sub-tasks</th><th>Due</th><th>Priority</th></tr>
+    <tr><th>Task</th><th>Project</th><th>Open sub-task</th><th>Assignee</th><th>Due date</th></tr>
   </thead>
   <tbody>
-<tr><td>Francis</td><td><strong>Pipeline ERC/BOI</strong></td><td>—</td><td>☐ Contact Business France · 30 min · Fri Oct 2</td><td>Fri Oct 2</td><td>Medium</td></tr>
-<tr><td>Unassigned, Francis</td><td><strong>Project Tire</strong></td><td>SOLAR D</td><td>☐ Build Financial Model · <em>Unassigned</em> · 15 min · Wed Sep 30<br>☐ Prepare NBO · 30 min · Wed Sep 30<br>☐ Prepare Deck M&amp;A Process · <em>Unassigned</em> · 15 min · Wed Sep 30</td><td>Wed Oct 7</td><td>High</td></tr>
-<tr><td>Francis</td><td><strong>Holdback Tipco</strong></td><td>YOKO</td><td>☐ Update Documentation · 60 min · Fri Oct 9</td><td>Fri Oct 9</td><td>Medium</td></tr>
+<tr class="first"><td><strong>Pipeline ERC/BOI</strong></td><td>—</td><td>☐ Contact Business France <span class="mins">(30 min)</span></td><td>Francis</td><td>Fri Oct 2</td></tr>
+<tr class="first"><td><strong>Project Tire</strong></td><td>SOLAR D</td><td>☐ Build Financial Model <span class="mins">(15 min)</span></td><td>Unassigned</td><td>Wed Sep 30</td></tr>
+<tr><td></td><td></td><td>☐ Prepare NBO <span class="mins">(30 min)</span></td><td>Francis</td><td>Wed Sep 30</td></tr>
+<tr><td></td><td></td><td>☐ Prepare Deck M&amp;A Process <span class="mins">(15 min)</span></td><td>Unassigned</td><td>Wed Sep 30</td></tr>
+<tr class="first"><td><strong>Holdback Tipco</strong></td><td>YOKO</td><td>☐ Update Documentation <span class="mins">(60 min)</span></td><td>Francis</td><td>Fri Oct 9</td></tr>
   </tbody>
 </table>
 
 <h2>Status updates — other active work</h2>
 <table>
   <thead>
-    <tr><th>Owner</th><th>Task</th><th>Project</th><th>Open sub-tasks</th><th>Due</th><th>Priority</th></tr>
+    <tr><th>Task</th><th>Project</th><th>Open sub-task</th><th>Assignee</th><th>Due date</th></tr>
   </thead>
   <tbody>
-<tr><td>Francis</td><td><strong>Review Trinity EL</strong></td><td>COOP FINANCING</td><td>☐ Obtain Offer · 15 min · Fri Oct 2</td><td>Fri Oct 2</td><td>Medium</td></tr>
-<tr><td>Francis</td><td><strong>YOKO SA Tracker</strong></td><td>YOKO</td><td>—</td><td>Fri Oct 9</td><td>Low</td></tr>
-<tr><td>Francis</td><td><strong>Loan Monitoring</strong></td><td>—</td><td>☐ Review Template · 60 min · Fri Oct 9<br>☐ Add Thailand · 120 min · Fri Oct 9<br>☐ Create Dashboard · 60 min · Fri Oct 9</td><td>Fri Oct 9</td><td>Low</td></tr>
-<tr><td>Francis</td><td><strong>YOKO Reporting</strong></td><td>YOKO</td><td>☐ Monthly Report August · 30 min · Fri Sep 25<br>☐ Update Semi-Annual FM · 180 min · Thu Oct 15</td><td>Thu Oct 15</td><td>Urgent</td></tr>
-<tr><td>Francis</td><td><strong>Interest SWAP Rate</strong> 📝 <a href="https://outlook.office.com/mail/deeplink/read/AAkALgAAAAAAHYQDEapmEc2byACqAC%2FEWg0AlcvxquWzr0KBsLlnXCNZ7wADqxsHuQAA?popoutv2=1">✉</a></td><td>—</td><td>—</td><td>—</td><td>Low</td></tr>
-<tr><td>Francis</td><td><strong>Follow-Up Invoice from DEG to GYSAS</strong></td><td>—</td><td>—</td><td>—</td><td>Low</td></tr>
-<tr><td>Francis</td><td><strong>Email from Ja for Agency</strong></td><td>—</td><td>—</td><td>—</td><td>Low</td></tr>
-<tr><td>Francis</td><td><strong>Feedback Nink</strong></td><td>—</td><td>—</td><td>—</td><td>Low</td></tr>
-<tr><td>Francis</td><td><strong>Feedback Duong</strong></td><td>—</td><td>—</td><td>—</td><td>Low</td></tr>
-<tr><td>Francis</td><td><strong>Feedback to AFRY</strong></td><td>—</td><td>—</td><td>—</td><td>Low</td></tr>
-<tr><td>Francis</td><td><strong>Financing Budget FY2027</strong></td><td>—</td><td>—</td><td>—</td><td>Low</td></tr>
-<tr><td>Francis</td><td><strong>Schedule meeting with BSP/VP Bank/TCB</strong></td><td>—</td><td>—</td><td>—</td><td>Low</td></tr>
+<tr class="first"><td><strong>Review Trinity EL</strong></td><td>COOP FINANCING</td><td>☐ Obtain Offer <span class="mins">(15 min)</span></td><td>Francis</td><td>Fri Oct 2</td></tr>
+<tr class="first"><td><strong>YOKO SA Tracker</strong></td><td>YOKO</td><td>—</td><td>Francis</td><td>Fri Oct 9</td></tr>
+<tr class="first"><td><strong>Loan Monitoring</strong></td><td>—</td><td>☐ Review Template <span class="mins">(60 min)</span></td><td>Francis</td><td>Fri Oct 9</td></tr>
+<tr><td></td><td></td><td>☐ Add Thailand <span class="mins">(120 min)</span></td><td>Francis</td><td>Fri Oct 9</td></tr>
+<tr><td></td><td></td><td>☐ Create Dashboard <span class="mins">(60 min)</span></td><td>Francis</td><td>Fri Oct 9</td></tr>
+<tr class="first"><td><strong>YOKO Reporting</strong></td><td>YOKO</td><td>☐ Monthly Report August <span class="mins">(30 min)</span></td><td>Francis</td><td><strong>Fri Sep 25 · overdue</strong></td></tr>
+<tr><td></td><td></td><td>☐ Update Semi-Annual FM <span class="mins">(180 min)</span></td><td>Francis</td><td>Thu Oct 15</td></tr>
+<tr class="first"><td><strong>Interest SWAP Rate</strong> 📝 <a href="https://outlook.office.com/mail/deeplink/read/AAkALgAAAAAAHYQDEapmEc2byACqAC%2FEWg0AlcvxquWzr0KBsLlnXCNZ7wADqxsHuQAA?popoutv2=1">✉</a></td><td>—</td><td>—</td><td>Francis</td><td>—</td></tr>
+<tr class="first"><td><strong>Follow-Up Invoice from DEG to GYSAS</strong></td><td>—</td><td>—</td><td>Francis</td><td>—</td></tr>
+<tr class="first"><td><strong>Email from Ja for Agency</strong></td><td>—</td><td>—</td><td>Francis</td><td>—</td></tr>
+<tr class="first"><td><strong>Feedback Nink</strong></td><td>—</td><td>—</td><td>Francis</td><td>—</td></tr>
+<tr class="first"><td><strong>Feedback Duong</strong></td><td>—</td><td>—</td><td>Francis</td><td>—</td></tr>
+<tr class="first"><td><strong>Feedback to AFRY</strong></td><td>—</td><td>—</td><td>Francis</td><td>—</td></tr>
+<tr class="first"><td><strong>Financing Budget FY2027</strong></td><td>—</td><td>—</td><td>Francis</td><td>—</td></tr>
+<tr class="first"><td><strong>Schedule meeting with BSP/VP Bank/TCB</strong></td><td>—</td><td>—</td><td>Francis</td><td>—</td></tr>
   </tbody>
 </table>
 
-<p class="howto">To paste into Loop: click anywhere on this page, Ctrl+A, Ctrl+C, then paste into the Loop page. Headings and tables carry over; ☐ marks an open sub-task.</p>
+<p class="howto">To paste into Loop: click anywhere on this page, Ctrl+A, Ctrl+C, then paste into the Loop page. ☐ marks an open sub-task.</p>
 </body>
 </html>
