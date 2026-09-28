@@ -454,6 +454,19 @@ body {
   accent-color: var(--delegate-color);
 }
 
+/* New-entry Assignee dropdown — only shown while "Deleg." is ticked. */
+.subtask-assignee-select {
+  flex: 0 0 auto;
+  max-width: 160px;
+  padding: 8px 10px;
+  border: 1px solid var(--delegate-color);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--delegate-color);
+  font-size: var(--form-font-size);
+  font-family: inherit;
+}
+
 .notes-input {
   width: 100%;
   padding: 8px 10px;
@@ -512,6 +525,17 @@ body {
 .draft-chip .delegated-checkbox-label {
   font-size: 0.7rem;
   padding: 0;
+}
+
+.draft-chip-assignee {
+  max-width: 130px;
+  padding: 2px 4px;
+  border: 1px solid var(--delegate-color);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--delegate-color);
+  font-family: inherit;
+  font-size: 0.72rem;
 }
 
 .draft-chip-delegated {
@@ -1122,12 +1146,14 @@ li.task-item:focus-within .card-hover-actions {
   min-width: 60px;
 }
 
-.card-header-meta {
+/* Only the two "when" pills live up here (due date, time left), so the title
+   keeps its line even in a narrow board column. */
+.card-title-meta {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 6px;
-  flex: 1 1 auto;
+  margin-left: auto;
   justify-content: flex-end;
 }
 
@@ -1139,9 +1165,20 @@ li.task-item:focus-within .card-hover-actions {
   margin-top: 8px;
 }
 
-/* Labels sit opposite the sub-tasks toggle. With no toggle to balance against
-   they'd be stranded across an empty gutter, so they stay left instead. */
-.card-row-2-labels:not(:only-child) {
+/* Zone 2. Project + labels together (they answer the same "which bucket?"
+   question); the small indicators keep a fixed slot on the right. */
+.card-context {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.card-icons {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   margin-left: auto;
 }
 
@@ -1218,32 +1255,66 @@ li.task-item:focus-within .card-hover-actions {
   display: inline-block;
 }
 
-/* Zone 3. Share of sub-tasks checked off, by item count. */
-.subtask-progress {
-  margin-bottom: 7px;
-}
-
-.subtask-progress-label {
+/* Zone 3. Always-visible strip: toggle, progress bar, done/total, assignees.
+   The whole strip is the click/hover target, so the toggle inside it drops its
+   own chip styling. */
+.subtask-strip {
   display: flex;
-  justify-content: space-between;
-  font-size: 0.66rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  margin-bottom: 4px;
+  align-items: center;
+  gap: 8px;
+  margin-top: 9px;
+  padding: 5px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-alt);
+  cursor: pointer;
+  user-select: none;
+}
+.subtask-strip:hover {
+  background: var(--border);
+}
+.subtask-strip .subtask-section-toggle {
+  background: transparent;
+  padding: 0;
+  flex-shrink: 0;
+}
+.subtask-strip:hover .subtask-section-toggle {
+  color: var(--text);
+  background: transparent;
+}
+.subtask-strip .subtask-count-badge {
+  flex-shrink: 0;
+}
+.subtask-strip:hover .subtask-count-badge {
+  background: var(--surface);
 }
 
 .subtask-progress-track {
-  height: 6px;
-  background: var(--surface-alt);
+  display: block;
+  flex: 1 1 40px;
+  min-width: 40px;
+  height: 5px;
+  background: var(--border);
   border-radius: var(--radius-pill);
   overflow: hidden;
 }
+.subtask-strip:hover .subtask-progress-track {
+  background: var(--surface);
+}
 
 .subtask-progress-fill {
+  display: block;
   height: 100%;
   background: var(--accent);
   border-radius: var(--radius-pill);
   transition: width 0.15s ease;
+}
+
+.subtask-strip-who {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 /* The checklist sits in an inset panel so the expanded rows read as a distinct
@@ -1410,6 +1481,84 @@ input[type="date"].due-derived {
   color: var(--delegate-color);
 }
 
+/* ---- Assignees ----
+   People get an initials disc, departments a code tag; both in the DELEGATE
+   color so they read as part of the same hand-off story as delegated rows. */
+.assignee-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 0.6rem;
+  font-weight: 800;
+  font-style: normal;
+  letter-spacing: 0.02em;
+  color: var(--delegate-color);
+  background: rgba(0, 169, 163, 0.12);
+  border: 1px solid var(--delegate-color);
+  flex-shrink: 0;
+}
+.assignee-avatar-dept {
+  width: auto;
+  padding: 0 5px;
+  border-radius: 6px;
+  font-size: 0.56rem;
+}
+.assignee-avatar-sm {
+  width: 16px;
+  height: 16px;
+  font-size: 0.52rem;
+}
+.assignee-avatar-sm.assignee-avatar-dept {
+  width: auto;
+  padding: 0 4px;
+  font-size: 0.5rem;
+}
+.assignee-avatar-more {
+  color: var(--text-muted);
+  background: var(--border);
+  border-color: var(--border-strong);
+}
+/* Claude — the AI colour, same as the AI badge, so "automated" reads at a glance. */
+.assignee-avatar-ai {
+  color: var(--ai-color);
+  border-color: var(--ai-color);
+  background: rgba(217, 119, 87, 0.12);
+}
+.subtask-assignee-ai {
+  color: var(--ai-color);
+  background: rgba(217, 119, 87, 0.1);
+}
+
+/* Chip on an expanded (or previewed) sub-task row. Sits right after the title;
+   the date badge keeps its margin-left: auto so the row's right edge is unchanged. */
+.subtask-assignee {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.66rem;
+  font-weight: 600;
+  font-style: normal;
+  color: var(--delegate-color);
+  background: rgba(0, 169, 163, 0.1);
+  border-radius: var(--radius-pill);
+  padding: 1px 7px 1px 2px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.subtask-assignee-dept {
+  padding: 1px 2px;
+  background: transparent;
+}
+.subtask-assignee-unset {
+  color: var(--text-faint);
+  background: transparent;
+  border: 1px dashed var(--border-strong);
+  padding: 0 7px;
+}
+
 .subtask-preview-meta {
   display: inline-flex;
   align-items: center;
@@ -1530,6 +1679,28 @@ input[type="date"].due-derived {
   position: fixed;
   max-width: 280px;
   min-width: 220px;
+}
+
+/* Can be opened from a dropdown inside the Add/Edit modal, so it has to sit
+   above the modal overlay (z-index 100). */
+.assignee-manage-popover {
+  position: fixed;
+  z-index: 150;
+  max-width: 320px;
+  min-width: 260px;
+}
+.assignee-add-row {
+  flex-wrap: wrap;
+}
+.assignee-kind-select {
+  flex: 0 0 auto;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.8rem;
 }
 
 .label-swatch {
