@@ -1483,6 +1483,98 @@ manageAssigneesBtn.addEventListener('click', (e) => {
   openAssigneeManagePopover(settingsBtn);
 });
 
+// ---------- Paste from Loop (diagnostic) ----------
+// First step of the Loop -> app return path. Shows exactly what Loop puts on
+// the clipboard (formats, plain text, HTML) so the importer can be written
+// against Loop's real output. Touches no task data.
+
+const pasteLoopBtn = document.getElementById('pasteLoopBtn');
+const pasteLoopModalOverlay = document.getElementById('pasteLoopModalOverlay');
+const pasteLoopModalClose = document.getElementById('pasteLoopModalClose');
+const pasteLoopTarget = document.getElementById('pasteLoopTarget');
+const pasteLoopResult = document.getElementById('pasteLoopResult');
+const pasteLoopSummary = document.getElementById('pasteLoopSummary');
+const pasteLoopTypes = document.getElementById('pasteLoopTypes');
+const pasteLoopText = document.getElementById('pasteLoopText');
+const pasteLoopHtml = document.getElementById('pasteLoopHtml');
+const pasteLoopCopyBtn = document.getElementById('pasteLoopCopyBtn');
+let lastLoopDiagnostic = null;
+
+function openPasteLoopModal() {
+  pasteLoopTarget.value = '';
+  pasteLoopResult.classList.add('hidden');
+  pasteLoopModalOverlay.classList.remove('hidden');
+  pasteLoopTarget.focus();
+}
+
+function closePasteLoopModal() {
+  pasteLoopModalOverlay.classList.add('hidden');
+}
+
+pasteLoopBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  closeSettingsPopover();
+  openPasteLoopModal();
+});
+pasteLoopModalClose.addEventListener('click', closePasteLoopModal);
+pasteLoopModalOverlay.addEventListener('click', (e) => {
+  if (e.target === pasteLoopModalOverlay) closePasteLoopModal();
+});
+
+pasteLoopTarget.addEventListener('paste', (e) => {
+  const cd = e.clipboardData;
+  if (!cd) return;
+  e.preventDefault();
+  const types = [...cd.types];
+  const htmlData = cd.getData('text/html') || '';
+  const textData = cd.getData('text/plain') || '';
+  // A quick structural read of the HTML so the summary line says something
+  // useful even before the full importer exists.
+  let tables = 0; let rows = 0;
+  try {
+    const doc = new DOMParser().parseFromString(htmlData, 'text/html');
+    tables = doc.querySelectorAll('table').length;
+    rows = doc.querySelectorAll('tr').length;
+  } catch { /* summary only */ }
+
+  lastLoopDiagnostic = {
+    capturedAt: new Date().toISOString(),
+    userAgent: navigator.userAgent,
+    types,
+    tables,
+    rows,
+    text: textData,
+    html: htmlData,
+  };
+  pasteLoopSummary.textContent = `${types.length} format(s) · ${tables} table(s), ${rows} row(s) · HTML ${htmlData.length.toLocaleString()} chars · text ${textData.length.toLocaleString()} chars`;
+  pasteLoopTypes.textContent = types.join('\n') || '(none)';
+  pasteLoopText.textContent = textData || '(empty)';
+  pasteLoopHtml.textContent = htmlData || '(empty)';
+  pasteLoopResult.classList.remove('hidden');
+  pasteLoopTarget.value = 'Captured — see below. Paste again to replace.';
+});
+
+pasteLoopCopyBtn.addEventListener('click', async () => {
+  if (!lastLoopDiagnostic) return;
+  const payload = JSON.stringify(lastLoopDiagnostic, null, 2);
+  const done = () => {
+    pasteLoopCopyBtn.textContent = 'Copied ✓';
+    setTimeout(() => { pasteLoopCopyBtn.textContent = 'Copy diagnostic'; }, 1500);
+  };
+  try {
+    await navigator.clipboard.writeText(payload);
+    done();
+  } catch {
+    // Older browsers / blocked clipboard API: fall back to a selected textarea.
+    const ta = document.createElement('textarea');
+    ta.value = payload;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch { /* leave the panels visible to copy by hand */ }
+    document.body.removeChild(ta);
+  }
+});
+
 // ---------- Effort/Impact/Priority -> Category preview (create + edit forms) ----------
 // Delegate tasks track 0 minutes — that time isn't yours to spend, so the
 // Estimated Time field is locked to 0 the moment the matrix resolves to Delegate.

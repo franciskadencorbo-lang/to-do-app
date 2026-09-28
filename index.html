@@ -439,6 +439,29 @@
   </div>
 </div>
 
+<div class="modal-overlay hidden" id="pasteLoopModalOverlay">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h2>Paste from Loop</h2>
+      <button type="button" class="icon-btn" id="pasteLoopModalClose" aria-label="Close">✕</button>
+    </div>
+    <p class="hint-text">Diagnostic mode. Copy the agenda table in Loop, click in the box below and press Ctrl+V. Nothing is changed in your tasks — this only shows what Loop put on the clipboard, so the importer can be built against it.</p>
+    <textarea id="pasteLoopTarget" class="paste-target" placeholder="Click here, then Ctrl+V" rows="3"></textarea>
+    <div id="pasteLoopResult" class="paste-result hidden">
+      <div class="paste-result-bar">
+        <span id="pasteLoopSummary" class="hint-text"></span>
+        <button type="button" id="pasteLoopCopyBtn" class="filter-btn">Copy diagnostic</button>
+      </div>
+      <div class="form-section-label">Clipboard formats</div>
+      <pre id="pasteLoopTypes" class="diag-pre"></pre>
+      <div class="form-section-label">Plain text</div>
+      <pre id="pasteLoopText" class="diag-pre"></pre>
+      <div class="form-section-label">HTML</div>
+      <pre id="pasteLoopHtml" class="diag-pre"></pre>
+    </div>
+  </div>
+</div>
+
 <div class="date-edit-popover hidden" id="dateEditPopover">
   <label class="date-edit-field">Due<input type="date" id="dateEditDue"></label>
   <span class="due-derived-hint hidden" id="dateEditHint">⤴ from latest sub-task</span>
@@ -450,6 +473,7 @@
   <button type="button" id="manageProjectsBtn" class="filter-btn">🗂 Manage Projects</button>
   <button type="button" id="manageLabelsBtn" class="filter-btn">🏷 Manage Labels</button>
   <button type="button" id="manageAssigneesBtn" class="filter-btn" title="People and departments you delegate sub-tasks to">👥 Manage Assignees</button>
+  <button type="button" id="pasteLoopBtn" class="filter-btn" title="Paste the agenda table copied from Loop (diagnostic: shows what the clipboard contains)">📋 Paste from Loop</button>
   <button type="button" id="exportBtn" class="filter-btn">⬇ Export</button>
   <button type="button" id="exportCsvBtn" class="filter-btn">⬇ Export to Excel</button>
   <button type="button" id="exportActiveJsonBtn" class="filter-btn" title="Export Not Started / In Progress tasks as JSON, for a Claude Skill">⬇ Export for AI Skill</button>

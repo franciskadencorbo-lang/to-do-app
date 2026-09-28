@@ -1703,6 +1703,50 @@ input[type="date"].due-derived {
   font-size: 0.8rem;
 }
 
+/* ---- Paste from Loop (diagnostic) ---- */
+.modal-wide {
+  max-width: 900px;
+  width: min(900px, calc(100vw - 32px));
+}
+
+.paste-target {
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 2px dashed var(--accent);
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--form-font-size);
+  resize: vertical;
+}
+
+.paste-result {
+  margin-top: 12px;
+}
+
+.paste-result-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.diag-pre {
+  max-height: 220px;
+  overflow: auto;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-alt);
+  font-size: 0.72rem;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
 .label-swatch {
   width: 10px;
   height: 10px;
