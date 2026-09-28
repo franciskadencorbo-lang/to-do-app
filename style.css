@@ -1734,6 +1734,73 @@ input[type="date"].due-derived {
   flex-wrap: wrap;
 }
 
+.paste-result-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.paste-changes {
+  margin-top: 10px;
+  max-height: 46vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.paste-group {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px 8px;
+  background: var(--surface-alt);
+}
+
+.paste-group-title {
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.paste-group-cat {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+
+.paste-change {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.paste-change input {
+  margin: 3px 0 0;
+  flex-shrink: 0;
+}
+.paste-change-warn {
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.paste-raw {
+  margin-top: 14px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.paste-raw summary {
+  cursor: pointer;
+}
+.paste-raw .filter-btn {
+  margin-top: 6px;
+}
+
 .diag-pre {
   max-height: 220px;
   overflow: auto;
