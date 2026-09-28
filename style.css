@@ -1736,10 +1736,13 @@ input[type="date"].due-derived {
 }
 .project-manage-btn:hover { border-color: var(--accent); color: var(--accent); }
 
+/* Sized to its longest row so titles and the assignee chip stay on one line;
+   only a truly long title (past the cap) wraps. */
 .subtask-hover-preview {
   position: fixed;
-  max-width: 280px;
-  min-width: 180px;
+  width: max-content;
+  min-width: 320px;
+  max-width: min(560px, calc(100vw - 24px));
   font-size: 0.82rem;
 }
 
@@ -1747,10 +1750,18 @@ input[type="date"].due-derived {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 12px;
   padding: 3px 2px;
   cursor: pointer;
   border-radius: 6px;
+}
+.subtask-preview-row .subtask-title {
+  white-space: nowrap;
+}
+.subtask-hover-preview .subtask-preview-row .subtask-title {
+  max-width: 380px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .subtask-preview-row:hover {
   background: var(--surface-alt);
