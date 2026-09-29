@@ -383,7 +383,7 @@ let editSelectedLabels = new Set();
 let editSubtaskDraft = [];
 let editBaseDue = null;
 
-let expandedSubtaskIds = new Set();
+let collapsedSubtaskIds = new Set();
 let dateEditTaskId = null;
 let calTasksDayKey = null;
 let collapsedColumns = loadCollapsedColumns();
@@ -1946,6 +1946,47 @@ taskForm.addEventListener('submit', (e) => {
   render();
 });
 
+// Quick Add: capture a task by name only, straight into NOT URGENT as
+// Effort=Low/Impact=Low/Priority=Low, to be triaged later via Edit. The input
+// keeps focus after Enter so several tasks can be jotted down in a row.
+const quickAddForm = document.getElementById('quickAddForm');
+const quickAddInput = document.getElementById('quickAddInput');
+
+quickAddForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const title = quickAddInput.value.trim();
+  if (!title) return;
+
+  const task = {
+    id: uid(),
+    title,
+    category: 'NOT URGENT',
+    effort: 'low',
+    impact: 'low',
+    project: null,
+    labels: [],
+    subtasks: [],
+    dependsOn: [],
+    estimatedMinutes: 0,
+    ai: false,
+    email: null,
+    notes: null,
+    startDate: null,
+    baseDue: null,
+    due: null,
+    priority: 'low',
+    completed: false,
+    createdAt: Date.now(),
+  };
+  recalcStatus(task);
+  tasks.push(task);
+
+  saveTasks();
+  quickAddInput.value = '';
+  render();
+  quickAddInput.focus();
+});
+
 // ---------- Edit task modal ----------
 
 function openEditModal(id) {
@@ -2086,8 +2127,8 @@ function handleTaskListClick(e) {
   if (e.target.closest('[data-toggle-subtasks]')) {
     e.stopPropagation();
     const toggleId = e.target.closest('[data-toggle-subtasks]').dataset.toggleSubtasks;
-    if (expandedSubtaskIds.has(toggleId)) expandedSubtaskIds.delete(toggleId);
-    else expandedSubtaskIds.add(toggleId);
+    if (collapsedSubtaskIds.has(toggleId)) collapsedSubtaskIds.delete(toggleId);
+    else collapsedSubtaskIds.add(toggleId);
     render();
     return;
   }
@@ -2127,7 +2168,7 @@ function handleTaskListClick(e) {
   if (e.target.closest('.delete-btn')) {
     const task = getTaskById(id);
     if (task && task.email && task.email.id) deleteEmailFile(task.email.id);
-    expandedSubtaskIds.delete(id);
+    collapsedSubtaskIds.delete(id);
     if (dateEditTaskId === id) closeDateEditPopover();
     tasks = tasks.filter((t) => t.id !== id);
     tasks.forEach((t) => {
@@ -2243,6 +2284,8 @@ function scheduleSubtaskHoverClose() {
 board.addEventListener('mouseover', (e) => {
   const trigger = e.target.closest('[data-subtask-hover]');
   if (!trigger) return;
+  // Expanded cards already list their sub-tasks in place — no preview needed.
+  if (!collapsedSubtaskIds.has(trigger.dataset.subtaskHover)) return;
   cancelSubtaskHoverClose();
   if (trigger.dataset.subtaskHover === subtaskHoverPreview.dataset.taskId && !subtaskHoverPreview.classList.contains('hidden')) return;
   openSubtaskHoverPreview(trigger.dataset.subtaskHover, trigger);
@@ -2571,8 +2614,8 @@ function formatMinutesBadge(totalMins) {
   return `${m} mins`;
 }
 
-// Sub-tasks start collapsed on every card; the strip below is always visible
-// and is the whole click target for expanding them in place (and the hover
+// Sub-tasks start expanded on every card; the strip below is always visible
+// and is the whole click target for collapsing them in place (and the hover
 // target for subtaskHoverPreview). Sub-tasks are only added/removed via the
 // Edit Task modal — there's no inline add here.
 //
@@ -2584,7 +2627,7 @@ function formatMinutesBadge(totalMins) {
 function subtaskStripHtml(task) {
   const subtasks = task.subtasks || [];
   if (!subtasks.length) return '';
-  const collapsed = !expandedSubtaskIds.has(task.id);
+  const collapsed = collapsedSubtaskIds.has(task.id);
   const done = subtasks.filter((s) => s.completed).length;
   const percent = Math.round((done / subtasks.length) * 100);
   return `
@@ -2607,7 +2650,7 @@ function subtaskDateBadgeHtml(subtask) {
 function subtaskRowsHtml(task) {
   const subtasks = task.subtasks || [];
   if (!subtasks.length) return '';
-  const collapsed = !expandedSubtaskIds.has(task.id);
+  const collapsed = collapsedSubtaskIds.has(task.id);
 
   const isDelegate = isDelegateTask(task);
 
