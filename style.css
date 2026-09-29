@@ -834,6 +834,33 @@ body {
   scrollbar-color: var(--border) transparent;
 }
 
+.quick-add-form {
+  margin-bottom: 10px;
+}
+
+.quick-add-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: var(--text-base);
+  color: var(--text);
+  background: var(--surface);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.quick-add-input::placeholder {
+  color: var(--text-faint);
+}
+
+.quick-add-input:focus {
+  outline: none;
+  border-style: solid;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
 .board-column-body::-webkit-scrollbar {
   width: 6px;
 }
