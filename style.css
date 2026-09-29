@@ -1535,8 +1535,8 @@ input[type="date"].due-derived {
   font-size: 0.56rem;
 }
 .assignee-avatar-sm {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   font-size: 0.52rem;
 }
 .assignee-avatar-sm.assignee-avatar-dept {
