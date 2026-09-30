@@ -1,58 +1,91 @@
-# Staff Meeting Agenda -- Wednesday 5:30 PM staff meeting
+﻿# Staff Meeting Agenda -- Wednesday 5:30 PM staff meeting
 _Generated from Task Hub export; next meeting: Wednesday, Sep 30, 2026_
 
-> ⚠️ This task snapshot was last updated on 2026-09-28 — Francis should re-export from the Task Hub app (https://franciskadencorbo-lang.github.io/to-do-app/) before the meeting.
-
 ## Needs attention -- overdue or due before this meeting
-- GYS4/6 Financing [GYS4/6] - due Sep 24, high priority (1 open sub-task) [OVERDUE]
-    - Prepare COMEX Slides (60 min)
-- GYS1 BSA/Mortgage [General] - due Sep 25, high priority (2 open sub-tasks) [OVERDUE]
-    - Engage Hunton (15 min)
-    - Launch the mandate (15 min)
-- COOP1 Financing [COOP FINANCING] - due Sep 25, high priority (1 open sub-task) [OVERDUE]
-    - Review Indicative Offer (15 min)
-- KBANK Reporting [General] - due Sep 25, medium priority [OVERDUE]
-- GYS1 Reporting [General] - due Sep 25, medium priority (1 open sub-task) [OVERDUE]
-    - Semi-Annual FS (15 min)
-- Project Equinox [CLEANTECH] - due Sep 25, low priority (2 open sub-tasks) [OVERDUE] [source email linked]
-    - Obtain quotation from Marsh (15 min)
-    - Test Buy-Out Table (30 min)
-- NEFIN FM [NEFIN] - due Sep 27, medium priority (1 open sub-task) [OVERDUE]
-    - Prepare Suggestion to CEO (15 min)
-- YOKO Board [YOKO] - due Sep 28, medium priority (2 open sub-tasks)
-    - Update Dashboard (60 min)
-    - Board Pack (120 min)
-- YAM Financing [YAM FINANCING] - due Sep 28, medium priority (2 open sub-tasks)
+- Clear Unread Email [General] - due Sep 29, urgent priority [OVERDUE]
+- YAM Financing [YAM FINANCING] - due Sep 29, medium priority (2 open sub-tasks) [OVERDUE]
     - DBS Account Agreement (15 min)
     - Orrick Overrun (15 min)
 
 ## For the team -- delegated items
-- Pipeline ERC/BOI [General] - due Oct 2, medium priority (1 open sub-task)
-    - Contact Business France (30 min)
-- Project Tire [SOLAR D] - due Oct 7, high priority (3 open sub-tasks)
+- COOP1 Financing [COOP FINANCING] - due Oct 2, high priority (1 open sub-task)
+    - Review Indicative Offer (15 min)
+- Financing Budget FY2027 [General] - due Oct 2, high priority (1 open sub-task)
+    - Complete Margot Template TH (60 min)
+- NEFIN FM [NEFIN] - due Oct 2, medium priority (4 open sub-tasks)
+    - Prepare Suggestion to CEO (15 min)
+    - Prepare Deck Mhudang (15 min)
+    - Organize Meeting with NEFIN CEO (15 min)
+    - Review Deck with Antoine/Frank (60 min)
+- GYS1 BSA/Mortgage [General] - due Oct 9, high priority (2 open sub-tasks)
+    - Engage Hunton (15 min)
+    - Launch the mandate (15 min)
+- GYS4/6 Financing [GYS4/6] - due Oct 9, high priority (6 open sub-tasks)
+    - Obtain Ack/Consent Final Form (15 min)
+    - Review Ack/Consent Form (30 min)
+    - Review CFA GYS6 (60 min)
+    - Build Tracker for Ack/Consent (30 min)
+    - Share Financial Model to HQ (15 min)
+    - Weekly Report to HQ (15 min)
+- Project Tire [SOLAR D] - due Oct 9, high priority (3 open sub-tasks)
     - Build Financial Model (15 min)
     - Prepare NBO (30 min)
     - Prepare Deck M&A Process (15 min)
 - Holdback Tipco [YOKO] - due Oct 9, medium priority (1 open sub-task)
     - Update Documentation (60 min)
+- GYE 4 Financing [General] - due Oct 9, medium priority (2 open sub-tasks)
+    - Organize Meeting with Banks (15 min)
+    - Meeting with Banks (180 min)
+- Monitor WAYU CP List [WAYU] - due Oct 30, medium priority (4 open sub-tasks)
+    - Request Update CP List (15 min)
+    - Prepare CP Dashboard (60 min)
+    - Agree on SCADA CP (30 min)
+    - Answer Giang PCG (30 min)
+- Business Introducer PH [General] - due Oct 30, medium priority (3 open sub-tasks)
+    - Dev. Agreement Wassef (15 min)
+    - NDA with Wassef (15 min)
+    - BCA with FDC (60 min)
+- Lead Generation Activities [General] - due Oct 30, medium priority (5 open sub-tasks)
+    - TH: Run report from Claude (15 min)
+    - TH: Research Company by Company (120 min)
+    - Prepare Full Plan VN/TH (300 min)
+    - VN: Prepare Advisor List (60 min)
+    - VN: Meet all Advisors (600 min)
+- Restructuring Vietnam [General] - due Nov 15, medium priority (4 open sub-tasks)
+    - Review Quotation with Giang (60 min)
+    - Obtain Advisor Approval YOKO (15 min)
+    - Review Engagement Letter (30 min)
+    - Execute Engagement Letter (30 min)
+- Invoice from DEG to GYSAS [General] - due Oct 30, high priority (1 open sub-task)
+    - Follow-Up Invoice GY SAS (15 min)
 
 ## Status updates -- other active work
-- Review Trinity EL [COOP FINANCING] - due Oct 2, medium priority (1 open sub-task)
-    - Obtain Offer (15 min)
+- YOKO Board [YOKO] - due Oct 1, medium priority (4 open sub-tasks)
+    - Update Dashboard (60 min)
+    - Q&A EBM (60 min)
+    - Q&A New AssetCo (60 min)
+    - Prepare Org Chart Per / Post YOKO (30 min)
+- Feedback Session [General] - due Oct 7, medium priority (4 open sub-tasks)
+    - Feedback Nink (30 min)
+    - Feedback Duong (30 min)
+    - Prepare Feedback AFRY (30 min)
+    - Feedback AFRY (60 min)
+- Deputy M&A and FIN Director [General] - due Oct 9, medium priority (3 open sub-tasks)
+    - Review Recruitment Pack (30 min)
+    - Organize Meeting with Candidate (15 min)
+    - Meet with Candidate (60 min)
 - YOKO SA Tracker [YOKO] - due Oct 9, low priority
 - Loan Monitoring [General] - due Oct 9, low priority (3 open sub-tasks)
     - Review Template (60 min)
     - Add Thailand (120 min)
     - Create Dashboard (60 min)
+- Project Equinox [CLEANTECH] - due Oct 9, low priority (2 open sub-tasks) [source email linked]
+    - Obtain quotation from Marsh (15 min)
+    - Test Buy-Out Table (30 min)
 - YOKO Reporting [YOKO] - due Oct 15, urgent priority (2 open sub-tasks)
     - Monthly Report August (30 min)
     - Update Semi-Annual FM (180 min)
-- Interest SWAP Rate [General] - due no due date, low priority [source email linked]
-- Follow-Up Invoice from DEG to GYSAS [General] - due no due date, low priority
-- Email from Ja for Agency [General] - due no due date, low priority
-- Feedback Nink [General] - due no due date, low priority
-- Feedback Duong [General] - due no due date, low priority
-- Feedback to AFRY [General] - due no due date, low priority
-- Financing Budget FY2027 [General] - due no due date, low priority
-- Schedule meeting with BSP/VP Bank/TCB [General] - due no due date, low priority
+- Update GYS6 CPs Dashboard [General] - due Oct 29, high priority (2 open sub-tasks)
+    - Offtaker Tracker Module (30 min)
+    - Terminology (30 min)
 
