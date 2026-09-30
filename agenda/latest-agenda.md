@@ -1,5 +1,7 @@
-# Staff Meeting Agenda -- Monday 5:30 PM staff meeting
-_Generated from Task Hub export; next meeting: Monday, Sep 28, 2026_
+# Staff Meeting Agenda -- Wednesday 5:30 PM staff meeting
+_Generated from Task Hub export; next meeting: Wednesday, Sep 30, 2026_
+
+> ⚠️ This task snapshot was last updated on 2026-09-28 — Francis should re-export from the Task Hub app (https://franciskadencorbo-lang.github.io/to-do-app/) before the meeting.
 
 ## Needs attention -- overdue or due before this meeting
 - GYS4/6 Financing [GYS4/6] - due Sep 24, high priority (1 open sub-task) [OVERDUE]
@@ -27,11 +29,10 @@ _Generated from Task Hub export; next meeting: Monday, Sep 28, 2026_
 ## For the team -- delegated items
 - Pipeline ERC/BOI [General] - due Oct 2, medium priority (1 open sub-task)
     - Contact Business France (30 min)
-- Project Tire [SOLAR D] - due Oct 7, medium priority (4 open sub-tasks)
+- Project Tire [SOLAR D] - due Oct 7, high priority (3 open sub-tasks)
     - Build Financial Model (15 min)
     - Prepare NBO (30 min)
     - Prepare Deck M&A Process (15 min)
-    - Financing Solution (15 min)
 - Holdback Tipco [YOKO] - due Oct 9, medium priority (1 open sub-task)
     - Update Documentation (60 min)
 
@@ -51,4 +52,7 @@ _Generated from Task Hub export; next meeting: Monday, Sep 28, 2026_
 - Email from Ja for Agency [General] - due no due date, low priority
 - Feedback Nink [General] - due no due date, low priority
 - Feedback Duong [General] - due no due date, low priority
+- Feedback to AFRY [General] - due no due date, low priority
+- Financing Budget FY2027 [General] - due no due date, low priority
+- Schedule meeting with BSP/VP Bank/TCB [General] - due no due date, low priority
 
