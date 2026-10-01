@@ -3537,15 +3537,76 @@ function importTriageEntries(entries) {
 }
 
 // ---------- Tasks folder sync ----------
-// Reads new triage logs from one folder the user picks once (OneDrive
-// "Email Triage\Tasks": the Email Triage Desk's Add to Task Hub files and the
-// morning agent's triage_log / recurring files). Chrome's File System Access
-// API keeps the folder handle in IndexedDB; read permission has to be granted
-// again by a click in each new browser session, which is a Chrome rule.
-// Each file is imported once, keyed by name + last-modified time, so items
-// dismissed from the Triage Log do not come back on the next sync.
+// Creates REAL tasks (no Triage Log staging) from one folder the user picks
+// once: OneDrive "Email Triage\Tasks". Two kinds of file are read:
+//   task_desk_*.json  - tasks the user decided on in the Email Triage Desk
+//   recurring_*.json  - the weekly fixed to-do written by WeeklyTask.bat
+// The agent's own triage_log_* proposals are deliberately ignored: deciding
+// what becomes a task now happens on the Desk. Chrome's File System Access API
+// keeps the folder handle in IndexedDB; read permission must be granted again
+// by a click in each new browser session (a Chrome rule). Each file is read
+// once, keyed by name + last-modified time, so a task deleted here does not
+// come back on the next sync.
 const TASKS_FOLDER_SEEN_KEY = 'todo.tasksFolderSeen.v1';
-const TASKS_FILE_PATTERN = /^(triage_log|recurring)_.*\.json$/i;
+const TASKS_FILE_PATTERN = /^(task_desk|recurring)_.*\.json$/i;
+const LEVELS = ['low', 'high'];
+
+function sameText(a, b) { return String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase(); }
+
+// Same task shape as the Add Task form. Skips a task whose Outlook link is
+// already on a task, or (no link) one with the same title and due date.
+// Returns {added, skipped}; caller saves and re-renders.
+function createTasksFromFile(list) {
+  let added = 0, skipped = 0;
+  const links = new Set(tasks.map((t) => t.email && t.email.link).filter(Boolean));
+  list.forEach((raw) => {
+    const title = ((raw && raw.title) || '').trim();
+    if (!title) { skipped++; return; }
+    const link = raw.link ? normalizeEmailLink(String(raw.link).trim()) : null;
+    const due = /^\d{4}-\d{2}-\d{2}$/.test(raw.due || '') ? raw.due : null;
+    if (link ? links.has(link) : tasks.some((t) => sameText(t.title, title) && (t.baseDue || t.due || null) === due)) { skipped++; return; }
+
+    const effort = LEVELS.includes(String(raw.effort).toLowerCase()) ? String(raw.effort).toLowerCase() : 'low';
+    const impact = LEVELS.includes(String(raw.impact).toLowerCase()) ? String(raw.impact).toLowerCase() : 'low';
+    const priority = VALID_TRIAGE_PRIORITIES.includes(String(raw.priority).toLowerCase()) ? String(raw.priority).toLowerCase() : 'medium';
+    const category = computeCategory(effort, impact, priority) || 'NOT URGENT';
+
+    let project = raw.project ? String(raw.project).trim() : null;
+    if (project) {
+      const known = projects.find((p) => sameText(p, project));
+      if (known) project = known;
+      else { projects.push(project); saveProjects(); renderProjectOptions(); renderProjectPillBar(); }
+    }
+
+    const task = {
+      id: uid(),
+      title,
+      category,
+      effort,
+      impact,
+      project,
+      labels: [],
+      subtasks: [],
+      dependsOn: [],
+      estimatedMinutes: category === 'DELEGATE' ? 0 : (Number(raw.estimatedMinutes) || 0),
+      ai: !!raw.ai,
+      email: link ? { link } : null,
+      notes: raw.notes ? String(raw.notes).trim() : null,
+      baseDue: due,
+      startDate: due,
+      due,
+      priority,
+      completed: false,
+      createdAt: Date.now(),
+    };
+    applyDueRollup(task);
+    recalcStatus(task);
+    tasks.push(task);
+    if (link) links.add(link);
+    added++;
+  });
+  return { added, skipped };
+}
 const fsSupported = typeof window.showDirectoryPicker === 'function' && 'indexedDB' in window;
 let tasksFolderHandle = null;
 let tasksFolderSyncing = false;
@@ -3597,7 +3658,7 @@ async function syncTasksFolder({ interactive = false } = {}) {
 
     let perm = await tasksFolderHandle.queryPermission({ mode: 'read' });
     if (perm !== 'granted' && interactive) perm = await tasksFolderHandle.requestPermission({ mode: 'read' });
-    if (perm !== 'granted') { setFolderUi('🔄 Allow tasks folder', `${tasksFolderHandle.name}: click to allow reading`); return; }
+    if (perm !== 'granted') { setFolderUi('🔄 Allow tasks folder', 'Desk tasks waiting? Click to allow'); return; }
 
     let seen = loadSeenFiles();
     const firstSync = !seen;
@@ -3615,18 +3676,18 @@ async function syncTasksFolder({ interactive = false } = {}) {
       if (firstSync && file.lastModified < today.getTime()) continue;
       let data = null;
       try { data = JSON.parse(await file.text()); } catch { bad++; continue; }
-      const entries = triageEntriesOf(data);
-      if (!entries) { bad++; continue; }
-      const r = importTriageEntries(entries);
+      const list = Array.isArray(data) ? data : data && (Array.isArray(data.tasks) ? data.tasks : Array.isArray(data.entries) ? data.entries : null);
+      if (!list) { bad++; continue; }
+      const r = createTasksFromFile(list);
       files++; added += r.added; skipped += r.skipped;
     }
     saveSeenFiles(seen);
-    if (added) { saveTriageLog(); renderTriageView(); }
+    if (added) { saveTasks(); render(); }
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    setFolderUi('🔄 Sync tasks folder',
-      `${tasksFolderHandle.name} · synced ${time}` +
-      (files ? ` · ${added} new from ${files} file(s)` : ' · nothing new') +
-      (skipped ? `, ${skipped} already logged` : '') + (bad ? ` · ${bad} unreadable file(s)` : ''));
+    setFolderUi('🔄 Sync tasks',
+      `synced ${time}` +
+      (added ? ` · ${added} new task(s)` : ' · nothing new') +
+      (skipped ? `, ${skipped} already there` : '') + (bad ? ` · ${bad} unreadable file(s)` : ''));
   } catch (err) {
     setFolderUi('🔄 Sync tasks folder', `Folder sync failed: ${err && err.message ? err.message : err}`);
   } finally {
