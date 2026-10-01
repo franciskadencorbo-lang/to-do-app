@@ -283,8 +283,10 @@
               <input type="file" id="importTriageLogFile" accept=".json" style="display:none;">
             </label>
             <button type="button" id="promoteSelectedBtn" class="filter-btn">Promote Selected → Not Urgent</button>
+            <button type="button" id="tasksFolderBtn" class="filter-btn" title="Read new triage logs (Email Triage Desk and the morning agent) from the OneDrive Email Triage\Tasks folder" hidden>📂 Connect tasks folder</button>
           </div>
           <div class="filter-group">
+            <span id="tasksFolderStatus" class="hint-text"></span>
             <span id="triageCount" class="hint-text"></span>
           </div>
         </div>

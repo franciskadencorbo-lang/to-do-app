@@ -234,6 +234,8 @@ const triageEmptyState = document.getElementById('triageEmptyState');
 const triageCount = document.getElementById('triageCount');
 const importTriageLogFile = document.getElementById('importTriageLogFile');
 const promoteSelectedBtn = document.getElementById('promoteSelectedBtn');
+const tasksFolderBtn = document.getElementById('tasksFolderBtn');
+const tasksFolderStatus = document.getElementById('tasksFolderStatus');
 
 // Board card date-edit popover (shared, positioned near whichever date pill was clicked)
 const dateEditPopover = document.getElementById('dateEditPopover');
@@ -3484,38 +3486,14 @@ importTriageLogFile.addEventListener('change', (e) => {
       return;
     }
 
-    const entries = Array.isArray(data) ? data : Array.isArray(data.entries) ? data.entries : null;
+    const entries = triageEntriesOf(data);
     if (!entries) {
       alert('Invalid Triage Log file — expected an array, or an object with an "entries" array.');
       e.target.value = '';
       return;
     }
 
-    const seenLinks = linksAlreadyLogged();
-    let added = 0;
-    let skipped = 0;
-
-    entries.forEach((raw) => {
-      const title = (raw.title || '').trim();
-      if (!title) { skipped++; return; }
-
-      const link = raw.link ? normalizeEmailLink(String(raw.link).trim()) : null;
-      if (link && seenLinks.has(link)) { skipped++; return; }
-
-      const priority = VALID_TRIAGE_PRIORITIES.includes(raw.priority) ? raw.priority : 'medium';
-
-      triageLog.push({
-        id: uid(),
-        title,
-        link,
-        notes: raw.notes ? String(raw.notes).trim() : null,
-        priority,
-        addedAt: Date.now(),
-      });
-      if (link) seenLinks.add(link);
-      added++;
-    });
-
+    const { added, skipped } = importTriageEntries(entries);
     saveTriageLog();
     renderTriageView();
     alert(`Triage Log updated: ${added} new item(s) added, ${skipped} skipped (already logged, already a task, or missing a title).`);
@@ -3523,6 +3501,155 @@ importTriageLogFile.addEventListener('change', (e) => {
   };
   reader.readAsText(file);
 });
+
+function triageEntriesOf(data) {
+  return Array.isArray(data) ? data : data && Array.isArray(data.entries) ? data.entries : null;
+}
+
+// Shared by the file input and the tasks-folder sync, so both apply the same
+// rules: a title is required, links are normalised, and anything whose link is
+// already logged or already a task is skipped. Caller saves and re-renders.
+function importTriageEntries(entries) {
+  const seenLinks = linksAlreadyLogged();
+  let added = 0;
+  let skipped = 0;
+  entries.forEach((raw) => {
+    const title = ((raw && raw.title) || '').trim();
+    if (!title) { skipped++; return; }
+
+    const link = raw.link ? normalizeEmailLink(String(raw.link).trim()) : null;
+    if (link && seenLinks.has(link)) { skipped++; return; }
+
+    const priority = VALID_TRIAGE_PRIORITIES.includes(raw.priority) ? raw.priority : 'medium';
+
+    triageLog.push({
+      id: uid(),
+      title,
+      link,
+      notes: raw.notes ? String(raw.notes).trim() : null,
+      priority,
+      addedAt: Date.now(),
+    });
+    if (link) seenLinks.add(link);
+    added++;
+  });
+  return { added, skipped };
+}
+
+// ---------- Tasks folder sync ----------
+// Reads new triage logs from one folder the user picks once (OneDrive
+// "Email Triage\Tasks": the Email Triage Desk's Add to Task Hub files and the
+// morning agent's triage_log / recurring files). Chrome's File System Access
+// API keeps the folder handle in IndexedDB; read permission has to be granted
+// again by a click in each new browser session, which is a Chrome rule.
+// Each file is imported once, keyed by name + last-modified time, so items
+// dismissed from the Triage Log do not come back on the next sync.
+const TASKS_FOLDER_SEEN_KEY = 'todo.tasksFolderSeen.v1';
+const TASKS_FILE_PATTERN = /^(triage_log|recurring)_.*\.json$/i;
+const fsSupported = typeof window.showDirectoryPicker === 'function' && 'indexedDB' in window;
+let tasksFolderHandle = null;
+let tasksFolderSyncing = false;
+
+function fsDb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('todo-fs', 1);
+    req.onupgradeneeded = () => req.result.createObjectStore('handles');
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function fsGet(key) {
+  const db = await fsDb();
+  return new Promise((resolve) => {
+    const r = db.transaction('handles').objectStore('handles').get(key);
+    r.onsuccess = () => resolve(r.result || null);
+    r.onerror = () => resolve(null);
+  });
+}
+async function fsPut(key, value) {
+  const db = await fsDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('handles', 'readwrite');
+    tx.objectStore('handles').put(value, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+function loadSeenFiles() {
+  try { return JSON.parse(localStorage.getItem(TASKS_FOLDER_SEEN_KEY)) || null; } catch { return null; }
+}
+function saveSeenFiles(seen) {
+  localStorage.setItem(TASKS_FOLDER_SEEN_KEY, JSON.stringify(seen));
+}
+
+function setFolderUi(label, status) {
+  tasksFolderBtn.hidden = !fsSupported;
+  tasksFolderBtn.textContent = label;
+  tasksFolderStatus.textContent = status || '';
+}
+
+async function syncTasksFolder({ interactive = false } = {}) {
+  if (!fsSupported || tasksFolderSyncing) return;
+  tasksFolderSyncing = true;
+  try {
+    if (!tasksFolderHandle) tasksFolderHandle = await fsGet('tasksDir');
+    if (!tasksFolderHandle) { setFolderUi('📂 Connect tasks folder', ''); return; }
+
+    let perm = await tasksFolderHandle.queryPermission({ mode: 'read' });
+    if (perm !== 'granted' && interactive) perm = await tasksFolderHandle.requestPermission({ mode: 'read' });
+    if (perm !== 'granted') { setFolderUi('🔄 Allow tasks folder', `${tasksFolderHandle.name}: click to allow reading`); return; }
+
+    let seen = loadSeenFiles();
+    const firstSync = !seen;
+    seen = seen || {};
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    let files = 0, added = 0, skipped = 0, bad = 0;
+
+    for await (const entry of tasksFolderHandle.values()) {
+      if (entry.kind !== 'file' || !TASKS_FILE_PATTERN.test(entry.name)) continue;
+      const file = await entry.getFile();
+      const key = `${entry.name}|${file.lastModified}`;
+      if (seen[key]) continue;
+      seen[key] = Date.now();
+      // First connection: older files are history the user has already handled.
+      if (firstSync && file.lastModified < today.getTime()) continue;
+      let data = null;
+      try { data = JSON.parse(await file.text()); } catch { bad++; continue; }
+      const entries = triageEntriesOf(data);
+      if (!entries) { bad++; continue; }
+      const r = importTriageEntries(entries);
+      files++; added += r.added; skipped += r.skipped;
+    }
+    saveSeenFiles(seen);
+    if (added) { saveTriageLog(); renderTriageView(); }
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    setFolderUi('🔄 Sync tasks folder',
+      `${tasksFolderHandle.name} · synced ${time}` +
+      (files ? ` · ${added} new from ${files} file(s)` : ' · nothing new') +
+      (skipped ? `, ${skipped} already logged` : '') + (bad ? ` · ${bad} unreadable file(s)` : ''));
+  } catch (err) {
+    setFolderUi('🔄 Sync tasks folder', `Folder sync failed: ${err && err.message ? err.message : err}`);
+  } finally {
+    tasksFolderSyncing = false;
+  }
+}
+
+tasksFolderBtn.addEventListener('click', async () => {
+  if (!tasksFolderHandle) tasksFolderHandle = await fsGet('tasksDir');
+  if (!tasksFolderHandle) {
+    try {
+      tasksFolderHandle = await window.showDirectoryPicker({ id: 'tasks-folder', mode: 'read' });
+    } catch { return; }                       // picker cancelled
+    await fsPut('tasksDir', tasksFolderHandle);
+    localStorage.removeItem(TASKS_FOLDER_SEEN_KEY);
+  }
+  syncTasksFolder({ interactive: true });
+});
+
+// Quietly pick up new files whenever the app is opened or brought back to front.
+document.addEventListener('visibilitychange', () => { if (!document.hidden) syncTasksFolder(); });
+window.addEventListener('focus', () => syncTasksFolder());
+syncTasksFolder();
 
 // The only path from the Triage Log into the real task list — explicit,
 // user-triggered, one click. Mirrors Quick Add's task shape, except every
