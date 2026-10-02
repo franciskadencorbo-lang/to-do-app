@@ -401,9 +401,9 @@
     "priority": "high",
     "startDate": "2026-08-07",
     "baseDue": "2026-08-07",
-    "due": "2026-10-02",
+    "due": "2026-10-05",
     "overdue": false,
-    "estimatedMinutes": 30,
+    "estimatedMinutes": 45,
     "remainingMinutes": null,
     "aiAssisted": false,
     "labels": [
@@ -430,6 +430,15 @@
         "date": "2026-09-25",
         "delegated": true,
         "assignee": null
+      },
+      {
+        "title": "Review LH NDA",
+        "completed": false,
+        "minutes": 15,
+        "aiAssisted": true,
+        "date": "2026-10-05",
+        "delegated": true,
+        "assignee": "LEG"
       }
     ],
     "dependsOn": [],
@@ -447,8 +456,8 @@
     "baseDue": "2026-08-07",
     "due": "2026-10-09",
     "overdue": false,
-    "estimatedMinutes": 420,
-    "remainingMinutes": 135,
+    "estimatedMinutes": 480,
+    "remainingMinutes": 120,
     "aiAssisted": false,
     "labels": [
       "Financing",
@@ -566,7 +575,7 @@
       },
       {
         "title": "Share Financial Model to HQ",
-        "completed": false,
+        "completed": true,
         "minutes": 15,
         "aiAssisted": false,
         "date": "2026-09-30",
@@ -575,12 +584,30 @@
       },
       {
         "title": "Weekly Report to HQ",
-        "completed": false,
+        "completed": true,
         "minutes": 15,
         "aiAssisted": true,
         "date": "2026-10-02",
         "delegated": false,
         "assignee": null
+      },
+      {
+        "title": "Prepare Cover Letter",
+        "completed": true,
+        "minutes": 30,
+        "aiAssisted": false,
+        "date": "2026-10-01",
+        "delegated": false,
+        "assignee": null
+      },
+      {
+        "title": "Compare Project Cost with Spent",
+        "completed": false,
+        "minutes": 30,
+        "aiAssisted": false,
+        "date": "2026-10-01",
+        "delegated": true,
+        "assignee": "Mhudang"
       }
     ],
     "dependsOn": [],
@@ -686,7 +713,7 @@
     "due": "2026-09-29",
     "overdue": true,
     "estimatedMinutes": 120,
-    "remainingMinutes": 30,
+    "remainingMinutes": 15,
     "aiAssisted": false,
     "labels": [],
     "subtasks": [
@@ -728,7 +755,7 @@
       },
       {
         "title": "Orrick Overrun",
-        "completed": false,
+        "completed": true,
         "minutes": 15,
         "aiAssisted": false,
         "date": "2026-09-28",
@@ -769,8 +796,8 @@
     "baseDue": null,
     "due": "2026-10-09",
     "overdue": false,
-    "estimatedMinutes": 285,
-    "remainingMinutes": 45,
+    "estimatedMinutes": 315,
+    "remainingMinutes": 75,
     "aiAssisted": false,
     "labels": [],
     "subtasks": [
@@ -827,6 +854,15 @@
         "date": "2026-09-25",
         "delegated": false,
         "assignee": null
+      },
+      {
+        "title": "Cash Plan for Advisor Fee",
+        "completed": false,
+        "minutes": 30,
+        "aiAssisted": true,
+        "date": "2026-10-01",
+        "delegated": false,
+        "assignee": null
       }
     ],
     "dependsOn": [],
@@ -872,7 +908,7 @@
       },
       {
         "title": "Prepare Deck M&A Process",
-        "completed": false,
+        "completed": true,
         "minutes": 15,
         "aiAssisted": true,
         "date": "2026-09-30",
@@ -1015,7 +1051,7 @@
   },
   {
     "title": "Monitor WAYU CP List",
-    "status": "Not started",
+    "status": "In Progress",
     "category": "DELEGATE",
     "project": "WAYU",
     "priority": "medium",
@@ -1023,8 +1059,8 @@
     "baseDue": null,
     "due": "2026-10-30",
     "overdue": false,
-    "estimatedMinutes": 135,
-    "remainingMinutes": 60,
+    "estimatedMinutes": 165,
+    "remainingMinutes": 30,
     "aiAssisted": false,
     "labels": [
       "M&A",
@@ -1033,7 +1069,7 @@
     "subtasks": [
       {
         "title": "Request Update CP List",
-        "completed": false,
+        "completed": true,
         "minutes": 15,
         "aiAssisted": false,
         "date": "2026-10-02",
@@ -1042,7 +1078,7 @@
       },
       {
         "title": "Prepare CP Dashboard",
-        "completed": false,
+        "completed": true,
         "minutes": 60,
         "aiAssisted": true,
         "date": "2026-10-04",
@@ -1051,7 +1087,7 @@
       },
       {
         "title": "Agree on SCADA CP",
-        "completed": false,
+        "completed": true,
         "minutes": 30,
         "aiAssisted": false,
         "date": "2026-10-02",
@@ -1060,10 +1096,19 @@
       },
       {
         "title": "Answer Giang PCG",
-        "completed": false,
+        "completed": true,
         "minutes": 30,
         "aiAssisted": false,
         "date": "2026-10-30",
+        "delegated": false,
+        "assignee": null
+      },
+      {
+        "title": "Update CP List Tracker",
+        "completed": false,
+        "minutes": 30,
+        "aiAssisted": true,
+        "date": "2026-10-01",
         "delegated": false,
         "assignee": null
       }
@@ -1314,45 +1359,6 @@
     "notes": null,
     "emailLink": null,
     "createdAt": "2026-09-29T08:58:58.211Z"
-  },
-  {
-    "title": "Update GYS6 CPs Dashboard",
-    "status": "Not started",
-    "category": "DO",
-    "project": null,
-    "priority": "high",
-    "startDate": "2026-09-29",
-    "baseDue": "2026-09-29",
-    "due": "2026-10-29",
-    "overdue": false,
-    "estimatedMinutes": 60,
-    "remainingMinutes": 60,
-    "aiAssisted": true,
-    "labels": [],
-    "subtasks": [
-      {
-        "title": "Offtaker Tracker Module",
-        "completed": false,
-        "minutes": 30,
-        "aiAssisted": true,
-        "date": "2026-10-29",
-        "delegated": false,
-        "assignee": null
-      },
-      {
-        "title": "Terminology",
-        "completed": false,
-        "minutes": 30,
-        "aiAssisted": true,
-        "date": "2026-10-29",
-        "delegated": false,
-        "assignee": null
-      }
-    ],
-    "dependsOn": [],
-    "notes": null,
-    "emailLink": null,
-    "createdAt": "2026-09-29T09:26:21.136Z"
   },
   {
     "title": "Deputy M&A and FIN Director",
