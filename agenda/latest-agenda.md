@@ -1,15 +1,15 @@
-﻿# Staff Meeting Agenda -- Wednesday 5:30 PM staff meeting
-_Generated from Task Hub export; next meeting: Wednesday, Sep 30, 2026_
+# Staff Meeting Agenda -- Friday 4:00 PM staff meeting
+_Generated from Task Hub export; next meeting: Friday, Oct 2, 2026_
 
 ## Needs attention -- overdue or due before this meeting
 - Clear Unread Email [General] - due Sep 29, urgent priority [OVERDUE]
-- YAM Financing [YAM FINANCING] - due Sep 29, medium priority (2 open sub-tasks) [OVERDUE]
+- YAM Financing [YAM FINANCING] - due Sep 29, medium priority (1 open sub-task) [OVERDUE]
     - DBS Account Agreement (15 min)
-    - Orrick Overrun (15 min)
-
-## For the team -- delegated items
-- COOP1 Financing [COOP FINANCING] - due Oct 2, high priority (1 open sub-task)
-    - Review Indicative Offer (15 min)
+- YOKO Board [YOKO] - due Oct 1, medium priority (4 open sub-tasks)
+    - Update Dashboard (60 min)
+    - Q&A EBM (60 min)
+    - Q&A New AssetCo (60 min)
+    - Prepare Org Chart Per / Post YOKO (30 min)
 - Financing Budget FY2027 [General] - due Oct 2, high priority (1 open sub-task)
     - Complete Margot Template TH (60 min)
 - NEFIN FM [NEFIN] - due Oct 2, medium priority (4 open sub-tasks)
@@ -17,30 +17,30 @@ _Generated from Task Hub export; next meeting: Wednesday, Sep 30, 2026_
     - Prepare Deck Mhudang (15 min)
     - Organize Meeting with NEFIN CEO (15 min)
     - Review Deck with Antoine/Frank (60 min)
+
+## For the team -- delegated items
+- COOP1 Financing [COOP FINANCING] - due Oct 5, high priority (2 open sub-tasks)
+    - Review Indicative Offer (15 min)
+    - Review LH NDA (15 min)
 - GYS1 BSA/Mortgage [General] - due Oct 9, high priority (2 open sub-tasks)
     - Engage Hunton (15 min)
     - Launch the mandate (15 min)
-- GYS4/6 Financing [GYS4/6] - due Oct 9, high priority (6 open sub-tasks)
+- GYS4/6 Financing [GYS4/6] - due Oct 9, high priority (5 open sub-tasks)
     - Obtain Ack/Consent Final Form (15 min)
     - Review Ack/Consent Form (30 min)
     - Review CFA GYS6 (60 min)
     - Build Tracker for Ack/Consent (30 min)
-    - Share Financial Model to HQ (15 min)
-    - Weekly Report to HQ (15 min)
-- Project Tire [SOLAR D] - due Oct 9, high priority (3 open sub-tasks)
+    - Compare Project Cost with Spent (30 min)
+- Project Tire [SOLAR D] - due Oct 9, high priority (2 open sub-tasks)
     - Build Financial Model (15 min)
     - Prepare NBO (30 min)
-    - Prepare Deck M&A Process (15 min)
 - Holdback Tipco [YOKO] - due Oct 9, medium priority (1 open sub-task)
     - Update Documentation (60 min)
 - GYE 4 Financing [General] - due Oct 9, medium priority (2 open sub-tasks)
     - Organize Meeting with Banks (15 min)
     - Meeting with Banks (180 min)
-- Monitor WAYU CP List [WAYU] - due Oct 30, medium priority (4 open sub-tasks)
-    - Request Update CP List (15 min)
-    - Prepare CP Dashboard (60 min)
-    - Agree on SCADA CP (30 min)
-    - Answer Giang PCG (30 min)
+- Monitor WAYU CP List [WAYU] - due Oct 30, medium priority (1 open sub-task)
+    - Update CP List Tracker (30 min)
 - Business Introducer PH [General] - due Oct 30, medium priority (3 open sub-tasks)
     - Dev. Agreement Wassef (15 min)
     - NDA with Wassef (15 min)
@@ -60,11 +60,6 @@ _Generated from Task Hub export; next meeting: Wednesday, Sep 30, 2026_
     - Follow-Up Invoice GY SAS (15 min)
 
 ## Status updates -- other active work
-- YOKO Board [YOKO] - due Oct 1, medium priority (4 open sub-tasks)
-    - Update Dashboard (60 min)
-    - Q&A EBM (60 min)
-    - Q&A New AssetCo (60 min)
-    - Prepare Org Chart Per / Post YOKO (30 min)
 - Feedback Session [General] - due Oct 7, medium priority (4 open sub-tasks)
     - Feedback Nink (30 min)
     - Feedback Duong (30 min)
@@ -79,13 +74,11 @@ _Generated from Task Hub export; next meeting: Wednesday, Sep 30, 2026_
     - Review Template (60 min)
     - Add Thailand (120 min)
     - Create Dashboard (60 min)
-- Project Equinox [CLEANTECH] - due Oct 9, low priority (2 open sub-tasks) [source email linked]
+- Project Equinox [CLEANTECH] - due Oct 9, low priority (3 open sub-tasks) [source email linked]
     - Obtain quotation from Marsh (15 min)
     - Test Buy-Out Table (30 min)
+    - Cash Plan for Advisor Fee (30 min)
 - YOKO Reporting [YOKO] - due Oct 15, urgent priority (2 open sub-tasks)
     - Monthly Report August (30 min)
     - Update Semi-Annual FM (180 min)
-- Update GYS6 CPs Dashboard [General] - due Oct 29, high priority (2 open sub-tasks)
-    - Offtaker Tracker Module (30 min)
-    - Terminology (30 min)
 
