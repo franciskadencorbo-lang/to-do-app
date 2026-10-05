@@ -1,24 +1,29 @@
-# Staff Meeting Agenda -- Monday 5:30 PM staff meeting
-_Generated from Task Hub export; next meeting: Monday, Oct 5, 2026_
+# Staff Meeting Agenda -- Wednesday 5:30 PM staff meeting
+_Generated from Task Hub export; next meeting: Wednesday, Oct 7, 2026_
 
 ## Needs attention -- overdue or due before this meeting
-- Clear Unread Email [General] - due Oct 5, urgent priority
-- COOP1 Financing [COOP FINANCING] - due Oct 5, high priority (2 open sub-tasks)
+- Clear Unread Email [General] - due Oct 5, urgent priority [OVERDUE]
+- COOP1 Financing [COOP FINANCING] - due Oct 5, high priority (2 open sub-tasks) [OVERDUE]
     - Review Indicative Offer (15 min)
     - Review LH NDA (15 min)
-- Financing Budget FY2027 [General] - due Oct 5, high priority (1 open sub-task)
+- Financing Budget FY2027 [General] - due Oct 5, high priority (1 open sub-task) [OVERDUE]
     - Complete Margot Template TH (60 min)
-- YOKO Board [YOKO] - due Oct 5, medium priority (2 open sub-tasks)
+- YOKO Board [YOKO] - due Oct 5, medium priority (2 open sub-tasks) [OVERDUE]
     - Update Dashboard (60 min)
     - Review MoM EBM (30 min)
-- NEFIN FM [NEFIN] - due Oct 5, medium priority (1 open sub-task)
+- NEFIN FM [NEFIN] - due Oct 5, medium priority (1 open sub-task) [OVERDUE]
     - Review Deck with Antoine/Frank (60 min)
-- responsAbility UBO [General] - due Oct 5, low priority [source email linked]
-
-## For the team -- delegated items
+- responsAbility UBO [General] - due Oct 5, low priority [OVERDUE] [source email linked]
 - CME [CME] - due Oct 6, medium priority (2 open sub-tasks)
     - Offtaker Assessment (15 min)
     - TOU / Two-Part Tariff (15 min)
+- Feedback Session [General] - due Oct 7, medium priority (4 open sub-tasks)
+    - Feedback Nink (30 min)
+    - Feedback Duong (30 min)
+    - Prepare Feedback AFRY (30 min)
+    - Feedback AFRY (60 min)
+
+## For the team -- delegated items
 - GYS1 BSA/Mortgage [General] - due Oct 9, high priority (3 open sub-tasks)
     - Engage Hunton (15 min)
     - Launch the mandate (15 min)
@@ -59,11 +64,6 @@ _Generated from Task Hub export; next meeting: Monday, Oct 5, 2026_
     - Follow-Up Invoice GY SAS (15 min)
 
 ## Status updates -- other active work
-- Feedback Session [General] - due Oct 7, medium priority (4 open sub-tasks)
-    - Feedback Nink (30 min)
-    - Feedback Duong (30 min)
-    - Prepare Feedback AFRY (30 min)
-    - Feedback AFRY (60 min)
 - Deputy M&A and FIN Director [General] - due Oct 9, medium priority (3 open sub-tasks)
     - Review Recruitment Pack (30 min)
     - Organize Meeting with Candidate (15 min)
