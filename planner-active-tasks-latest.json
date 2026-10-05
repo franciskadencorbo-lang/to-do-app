@@ -47,7 +47,7 @@
         "completed": false,
         "minutes": 30,
         "aiAssisted": true,
-        "date": "2026-09-25",
+        "date": "2026-10-05",
         "delegated": false,
         "assignee": null
       },
@@ -76,7 +76,7 @@
     "baseDue": "2026-08-11",
     "due": "2026-10-09",
     "overdue": false,
-    "estimatedMinutes": 125,
+    "estimatedMinutes": 140,
     "remainingMinutes": 30,
     "aiAssisted": false,
     "labels": [
@@ -148,6 +148,15 @@
         "date": "2026-10-09",
         "delegated": false,
         "assignee": null
+      },
+      {
+        "title": "Review Consent",
+        "completed": false,
+        "minutes": 15,
+        "aiAssisted": false,
+        "date": null,
+        "delegated": true,
+        "assignee": "LEG"
       }
     ],
     "dependsOn": [],
@@ -250,10 +259,10 @@
     "priority": "medium",
     "startDate": "2026-08-09",
     "baseDue": "2026-08-09",
-    "due": "2026-10-01",
+    "due": "2026-10-05",
     "overdue": false,
-    "estimatedMinutes": 795,
-    "remainingMinutes": 210,
+    "estimatedMinutes": 825,
+    "remainingMinutes": 90,
     "aiAssisted": false,
     "labels": [
       "YOKO",
@@ -302,7 +311,7 @@
         "completed": false,
         "minutes": 60,
         "aiAssisted": true,
-        "date": "2026-09-30",
+        "date": "2026-10-05",
         "delegated": false,
         "assignee": null
       },
@@ -362,7 +371,7 @@
       },
       {
         "title": "Q&A EBM",
-        "completed": false,
+        "completed": true,
         "minutes": 60,
         "aiAssisted": true,
         "date": "2026-09-29",
@@ -371,7 +380,7 @@
       },
       {
         "title": "Q&A New AssetCo",
-        "completed": false,
+        "completed": true,
         "minutes": 60,
         "aiAssisted": true,
         "date": "2026-10-01",
@@ -380,10 +389,19 @@
       },
       {
         "title": "Prepare Org Chart Per / Post YOKO",
-        "completed": false,
+        "completed": true,
         "minutes": 30,
         "aiAssisted": true,
         "date": "2026-09-29",
+        "delegated": false,
+        "assignee": null
+      },
+      {
+        "title": "Review MoM EBM",
+        "completed": false,
+        "minutes": 30,
+        "aiAssisted": true,
+        "date": "2026-10-05",
         "delegated": false,
         "assignee": null
       }
@@ -418,7 +436,7 @@
         "completed": false,
         "minutes": 15,
         "aiAssisted": true,
-        "date": "2026-10-02",
+        "date": "2026-10-05",
         "delegated": true,
         "assignee": "EXT"
       },
@@ -456,7 +474,7 @@
     "baseDue": "2026-08-07",
     "due": "2026-10-09",
     "overdue": false,
-    "estimatedMinutes": 480,
+    "estimatedMinutes": 540,
     "remainingMinutes": 120,
     "aiAssisted": false,
     "labels": [
@@ -539,7 +557,7 @@
       },
       {
         "title": "Obtain Ack/Consent Final Form",
-        "completed": false,
+        "completed": true,
         "minutes": 15,
         "aiAssisted": false,
         "date": null,
@@ -548,7 +566,7 @@
       },
       {
         "title": "Review Ack/Consent Form",
-        "completed": false,
+        "completed": true,
         "minutes": 30,
         "aiAssisted": true,
         "date": "2026-10-05",
@@ -566,7 +584,7 @@
       },
       {
         "title": "Build Tracker for Ack/Consent",
-        "completed": false,
+        "completed": true,
         "minutes": 30,
         "aiAssisted": true,
         "date": "2026-10-02",
@@ -605,9 +623,27 @@
         "completed": false,
         "minutes": 30,
         "aiAssisted": false,
-        "date": "2026-10-01",
+        "date": "2026-10-02",
         "delegated": true,
         "assignee": "Mhudang"
+      },
+      {
+        "title": "Update Dashboard",
+        "completed": false,
+        "minutes": 30,
+        "aiAssisted": true,
+        "date": "2026-10-05",
+        "delegated": false,
+        "assignee": null
+      },
+      {
+        "title": "Offtaker Address / Signatory",
+        "completed": false,
+        "minutes": 30,
+        "aiAssisted": true,
+        "date": "2026-10-05",
+        "delegated": false,
+        "assignee": null
       }
     ],
     "dependsOn": [],
@@ -623,7 +659,7 @@
     "priority": "medium",
     "startDate": "2026-08-09",
     "baseDue": "2026-08-09",
-    "due": "2026-10-02",
+    "due": "2026-10-05",
     "overdue": false,
     "estimatedMinutes": 195,
     "remainingMinutes": 60,
@@ -662,16 +698,16 @@
       },
       {
         "title": "Prepare Suggestion to CEO",
-        "completed": false,
+        "completed": true,
         "minutes": 15,
         "aiAssisted": false,
-        "date": "2026-09-29",
+        "date": "2026-10-01",
         "delegated": true,
         "assignee": "Mhudang"
       },
       {
         "title": "Prepare Deck Mhudang",
-        "completed": false,
+        "completed": true,
         "minutes": 15,
         "aiAssisted": false,
         "date": "2026-09-30",
@@ -680,7 +716,7 @@
       },
       {
         "title": "Organize Meeting with NEFIN CEO",
-        "completed": false,
+        "completed": true,
         "minutes": 15,
         "aiAssisted": false,
         "date": "2026-10-02",
@@ -692,7 +728,7 @@
         "completed": false,
         "minutes": 60,
         "aiAssisted": false,
-        "date": "2026-10-01",
+        "date": "2026-10-05",
         "delegated": false,
         "assignee": null
       }
@@ -701,90 +737,6 @@
     "notes": null,
     "emailLink": null,
     "createdAt": "2026-08-03T04:12:18.850Z"
-  },
-  {
-    "title": "YAM Financing",
-    "status": "In Progress",
-    "category": "PLAN",
-    "project": "YAM FINANCING",
-    "priority": "medium",
-    "startDate": "2026-08-28",
-    "baseDue": "2026-08-28",
-    "due": "2026-09-29",
-    "overdue": true,
-    "estimatedMinutes": 120,
-    "remainingMinutes": 15,
-    "aiAssisted": false,
-    "labels": [],
-    "subtasks": [
-      {
-        "title": "DBS Account Agreement",
-        "completed": false,
-        "minutes": 15,
-        "aiAssisted": false,
-        "date": null,
-        "delegated": false,
-        "assignee": null
-      },
-      {
-        "title": "SocGen Questions",
-        "completed": true,
-        "minutes": 15,
-        "aiAssisted": false,
-        "date": null,
-        "delegated": false,
-        "assignee": null
-      },
-      {
-        "title": "O&M Questions",
-        "completed": true,
-        "minutes": 15,
-        "aiAssisted": false,
-        "date": null,
-        "delegated": false,
-        "assignee": null
-      },
-      {
-        "title": "Emergency Funding",
-        "completed": true,
-        "minutes": 15,
-        "aiAssisted": false,
-        "date": null,
-        "delegated": false,
-        "assignee": null
-      },
-      {
-        "title": "Orrick Overrun",
-        "completed": true,
-        "minutes": 15,
-        "aiAssisted": false,
-        "date": "2026-09-28",
-        "delegated": false,
-        "assignee": null
-      },
-      {
-        "title": "Confirm Project Zombies",
-        "completed": true,
-        "minutes": 15,
-        "aiAssisted": false,
-        "date": "2026-09-29",
-        "delegated": false,
-        "assignee": null
-      },
-      {
-        "title": "Review Disclosure Letter",
-        "completed": true,
-        "minutes": 30,
-        "aiAssisted": true,
-        "date": "2026-09-29",
-        "delegated": false,
-        "assignee": null
-      }
-    ],
-    "dependsOn": [],
-    "notes": null,
-    "emailLink": null,
-    "createdAt": "2026-08-06T05:11:20.512Z"
   },
   {
     "title": "Project Equinox",
@@ -796,14 +748,14 @@
     "baseDue": null,
     "due": "2026-10-09",
     "overdue": false,
-    "estimatedMinutes": 315,
-    "remainingMinutes": 75,
+    "estimatedMinutes": 345,
+    "remainingMinutes": 90,
     "aiAssisted": false,
     "labels": [],
     "subtasks": [
       {
         "title": "Obtain quotation from Marsh",
-        "completed": false,
+        "completed": true,
         "minutes": 15,
         "aiAssisted": false,
         "date": "2026-10-09",
@@ -860,7 +812,16 @@
         "completed": false,
         "minutes": 30,
         "aiAssisted": true,
-        "date": "2026-10-01",
+        "date": "2026-10-05",
+        "delegated": false,
+        "assignee": null
+      },
+      {
+        "title": "Review Marsh Quotation",
+        "completed": false,
+        "minutes": 30,
+        "aiAssisted": true,
+        "date": "2026-10-07",
         "delegated": false,
         "assignee": null
       }
@@ -893,9 +854,9 @@
         "completed": false,
         "minutes": 15,
         "aiAssisted": true,
-        "date": "2026-09-30",
+        "date": "2026-10-06",
         "delegated": true,
-        "assignee": "Mhudang"
+        "assignee": "Duong"
       },
       {
         "title": "Prepare NBO",
@@ -982,7 +943,7 @@
         "completed": false,
         "minutes": 30,
         "aiAssisted": false,
-        "date": "2026-10-02",
+        "date": "2026-10-07",
         "delegated": false,
         "assignee": null
       },
@@ -991,7 +952,7 @@
         "completed": false,
         "minutes": 30,
         "aiAssisted": false,
-        "date": "2026-10-02",
+        "date": "2026-10-07",
         "delegated": false,
         "assignee": null
       },
@@ -1025,9 +986,9 @@
     "category": "DELEGATE",
     "project": null,
     "priority": "high",
-    "startDate": "2026-10-02",
+    "startDate": "2026-10-05",
     "baseDue": null,
-    "due": "2026-10-02",
+    "due": "2026-10-05",
     "overdue": false,
     "estimatedMinutes": 60,
     "remainingMinutes": 60,
@@ -1039,7 +1000,7 @@
         "completed": false,
         "minutes": 60,
         "aiAssisted": false,
-        "date": "2026-10-02",
+        "date": "2026-10-05",
         "delegated": false,
         "assignee": null
       }
@@ -1059,8 +1020,8 @@
     "baseDue": null,
     "due": "2026-10-30",
     "overdue": false,
-    "estimatedMinutes": 165,
-    "remainingMinutes": 30,
+    "estimatedMinutes": 255,
+    "remainingMinutes": 15,
     "aiAssisted": false,
     "labels": [
       "M&A",
@@ -1105,10 +1066,37 @@
       },
       {
         "title": "Update CP List Tracker",
-        "completed": false,
+        "completed": true,
         "minutes": 30,
         "aiAssisted": true,
-        "date": "2026-10-01",
+        "date": "2026-10-05",
+        "delegated": false,
+        "assignee": null
+      },
+      {
+        "title": "Request missing items",
+        "completed": false,
+        "minutes": 15,
+        "aiAssisted": true,
+        "date": "2026-10-02",
+        "delegated": true,
+        "assignee": "Duong"
+      },
+      {
+        "title": "MXB Retention Amount Analysis",
+        "completed": false,
+        "minutes": 60,
+        "aiAssisted": false,
+        "date": "2026-10-02",
+        "delegated": true,
+        "assignee": "Duong"
+      },
+      {
+        "title": "CPs to waive (EPTC, Inspection)",
+        "completed": false,
+        "minutes": 15,
+        "aiAssisted": false,
+        "date": "2026-10-02",
         "delegated": false,
         "assignee": null
       }
@@ -1120,7 +1108,7 @@
   },
   {
     "title": "GYE 4 Financing",
-    "status": "Not started",
+    "status": "In Progress",
     "category": "DELEGATE",
     "project": null,
     "priority": "medium",
@@ -1135,7 +1123,7 @@
     "subtasks": [
       {
         "title": "Organize Meeting with Banks",
-        "completed": false,
+        "completed": true,
         "minutes": 15,
         "aiAssisted": false,
         "date": "2026-10-02",
@@ -1271,7 +1259,7 @@
   },
   {
     "title": "Lead Generation Activities",
-    "status": "Not started",
+    "status": "In Progress",
     "category": "DELEGATE",
     "project": null,
     "priority": "medium",
@@ -1291,10 +1279,10 @@
     "subtasks": [
       {
         "title": "TH: Run report from Claude",
-        "completed": false,
+        "completed": true,
         "minutes": 15,
         "aiAssisted": true,
-        "date": "2026-09-29",
+        "date": "2026-10-04",
         "delegated": true,
         "assignee": "Claude"
       },
@@ -1346,10 +1334,10 @@
     "category": "DO",
     "project": null,
     "priority": "urgent",
-    "startDate": "2026-09-29",
-    "baseDue": "2026-09-29",
-    "due": "2026-09-29",
-    "overdue": true,
+    "startDate": "2026-10-05",
+    "baseDue": "2026-10-05",
+    "due": "2026-10-05",
+    "overdue": false,
     "estimatedMinutes": 120,
     "remainingMinutes": 120,
     "aiAssisted": true,
@@ -1380,7 +1368,7 @@
         "completed": false,
         "minutes": 30,
         "aiAssisted": true,
-        "date": "2026-09-30",
+        "date": "2026-10-06",
         "delegated": false,
         "assignee": null
       },
@@ -1407,5 +1395,97 @@
     "notes": null,
     "emailLink": null,
     "createdAt": "2026-09-29T11:18:52.603Z"
+  },
+  {
+    "title": "responsAbility UBO",
+    "status": "Not started",
+    "category": "DO",
+    "project": null,
+    "priority": "low",
+    "startDate": "2026-10-05",
+    "baseDue": "2026-10-05",
+    "due": "2026-10-05",
+    "overdue": false,
+    "estimatedMinutes": 10,
+    "remainingMinutes": 10,
+    "aiAssisted": false,
+    "labels": [
+      "Financing",
+      "Thailand"
+    ],
+    "subtasks": [],
+    "dependsOn": [],
+    "notes": "Act: resolve outstanding UBO form items urgently\n\nFROM: Shuvi Bhalla\nRECEIVED: 25 Sept, 18:42\nEARLIER TRIAGE: Act (Mon, 28 Sept 2026)",
+    "emailLink": "https://outlook.office.com/mail/deeplink/read/AQMkADFiMzI0ZDk4LTUzZTYtNDZhZS04OWJjLTBmYTAzYWZlMzU0NQBGAAAD4HEGXQhHc0K6hOaJw51ijAcAlcvxquWzr0KBsLlnXCNZ7wAAAgEMAAAAlcvxquWzr0KBsLlnXCNZ7wAHVHQ3PwAAAA%3D%3D?popoutv2=1",
+    "createdAt": "2026-10-01T17:29:56.021Z"
+  },
+  {
+    "title": "Sale-Leaseback Financing for EE",
+    "status": "Not started",
+    "category": "DELEGATE",
+    "project": "GYS4/6",
+    "priority": "medium",
+    "startDate": "2026-10-31",
+    "baseDue": null,
+    "due": "2026-10-31",
+    "overdue": false,
+    "estimatedMinutes": 15,
+    "remainingMinutes": null,
+    "aiAssisted": false,
+    "labels": [],
+    "subtasks": [
+      {
+        "title": "Share Financial Model to KBANK",
+        "completed": false,
+        "minutes": 15,
+        "aiAssisted": false,
+        "date": "2026-10-31",
+        "delegated": true,
+        "assignee": "Nink"
+      }
+    ],
+    "dependsOn": [],
+    "notes": "Act: provide GYS5 financial model to Kasikornbank for EE project financing\n\nFROM: Anchalee Assarattanakul\nRECEIVED: 25 Sept, 14:04\nEARLIER TRIAGE: Act (Mon, 28 Sept 2026)",
+    "emailLink": "https://outlook.office.com/mail/deeplink/read/AQMkADFiMzI0ZDk4LTUzZTYtNDZhZS04OWJjLTBmYTAzYWZlMzU0NQBGAAAD4HEGXQhHc0K6hOaJw51ijAcAlcvxquWzr0KBsLlnXCNZ7wAAAgEMAAAAlcvxquWzr0KBsLlnXCNZ7wAHVHQ3JAAAAA%3D%3D?popoutv2=1",
+    "createdAt": "2026-10-01T17:29:56.021Z"
+  },
+  {
+    "title": "CME",
+    "status": "Not started",
+    "category": "DELEGATE",
+    "project": "CME",
+    "priority": "medium",
+    "startDate": "2026-10-06",
+    "baseDue": null,
+    "due": "2026-10-06",
+    "overdue": false,
+    "estimatedMinutes": 30,
+    "remainingMinutes": null,
+    "aiAssisted": false,
+    "labels": [],
+    "subtasks": [
+      {
+        "title": "Offtaker Assessment",
+        "completed": false,
+        "minutes": 15,
+        "aiAssisted": false,
+        "date": "2026-10-05",
+        "delegated": true,
+        "assignee": "Duong"
+      },
+      {
+        "title": "TOU / Two-Part Tariff",
+        "completed": false,
+        "minutes": 15,
+        "aiAssisted": true,
+        "date": "2026-10-06",
+        "delegated": true,
+        "assignee": "Duong"
+      }
+    ],
+    "dependsOn": [],
+    "notes": null,
+    "emailLink": null,
+    "createdAt": "2026-10-04T18:34:46.530Z"
   }
 ]
