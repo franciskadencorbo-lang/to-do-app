@@ -3252,10 +3252,10 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
 // Not Started / In Progress only (i.e. not completed) — dependency ids are
 // resolved to titles here since a Claude Skill reading this file has no
 // access to the other tasks to look ids up against.
-document.getElementById('exportActiveJsonBtn').addEventListener('click', () => {
+function buildActiveTasksExport() {
   const activeTasks = tasks.filter((t) => !t.completed);
 
-  const data = activeTasks.map((task) => ({
+  return activeTasks.map((task) => ({
     title: task.title,
     status: STATUS_LABELS[task.status] || task.status,
     category: task.category,
@@ -3285,7 +3285,10 @@ document.getElementById('exportActiveJsonBtn').addEventListener('click', () => {
     emailLink: (task.email && task.email.link) || null,
     createdAt: task.createdAt ? new Date(task.createdAt).toISOString() : null,
   }));
+}
 
+document.getElementById('exportActiveJsonBtn').addEventListener('click', () => {
+  const data = buildActiveTasksExport();
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -3295,6 +3298,96 @@ document.getElementById('exportActiveJsonBtn').addEventListener('click', () => {
   a.click();
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 10000);
+});
+
+// ---------- Send to GitHub ----------
+// Writes the "Export for AI Skill" JSON straight to planner-active-tasks-latest.json
+// in the repo, so the staff-meeting agenda routine picks it up without a manual
+// download + upload. Needs a fine-grained token (this repo only, Contents: read
+// and write) — kept in this browser's localStorage, never in the repo.
+
+const GITHUB_TOKEN_KEY = 'githubSnapshotToken';
+const GITHUB_SNAPSHOT_API = 'https://api.github.com/repos/franciskadencorbo-lang/to-do-app/contents/planner-active-tasks-latest.json';
+
+function getGithubToken() {
+  let token = localStorage.getItem(GITHUB_TOKEN_KEY);
+  if (token) return token;
+  token = (prompt(
+    'Paste your GitHub token to send tasks to GitHub.\n\n' +
+    'It is saved in this browser only. Use a fine-grained token limited to the ' +
+    'to-do-app repository with Contents: Read and write.'
+  ) || '').trim();
+  if (!token) return null;
+  localStorage.setItem(GITHUB_TOKEN_KEY, token);
+  return token;
+}
+
+// btoa() only handles Latin-1, so encode to UTF-8 bytes first.
+function toBase64Utf8(str) {
+  const bytes = new TextEncoder().encode(str);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  }
+  return btoa(binary);
+}
+
+function snapshotTimestamp() {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+async function sendSnapshotToGithub() {
+  const btn = document.getElementById('sendGithubBtn');
+  const token = getGithubToken();
+  if (!token) return;
+
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+  };
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '☁ Sending…';
+
+  try {
+    // The update needs the current file's sha; a missing file (404) just means create.
+    const current = await fetch(`${GITHUB_SNAPSHOT_API}?ref=main`, { headers, cache: 'no-store' });
+    if (current.status === 401) throw Object.assign(new Error('unauthorized'), { status: 401 });
+    const sha = current.ok ? (await current.json()).sha : undefined;
+
+    const content = JSON.stringify(buildActiveTasksExport(), null, 2);
+    const res = await fetch(GITHUB_SNAPSHOT_API, {
+      method: 'PUT',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: `Task snapshot for staff meeting - ${snapshotTimestamp()}`,
+        content: toBase64Utf8(content),
+        branch: 'main',
+        ...(sha ? { sha } : {}),
+      }),
+    });
+    if (!res.ok) throw Object.assign(new Error(`GitHub returned ${res.status}`), { status: res.status });
+
+    alert(`Sent ${tasks.filter((t) => !t.completed).length} active tasks to GitHub. The next staff-meeting agenda will use them.`);
+  } catch (err) {
+    if (err.status === 401 || err.status === 403 || err.status === 404) {
+      localStorage.removeItem(GITHUB_TOKEN_KEY);
+      alert('GitHub refused the token (expired, or missing Contents: Read and write on to-do-app). It has been cleared — click Send to GitHub again to paste a new one.');
+    } else {
+      alert(`Could not send to GitHub: ${err.message}`);
+    }
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+  }
+}
+
+document.getElementById('sendGithubBtn').addEventListener('click', () => {
+  closeSettingsPopover();
+  sendSnapshotToGithub();
 });
 
 document.getElementById('importFile').addEventListener('change', (e) => {
