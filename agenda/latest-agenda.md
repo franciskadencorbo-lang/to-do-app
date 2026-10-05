@@ -1,5 +1,7 @@
-# Staff Meeting Agenda -- Friday 4:00 PM staff meeting
-_Generated from Task Hub export; next meeting: Friday, Oct 2, 2026_
+# Staff Meeting Agenda -- Monday 5:30 PM staff meeting
+_Generated from Task Hub export; next meeting: Monday, Oct 5, 2026_
+
+> ⚠️ This task snapshot was last updated on 2026-10-02 — Francis should re-export from the Task Hub app (https://franciskadencorbo-lang.github.io/to-do-app/) before the meeting.
 
 ## Needs attention -- overdue or due before this meeting
 - Clear Unread Email [General] - due Sep 29, urgent priority [OVERDUE]
@@ -17,11 +19,11 @@ _Generated from Task Hub export; next meeting: Friday, Oct 2, 2026_
     - Prepare Deck Mhudang (15 min)
     - Organize Meeting with NEFIN CEO (15 min)
     - Review Deck with Antoine/Frank (60 min)
-
-## For the team -- delegated items
 - COOP1 Financing [COOP FINANCING] - due Oct 5, high priority (2 open sub-tasks)
     - Review Indicative Offer (15 min)
     - Review LH NDA (15 min)
+
+## For the team -- delegated items
 - GYS1 BSA/Mortgage [General] - due Oct 9, high priority (2 open sub-tasks)
     - Engage Hunton (15 min)
     - Launch the mandate (15 min)
