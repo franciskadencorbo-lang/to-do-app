@@ -1,6 +1,8 @@
 # Staff Meeting Agenda -- Wednesday 5:30 PM staff meeting
 _Generated from Task Hub export; next meeting: Wednesday, Oct 7, 2026_
 
+> ⚠️ This task snapshot was last updated on 2026-10-06 — Francis should re-export from the Task Hub app (https://franciskadencorbo-lang.github.io/to-do-app/) before the meeting.
+
 ## Needs attention -- overdue or due before this meeting
 - Clear Unread Email [General] - due Oct 5, urgent priority [OVERDUE]
 - COOP1 Financing [COOP FINANCING] - due Oct 5, high priority (2 open sub-tasks) [OVERDUE]
