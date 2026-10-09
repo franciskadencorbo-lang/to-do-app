@@ -1,64 +1,44 @@
 # Staff Meeting Agenda -- Friday 4:00 PM staff meeting
 _Generated from Task Hub export; next meeting: Friday, Oct 9, 2026_
 
-> ⚠️ This task snapshot was last updated on 2026-10-06 — Francis should re-export from the Task Hub app (https://franciskadencorbo-lang.github.io/to-do-app/) before the meeting.
-
 ## Needs attention -- overdue or due before this meeting
-- Clear Unread Email [General] - due Oct 5, urgent priority [OVERDUE]
-- COOP1 Financing [COOP FINANCING] - due Oct 5, high priority (2 open sub-tasks) [OVERDUE]
-    - Review Indicative Offer (15 min)
-    - Review LH NDA (15 min)
-- Financing Budget FY2027 [General] - due Oct 5, high priority (1 open sub-task) [OVERDUE]
-    - Complete Margot Template TH (60 min)
-- YOKO Board [YOKO] - due Oct 5, medium priority (2 open sub-tasks) [OVERDUE]
+- Re: GYS4/6 | Offtaker Consent | Who is the Champion [GYS4/6] - due Oct 7, low priority [OVERDUE] [source email linked]
+- Clear Unread Email [General] - due Oct 8, urgent priority [OVERDUE]
+- YOKO Board [YOKO] - due Oct 8, medium priority (2 open sub-tasks) [OVERDUE]
     - Update Dashboard (60 min)
-    - Review MoM EBM (30 min)
-- NEFIN FM [NEFIN] - due Oct 5, medium priority (1 open sub-task) [OVERDUE]
-    - Review Deck with Antoine/Frank (60 min)
-- responsAbility UBO [General] - due Oct 5, low priority [OVERDUE] [source email linked]
-- CME [CME] - due Oct 6, medium priority (2 open sub-tasks)
-    - Offtaker Assessment (15 min)
-    - TOU / Two-Part Tariff (15 min)
-- Feedback Session [General] - due Oct 7, medium priority (4 open sub-tasks)
-    - Feedback Nink (30 min)
-    - Feedback Duong (30 min)
-    - Prepare Feedback AFRY (30 min)
-    - Feedback AFRY (60 min)
+    - Reporting Tracker (60 min)
 - GYS1 BSA/Mortgage [General] - due Oct 9, high priority (3 open sub-tasks)
     - Engage Hunton (15 min)
     - Launch the mandate (15 min)
     - Review Consent (15 min)
-- GYS4/6 Financing [GYS4/6] - due Oct 9, high priority (4 open sub-tasks)
+- COOP1 Financing [COOP FINANCING] - due Oct 9, high priority (3 open sub-tasks)
+    - Review Indicative Offer (15 min)
+    - Review LH NDA (15 min)
+    - Draft RfP for Advisors (15 min)
+- GYS4/6 Financing [GYS4/6] - due Oct 9, high priority (2 open sub-tasks)
     - Review CFA GYS6 (60 min)
-    - Compare Project Cost with Spent (30 min)
-    - Update Dashboard (30 min)
-    - Offtaker Address / Signatory (30 min)
-- Project Tire [SOLAR D] - due Oct 9, high priority (2 open sub-tasks)
-    - Build Financial Model (15 min)
-    - Prepare NBO (30 min)
-- Holdback Tipco [YOKO] - due Oct 9, medium priority (1 open sub-task)
-    - Update Documentation (60 min)
+    - Obtain Final Form Ack/Consent (15 min)
+- Update Salesforce and WMM comments [General] - due Oct 9, high priority
+- NEFIN FM [NEFIN] - due Oct 9, medium priority (1 open sub-task)
+    - Review the deck for Chi/Kelvin (30 min)
 - GYE 4 Financing [General] - due Oct 9, medium priority (1 open sub-task)
     - Meeting with Banks (180 min)
-- Deputy M&A and FIN Director [General] - due Oct 9, medium priority (3 open sub-tasks)
-    - Review Recruitment Pack (30 min)
-    - Organize Meeting with Candidate (15 min)
-    - Meet with Candidate (60 min)
-- YOKO SA Tracker [YOKO] - due Oct 9, low priority
-- Loan Monitoring [General] - due Oct 9, low priority (3 open sub-tasks)
+- CME [CME] - due Oct 9, medium priority (2 open sub-tasks)
+    - Offtaker Assessment (15 min)
+    - TOU / Two-Part Tariff (15 min)
+
+## For the team -- delegated items
+- Loan Monitoring [General] - due Oct 12, medium priority (3 open sub-tasks)
     - Review Template (60 min)
     - Add Thailand (120 min)
     - Create Dashboard (60 min)
-- Project Equinox [CLEANTECH] - due Oct 9, low priority (3 open sub-tasks) [source email linked]
-    - Test Buy-Out Table (30 min)
-    - Cash Plan for Advisor Fee (30 min)
-    - Review Marsh Quotation (30 min)
-
-## For the team -- delegated items
-- Monitor WAYU CP List [WAYU] - due Oct 30, medium priority (3 open sub-tasks)
-    - Request missing items (15 min)
-    - MXB Retention Amount Analysis (60 min)
-    - CPs to waive (EPTC, Inspection) (15 min)
+- Project Tire [SOLAR D] - due Oct 14, high priority (2 open sub-tasks)
+    - Build Financial Model (15 min)
+    - Prepare NBO (30 min)
+- Holdback Tipco [YOKO] - due Oct 16, medium priority (1 open sub-task)
+    - Update Documentation (60 min)
+- Monitor WAYU CP List [WAYU] - due Oct 30, medium priority (1 open sub-task)
+    - Answer Wayu for MXB and Waiver (30 min)
 - Business Introducer PH [General] - due Oct 30, medium priority (3 open sub-tasks)
     - Dev. Agreement Wassef (15 min)
     - NDA with Wassef (15 min)
@@ -79,7 +59,28 @@ _Generated from Task Hub export; next meeting: Friday, Oct 9, 2026_
     - Follow-Up Invoice GY SAS (15 min)
 
 ## Status updates -- other active work
+- YOKO SA Tracker [YOKO] - due Oct 11, low priority
+- Project Equinox [CLEANTECH] - due Oct 12, low priority (5 open sub-tasks) [source email linked]
+    - Test Buy-Out Table (30 min)
+    - Cash Plan for Advisor Fee (30 min)
+    - Earn-Out Assessment (60 min)
+    - MAC Definition (30 min)
+    - Indemnity Assessment (60 min)
+- Onboard Bruno YOKO [YOKO] - due Oct 12, low priority [source email linked]
+- Feedback Session [General] - due Oct 14, medium priority (4 open sub-tasks)
+    - Feedback Nink (30 min)
+    - Feedback Duong (30 min)
+    - Prepare Feedback AFRY (30 min)
+    - Feedback AFRY (60 min)
 - YOKO Reporting [YOKO] - due Oct 15, urgent priority (2 open sub-tasks)
     - Monthly Report August (30 min)
     - Update Semi-Annual FM (180 min)
+- Deputy M&A and FIN Director [General] - due Oct 19, medium priority (3 open sub-tasks)
+    - Review Recruitment Pack (30 min)
+    - Organize Meeting with Candidate (15 min)
+    - Meet with Candidate (60 min)
+- GSY1 Insurance Documents & Renewal Policies [GYS4/6] - due no due date, low priority [source email linked]
+- Financing Plan 2027 | Meeting with BSP [YAM FINANCING] - due no due date, low priority [source email linked]
+- Baringa Presentation [YOKO] - due no due date, low priority [source email linked]
+- YAM Constitution Amendment [General] - due no due date, low priority
 
