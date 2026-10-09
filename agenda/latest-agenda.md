@@ -1,5 +1,5 @@
-# Staff Meeting Agenda -- Wednesday 5:30 PM staff meeting
-_Generated from Task Hub export; next meeting: Wednesday, Oct 7, 2026_
+# Staff Meeting Agenda -- Friday 4:00 PM staff meeting
+_Generated from Task Hub export; next meeting: Friday, Oct 9, 2026_
 
 > ⚠️ This task snapshot was last updated on 2026-10-06 — Francis should re-export from the Task Hub app (https://franciskadencorbo-lang.github.io/to-do-app/) before the meeting.
 
@@ -24,8 +24,6 @@ _Generated from Task Hub export; next meeting: Wednesday, Oct 7, 2026_
     - Feedback Duong (30 min)
     - Prepare Feedback AFRY (30 min)
     - Feedback AFRY (60 min)
-
-## For the team -- delegated items
 - GYS1 BSA/Mortgage [General] - due Oct 9, high priority (3 open sub-tasks)
     - Engage Hunton (15 min)
     - Launch the mandate (15 min)
@@ -42,6 +40,21 @@ _Generated from Task Hub export; next meeting: Wednesday, Oct 7, 2026_
     - Update Documentation (60 min)
 - GYE 4 Financing [General] - due Oct 9, medium priority (1 open sub-task)
     - Meeting with Banks (180 min)
+- Deputy M&A and FIN Director [General] - due Oct 9, medium priority (3 open sub-tasks)
+    - Review Recruitment Pack (30 min)
+    - Organize Meeting with Candidate (15 min)
+    - Meet with Candidate (60 min)
+- YOKO SA Tracker [YOKO] - due Oct 9, low priority
+- Loan Monitoring [General] - due Oct 9, low priority (3 open sub-tasks)
+    - Review Template (60 min)
+    - Add Thailand (120 min)
+    - Create Dashboard (60 min)
+- Project Equinox [CLEANTECH] - due Oct 9, low priority (3 open sub-tasks) [source email linked]
+    - Test Buy-Out Table (30 min)
+    - Cash Plan for Advisor Fee (30 min)
+    - Review Marsh Quotation (30 min)
+
+## For the team -- delegated items
 - Monitor WAYU CP List [WAYU] - due Oct 30, medium priority (3 open sub-tasks)
     - Request missing items (15 min)
     - MXB Retention Amount Analysis (60 min)
@@ -66,19 +79,6 @@ _Generated from Task Hub export; next meeting: Wednesday, Oct 7, 2026_
     - Follow-Up Invoice GY SAS (15 min)
 
 ## Status updates -- other active work
-- Deputy M&A and FIN Director [General] - due Oct 9, medium priority (3 open sub-tasks)
-    - Review Recruitment Pack (30 min)
-    - Organize Meeting with Candidate (15 min)
-    - Meet with Candidate (60 min)
-- YOKO SA Tracker [YOKO] - due Oct 9, low priority
-- Loan Monitoring [General] - due Oct 9, low priority (3 open sub-tasks)
-    - Review Template (60 min)
-    - Add Thailand (120 min)
-    - Create Dashboard (60 min)
-- Project Equinox [CLEANTECH] - due Oct 9, low priority (3 open sub-tasks) [source email linked]
-    - Test Buy-Out Table (30 min)
-    - Cash Plan for Advisor Fee (30 min)
-    - Review Marsh Quotation (30 min)
 - YOKO Reporting [YOKO] - due Oct 15, urgent priority (2 open sub-tasks)
     - Monthly Report August (30 min)
     - Update Semi-Annual FM (180 min)
