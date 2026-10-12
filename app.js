@@ -386,6 +386,16 @@ let editSubtaskDraft = [];
 let editBaseDue = null;
 
 let collapsedSubtaskIds = new Set();
+// Completed sub-tasks are folded under a "Completed (N)" row so long checklists
+// stay short with the panel open. Nothing is deleted: one click on that row
+// brings them back. Folded is the default; these remember what's been unfolded
+// (card: per task id, for the session; forms: per open form).
+let expandedDoneSubtaskIds = new Set();
+const draftDoneExpanded = { add: false, edit: false };
+
+function doneToggleLabel(expanded, count) {
+  return `<span class="subtask-toggle-arrow">${expanded ? '▾' : '▸'}</span>Completed (${count})`;
+}
 let dateEditTaskId = null;
 let calTasksDayKey = null;
 let collapsedColumns = loadCollapsedColumns();
@@ -805,10 +815,26 @@ labelQuickFilterBar.addEventListener('click', (e) => {
 // `showDelegated` mirrors the parent task's category as currently selected in
 // the form: the toggle is hidden outside DELEGATE rather than disabled, since
 // delegation-tracking is meaningless there and the row is already crowded.
-function buildSubtaskDraftHtml(draft, showDelegated = false) {
-  return draft.map((s) => `
-    <li class="draft-chip${showDelegated && s.delegated ? ' draft-chip-delegated' : ''}">${s.ai ? aiIconHtml('ai-badge-sm') : ''}<span class="draft-chip-title ${s.completed ? 'subtask-done' : ''}">${escapeHtml(s.title)}</span>${s.minutes ? `<span class="draft-chip-time">${formatMinutes(s.minutes)}</span>` : ''}<input type="date" class="draft-chip-date" data-id="${s.id}" value="${s.date || ''}" title="Sub-task Due Date — the task's own Due Date follows the latest one. Blank counts it on the task's Due Date">${showDelegated ? `<label class="ai-checkbox-label delegated-checkbox-label" title="Done by the delegate, not by you"><input type="checkbox" class="draft-chip-delegated-toggle" data-id="${s.id}" ${s.delegated ? 'checked' : ''}>Deleg.</label>` : ''}${showDelegated && s.delegated ? `<select class="draft-chip-assignee" data-id="${s.id}" title="Who this sub-task is delegated to">${buildAssigneeOptionsHtml(s.assignee, !!s.ai)}</select>` : ''}<button type="button" class="remove-draft-btn" data-id="${s.id}">×</button></li>
-  `).join('');
+function buildSubtaskDraftHtml(draft, showDelegated = false, scope = 'add') {
+  const chip = (s) => `
+    <li class="draft-chip${showDelegated && s.delegated ? ' draft-chip-delegated' : ''}">${s.ai ? aiIconHtml('ai-badge-sm') : ''}<span class="draft-chip-title ${s.completed ? 'subtask-done' : ''}">${escapeHtml(s.title)}</span>${s.minutes ? `<span class="draft-chip-time">${formatMinutes(s.minutes)}</span>` : ''}<input type="date" class="draft-chip-date" data-id="${s.id}" value="${s.date || ''}" title="Sub-task Due Date — the task's own Due Date follows the latest one. Blank counts it on the task's Due Date">${showDelegated ? `<label class="ai-checkbox-label delegated-checkbox-label" title="Done by the delegate, not by you"><input type="checkbox" class="draft-chip-delegated-toggle" data-id="${s.id}" ${s.delegated ? 'checked' : ''}>Deleg.</label>` : ''}${showDelegated && s.delegated ? `<select class="draft-chip-assignee" data-id="${s.id}" title="Who this sub-task is delegated to">${buildAssigneeOptionsHtml(s.assignee, !!s.ai)}</select>` : ''}<button type="button" class="remove-draft-btn" data-id="${s.id}" title="${s.completed ? 'Delete this completed sub-task for good (it is already tucked under Completed)' : 'Delete sub-task'}">×</button></li>
+  `;
+  const open = draft.filter((s) => !s.completed);
+  const done = draft.filter((s) => s.completed);
+  if (!done.length) return open.map(chip).join('');
+  const expanded = draftDoneExpanded[scope];
+  return open.map(chip).join('')
+    + `<li class="draft-done-toggle-row"><button type="button" class="subtask-done-toggle draft-done-toggle" data-scope="${scope}" title="${expanded ? 'Hide' : 'Show'} completed sub-tasks">${doneToggleLabel(expanded, done.length)}</button></li>`
+    + (expanded ? done.map(chip).join('') : '');
+}
+
+// Deleting a completed sub-task loses it from the inventory, so ask first.
+// Open ones go straight away, as before.
+function confirmRemoveDraft(entry) {
+  if (!entry || !entry.completed) return true;
+  return confirm(`Delete the completed sub-task "${entry.title}" for good?
+
+It is already hidden under "Completed", so you don't need to delete it to save space.`);
 }
 
 // The forms need to know whether the *currently selected* Effort/Impact/
@@ -843,12 +869,12 @@ function refreshDueRollupUi(scope) {
 // Both renders re-run the roll-up, so every draft mutation that re-renders the
 // chips keeps the Due Date input in sync for free.
 function renderSubtaskDraftList() {
-  subtaskDraftList.innerHTML = buildSubtaskDraftHtml(subtaskDraft, addFormIsDelegate);
+  subtaskDraftList.innerHTML = buildSubtaskDraftHtml(subtaskDraft, addFormIsDelegate, 'add');
   refreshDueRollupUi('add');
 }
 
 function renderEditSubtaskDraftList() {
-  editSubtaskDraftList.innerHTML = buildSubtaskDraftHtml(editSubtaskDraft, editFormIsDelegate);
+  editSubtaskDraftList.innerHTML = buildSubtaskDraftHtml(editSubtaskDraft, editFormIsDelegate, 'edit');
   refreshDueRollupUi('edit');
 }
 
@@ -963,8 +989,14 @@ subtaskDateInput.addEventListener('keydown', (e) => {
 });
 
 subtaskDraftList.addEventListener('click', (e) => {
+  if (e.target.closest('.draft-done-toggle')) {
+    draftDoneExpanded.add = !draftDoneExpanded.add;
+    renderSubtaskDraftList();
+    return;
+  }
   const btn = e.target.closest('.remove-draft-btn');
   if (!btn) return;
+  if (!confirmRemoveDraft(subtaskDraft.find((s) => s.id === btn.dataset.id))) return;
   subtaskDraft = subtaskDraft.filter((s) => s.id !== btn.dataset.id);
   renderSubtaskDraftList();
 });
@@ -1035,8 +1067,14 @@ editSubtaskDateInput.addEventListener('keydown', (e) => {
 });
 
 editSubtaskDraftList.addEventListener('click', (e) => {
+  if (e.target.closest('.draft-done-toggle')) {
+    draftDoneExpanded.edit = !draftDoneExpanded.edit;
+    renderEditSubtaskDraftList();
+    return;
+  }
   const btn = e.target.closest('.remove-draft-btn');
   if (!btn) return;
+  if (!confirmRemoveDraft(editSubtaskDraft.find((s) => s.id === btn.dataset.id))) return;
   editSubtaskDraft = editSubtaskDraft.filter((s) => s.id !== btn.dataset.id);
   renderEditSubtaskDraftList();
 });
@@ -2014,6 +2052,7 @@ function openEditModal(id) {
   // Populated before the category preview runs — it re-renders the draft chips
   // with (or without) the per-sub-task delegation toggles.
   editSubtaskDraft = (task.subtasks || []).map((s) => ({ ...s }));
+  draftDoneExpanded.edit = false;
   editSubtaskDateInput.value = '';
   updateCategoryPreview(editEffort, editImpact, editPriority, editCategoryPreview, editEstimatedTime, 'edit');
 
@@ -2123,6 +2162,15 @@ function handleTaskListClick(e) {
   if (e.target.closest('[data-notes-toggle]')) {
     e.stopPropagation();
     openNotesPopover(id, e.target.closest('[data-notes-toggle]'));
+    return;
+  }
+
+  if (e.target.closest('[data-toggle-done-subtasks]')) {
+    e.stopPropagation();
+    const doneId = e.target.closest('[data-toggle-done-subtasks]').dataset.toggleDoneSubtasks;
+    if (expandedDoneSubtaskIds.has(doneId)) expandedDoneSubtaskIds.delete(doneId);
+    else expandedDoneSubtaskIds.add(doneId);
+    render();
     return;
   }
 
@@ -2656,7 +2704,7 @@ function subtaskRowsHtml(task) {
 
   const isDelegate = isDelegateTask(task);
 
-  const rows = subtasks.map((s) => `
+  const row = (s) => `
     <label class="subtask-row${isDelegate && s.delegated ? ' subtask-delegated' : ''}"${isDelegate && s.delegated ? ' title="Done by the delegate — not counted in your remaining time"' : ''}>
       <input type="checkbox" class="subtask-checkbox" data-subtask-id="${s.id}" ${s.completed ? 'checked' : ''}>
       ${s.ai ? aiIconHtml('ai-badge-sm') : ''}
@@ -2665,7 +2713,16 @@ function subtaskRowsHtml(task) {
       ${subtaskDateBadgeHtml(s)}
       ${s.minutes ? `<span class="time-badge subtask-time-badge">${formatMinutesBadge(s.minutes)}</span>` : ''}
     </label>
-  `).join('');
+  `;
+
+  const open = subtasks.filter((s) => !s.completed);
+  const done = subtasks.filter((s) => s.completed);
+  let rows = open.map(row).join('');
+  if (done.length) {
+    const expanded = expandedDoneSubtaskIds.has(task.id);
+    rows += `<button type="button" class="subtask-done-toggle" data-toggle-done-subtasks="${task.id}" title="${expanded ? 'Hide' : 'Show'} completed sub-tasks">${doneToggleLabel(expanded, done.length)}</button>`;
+    if (expanded) rows += `<div class="subtask-done-rows">${done.map(row).join('')}</div>`;
+  }
 
   return `<div class="subtasks"><div class="subtask-expand ${collapsed ? 'hidden' : ''}"><div class="subtask-rows">${rows}</div></div></div>`;
 }

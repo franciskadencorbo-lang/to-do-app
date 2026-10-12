@@ -2363,3 +2363,39 @@ input[type="date"].due-derived {
   margin-top: 16px;
   align-items: center;
 }
+
+/* "Completed (N)" fold: done sub-tasks are hidden, not deleted, until this
+   row is clicked. Shared by the card checklist and the Add/Edit Task forms. */
+.subtask-done-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  margin-top: 3px;
+  padding: 4px 5px;
+  border: none;
+  border-top: 1px dashed var(--border);
+  background: none;
+  color: var(--text-muted, var(--text));
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-align: left;
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.subtask-done-toggle:hover {
+  opacity: 1;
+  background: var(--surface);
+  border-radius: 5px;
+}
+
+.subtask-done-rows {
+  opacity: 0.75;
+}
+
+.draft-done-toggle-row {
+  flex-basis: 100%;
+}
