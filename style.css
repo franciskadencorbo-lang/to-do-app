@@ -1,0 +1,2401 @@
+@font-face {
+  font-family: "Public Sans";
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url("https://fonts.gstatic.com/s/publicsans/v20/ijwGs572Xtc6ZYbrKww9-tCUCX0fPmU.woff2") format("woff2");
+}
+
+:root {
+  /* Quicken Hub Design System tokens (tokens/colors.css + tokens/spacing.css + tokens/typography.css) */
+  --font-sans: "Public Sans", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+  --text-xs: 11px;
+  --text-sm: 12.5px;
+  --text-base: 13px;
+  --text-md: 14px;
+  --text-lg: 15px;
+  --text-xl: 17px;
+  --text-2xl: 20px;
+  --weight-regular: 400;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --line-tight: 1.15;
+  --tracking-tight: -0.01em;
+  --bg: #f4f6fb;
+  --surface: #ffffff;
+  --surface-alt: #f1f4fa;
+  --text: #575756;
+  --text-muted: #767675;
+  --text-faint: #9aa3b4;
+  --border: #e8ebf2;
+  --border-strong: #d7dce8;
+  --accent: #2f5fed;
+  --accent-hover: #2450c9;
+  --accent-soft: #eaf0ff;
+  --accent-contrast: #ffffff;
+  --danger: #e6432e;
+  --danger-soft: #fdeceb;
+  --ai-color: #d97757;
+  --low: #16a370;
+  --medium: #c48a1a;
+  --high: #e6432e;
+  --urgent: #b8341f;
+  --prio-urgent: #e6432e;
+  --prio-high: #c48a1a;
+  --prio-medium: #2f5fed;
+  --prio-low: #9aa3b4;
+  --delegate-color: #00A9A3;
+  --status-not-started: #767675;
+  --status-in-progress: #2f5fed;
+  --shadow: 0 1px 2px rgba(20,24,40,0.05);
+  --shadow-md: 0 10px 28px rgba(20,24,40,0.10);
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-pill: 999px;
+  --form-font-size: 14px;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  background: var(--bg);
+  color: var(--text);
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.app {
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 24px 20px 60px;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 16px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #ffffff;
+  box-shadow: var(--shadow);
+  flex: none;
+}
+
+.brand-name {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--line-tight);
+  color: var(--text);
+}
+.brand-name .accent {
+  color: var(--accent);
+}
+
+.brand-tag {
+  display: block;
+  margin-top: 1px;
+  font-size: var(--text-xs);
+  color: var(--text-faint);
+  letter-spacing: 0.01em;
+}
+
+.topbar-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.topbar-actions-row {
+  display: flex;
+  gap: 8px;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 1rem;
+  cursor: pointer;
+}
+.icon-btn:hover { border-color: var(--accent); color: var(--accent); box-shadow: var(--shadow); }
+
+.btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  padding: 8px 15px;
+  border-radius: var(--radius-pill);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-base);
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+  white-space: nowrap;
+}
+.btn:hover { border-color: var(--accent); box-shadow: var(--shadow); }
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+  box-shadow: var(--shadow);
+}
+.btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+
+.btn-secondary {
+  background: var(--surface);
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: start;
+}
+
+.board-panel {
+  min-width: 0;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.panel-header h2 {
+  font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--text);
+  margin: 0;
+}
+
+.icon-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  width: 38px;
+  height: 38px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+.icon-btn:hover { filter: brightness(0.97); }
+
+.task-form {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: var(--shadow);
+  margin-bottom: 18px;
+}
+
+.projects-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: var(--shadow);
+}
+
+.projects-panel h3 {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+}
+
+.project-add-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.project-add-row input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: var(--form-font-size);
+}
+
+.project-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.title-input {
+  width: 100%;
+  font-size: var(--form-font-size);
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  margin-bottom: 10px;
+}
+.title-input::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+.task-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.task-form-row > input,
+.task-form-row > select {
+  flex: 1 1 120px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: var(--form-font-size);
+}
+
+.task-form-row .estimated-time-input {
+  flex: 0 0 8ch;
+  width: 8ch;
+}
+.task-form-row .estimated-time-input:disabled {
+  background: var(--surface-alt);
+  color: var(--text-faint);
+  cursor: not-allowed;
+}
+
+.ai-checkbox-label {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+.ai-checkbox-label input {
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--ai-color);
+}
+
+.ai-badge {
+  display: inline-flex;
+  align-items: center;
+  color: var(--ai-color);
+  line-height: 0;
+  vertical-align: -2px;
+}
+.ai-badge svg {
+  width: 13px;
+  height: 13px;
+}
+.ai-badge-sm svg {
+  width: 11px;
+  height: 11px;
+}
+.ai-badge-after {
+  margin-left: 4px;
+}
+.ai-badge-before {
+  margin-right: 4px;
+}
+
+.add-btn {
+  flex: 0 0 auto;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border: none;
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.add-btn:hover { background: var(--accent-hover); }
+
+.form-section-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin: 12px 0 6px;
+}
+
+.label-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.label-chip {
+  border: 1px solid transparent;
+  background: var(--chip-bg, var(--bg));
+  color: var(--chip-color, var(--text-muted));
+  padding: 4px 11px;
+  border-radius: 14px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.label-chip.selected {
+  border-color: var(--chip-color, var(--accent));
+}
+
+.hint-text {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.subtask-input-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.subtask-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: var(--form-font-size);
+}
+.subtask-input::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+.subtask-minutes-input {
+  flex: 0 0 8ch;
+  width: 8ch;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: var(--form-font-size);
+}
+.subtask-minutes-input::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+/* Optional per-sub-task work day — sits between the minutes box and the AI
+   toggle in the sub-task entry row. */
+.subtask-date-input {
+  flex: 0 0 auto;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: var(--form-font-size);
+  font-family: inherit;
+}
+
+/* Delegation toggle borrows the AI toggle's layout but the DELEGATE color, so
+   it reads as part of the same family without being mistaken for it. */
+.delegated-checkbox-label {
+  color: var(--delegate-color);
+}
+.delegated-checkbox-label input {
+  accent-color: var(--delegate-color);
+}
+
+/* New-entry Assignee dropdown — only shown while "Deleg." is ticked. */
+.subtask-assignee-select {
+  flex: 0 0 auto;
+  max-width: 160px;
+  padding: 8px 10px;
+  border: 1px solid var(--delegate-color);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--delegate-color);
+  font-size: var(--form-font-size);
+  font-family: inherit;
+}
+
+.notes-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: var(--form-font-size);
+  font-family: inherit;
+  resize: vertical;
+  margin-top: 8px;
+}
+.notes-input::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+.subtask-draft-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.draft-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 3px 6px 3px 11px;
+  font-size: 0.8rem;
+}
+
+.draft-chip-time {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+/* Date and delegation stay editable on the chip itself — there's nowhere else
+   to change them once a sub-task has been added. */
+.draft-chip-date {
+  padding: 2px 5px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.72rem;
+}
+
+.draft-chip .delegated-checkbox-label {
+  font-size: 0.7rem;
+  padding: 0;
+}
+
+.draft-chip-assignee {
+  max-width: 130px;
+  padding: 2px 4px;
+  border: 1px solid var(--delegate-color);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--delegate-color);
+  font-family: inherit;
+  font-size: 0.72rem;
+}
+
+.draft-chip-delegated {
+  border-color: var(--delegate-color);
+}
+.draft-chip-delegated .draft-chip-title {
+  font-style: italic;
+  color: var(--delegate-color);
+}
+
+.remove-draft-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 2px 4px;
+}
+.remove-draft-btn:hover { color: var(--danger); }
+
+.edit-draft-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+  line-height: 1;
+  padding: 2px 4px;
+}
+.edit-draft-btn:hover { color: var(--accent); }
+
+.draft-chip-edit-input {
+  width: 120px;
+  padding: 3px 6px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.8rem;
+}
+
+.save-edit-btn,
+.cancel-edit-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 2px 4px;
+  color: var(--text-muted);
+}
+.save-edit-btn:hover { color: var(--success, #2e9e5b); }
+.cancel-edit-btn:hover { color: var(--danger); }
+
+.file-input {
+  width: 100%;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.email-link-input {
+  margin-top: 8px;
+}
+
+.email-preview:empty {
+  display: none;
+}
+
+.email-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  margin-top: 8px;
+  font-size: 0.82rem;
+}
+
+.email-chip-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.email-badge {
+  cursor: pointer;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+.email-badge:hover {
+  opacity: 0.7;
+}
+
+/* Stylized blue/purple mark evoking Outlook — not a reproduction of the
+   actual trademarked Outlook logo artwork. */
+.email-badge.outlook-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  background: linear-gradient(135deg, #4f6df5, #2038b0);
+  color: #fff;
+  font-size: 0.68rem;
+  line-height: 1;
+}
+
+.notes-badge {
+  cursor: pointer;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+.notes-badge:hover {
+  opacity: 0.7;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.dropdown-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  padding: 8px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.pill-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.pill-btn:hover { border-color: var(--accent); }
+.pill-btn.active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-color: var(--accent);
+}
+.pill-btn .pill-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--pill-color, var(--text-muted));
+  flex-shrink: 0;
+}
+.pill-btn.active .pill-dot {
+  background: var(--accent-contrast);
+}
+
+.view-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 4px;
+  width: fit-content;
+  margin-bottom: 14px;
+}
+
+.view-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  color: var(--text-muted);
+  padding: 7px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.view-tab:hover { color: var(--text); }
+.view-tab.active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  box-shadow: var(--shadow);
+}
+
+.view-tab-icon {
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.results-count {
+  white-space: nowrap;
+  margin-left: auto;
+}
+
+.filter-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 6px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.filter-btn.active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-color: var(--accent);
+}
+
+.filter-group select {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.85rem;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: repeat(2, auto);
+  grid-auto-flow: column;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 800px) {
+  .board {
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
+    grid-auto-flow: row;
+  }
+}
+
+.board-column {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--column-color, var(--border));
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 280px);
+  overflow: hidden;
+}
+
+.board-column-body {
+  overflow-y: auto;
+  flex: 1;
+  padding: 12px 14px 14px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.quick-add-form {
+  margin-bottom: 10px;
+}
+
+.quick-add-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: var(--text-base);
+  color: var(--text);
+  background: var(--surface);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.quick-add-input::placeholder {
+  color: var(--text-faint);
+}
+
+.quick-add-input:focus {
+  outline: none;
+  border-style: solid;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.board-column-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.board-column-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.board-column-body::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+  border-radius: 3px;
+}
+
+/* A pale wash of the category's own color, with the color's darkened
+   derivation (--column-ink) as text so pale quadrant colors stay legible. */
+.board-column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  flex-shrink: 0;
+  background: var(--column-tint, transparent);
+  border-bottom: 1px solid var(--column-edge, var(--border));
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.column-title-group {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.column-icon {
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.column-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--column-ink, var(--text));
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.column-subtitle {
+  font-weight: 500;
+  font-size: 0.76rem;
+  color: var(--column-ink, var(--text-muted));
+  opacity: 0.75;
+  white-space: nowrap;
+}
+
+.column-header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.column-count {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--column-ink, var(--text));
+  background: var(--surface);
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 1px 9px;
+  flex-shrink: 0;
+  box-shadow: var(--shadow);
+}
+
+.column-collapse-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  font-size: 0.85rem;
+  line-height: 1;
+  font-weight: 700;
+  color: var(--column-ink, var(--text-muted));
+  background: var(--surface);
+  border: none;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+  box-shadow: var(--shadow);
+}
+
+.column-collapse-btn:hover {
+  color: var(--text);
+  background: var(--border);
+}
+
+.board-column.collapsed .board-column-body {
+  display: none;
+}
+
+.board-column.collapsed {
+  max-height: none;
+}
+
+/* Placeholder standing in for the hidden card list, so a collapsed quadrant
+   still reports what it's holding. Text is kept in sync by renderBoard. */
+.column-collapsed-note {
+  display: none;
+  padding: 12px 14px;
+  text-align: center;
+  font-size: 0.78rem;
+  font-style: italic;
+  color: var(--text-faint);
+}
+
+.board-column.collapsed .column-collapsed-note {
+  display: block;
+}
+
+.column-empty {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  padding: 16px 4px;
+}
+
+.completed-group {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border);
+}
+
+.completed-group summary {
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  list-style: none;
+}
+.completed-group summary::-webkit-details-marker {
+  display: none;
+}
+.completed-group summary::before {
+  content: '▸';
+  display: inline-block;
+  margin-right: 5px;
+  transition: transform 0.15s ease;
+}
+.completed-group[open] summary::before {
+  transform: rotate(90deg);
+}
+.completed-group summary:hover {
+  color: var(--text);
+}
+
+.completed-list {
+  margin-top: 8px;
+}
+
+.task-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.task-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 13px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  box-shadow: var(--shadow);
+}
+
+.task-item.completed {
+  opacity: 0.55;
+}
+.task-item.completed .task-title {
+  text-decoration: line-through;
+}
+
+/* Scoped to <li> (board cards) only — <tr> (table rows) keep their persistent
+   checkbox/edit/delete and must not get position:relative from this rule. */
+li.task-item {
+  position: relative;
+  cursor: pointer;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+li.task-item:hover {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-md);
+}
+
+/* An overdue card is flagged on the card edge itself, not just on its date
+   pill — the ring makes it findable while scanning a full quadrant. */
+li.task-item.overdue {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px var(--danger-soft);
+}
+li.task-item.overdue:hover {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px var(--danger-soft), var(--shadow-md);
+}
+
+.card-hover-actions {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 3px;
+  box-shadow: var(--shadow);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+}
+li.task-item:hover .card-hover-actions,
+li.task-item:focus-within .card-hover-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+.card-hover-actions button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.card-hover-actions button:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+.card-hover-actions button.mark-complete-btn:hover {
+  color: var(--low);
+  border-color: var(--low);
+}
+.card-hover-actions button.delete-btn:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.task-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  margin-top: 3px;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.task-checkbox:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.task-body {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Zone 1. The hairline separates the identity of the task (flag, status,
+   title) from its context row below, which is what stops the card reading as
+   one long horizontal run of badges. */
+.card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* No second row to divide from — drop the rule rather than leave it hanging. */
+.card-title-row:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.task-title {
+  font-size: 0.98rem;
+  font-weight: 700;
+  word-break: break-word;
+  flex: 1 1 auto;
+  min-width: 60px;
+}
+
+/* Only the two "when" pills live up here (due date, time left), so the title
+   keeps its line even in a narrow board column. */
+.card-title-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-left: auto;
+  justify-content: flex-end;
+}
+
+.card-row-2 {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* Zone 2. Project + labels together (they answer the same "which bucket?"
+   question); the small indicators keep a fixed slot on the right. */
+.card-context {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.card-icons {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.priority-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  font-size: 0.85rem;
+  line-height: 1;
+  background: #fff;
+  flex-shrink: 0;
+}
+.priority-tag.priority-urgent { color: var(--prio-urgent); }
+.priority-tag.priority-high { color: var(--prio-high); }
+.priority-tag.priority-medium { color: var(--prio-medium); }
+.priority-tag.priority-low { color: var(--prio-low); }
+
+/* Empty ring = not started, half-filled = in progress, solid = completed. */
+.status-circle {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 1.5px solid var(--status-not-started);
+  background: var(--surface);
+  cursor: default;
+  flex-shrink: 0;
+}
+.status-circle.status-in_progress {
+  border-color: var(--status-in-progress);
+  background: conic-gradient(var(--status-in-progress) 180deg, var(--surface) 0);
+}
+.status-circle.status-completed {
+  border-color: var(--low);
+  background: var(--low);
+}
+
+/* Zone 2. Reads as a chip so it looks pressable, with the done/total count in
+   its own inner pill (the mockup's grey button + darker badge). */
+.subtask-section-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  background: var(--surface-alt);
+  border-radius: var(--radius-pill);
+  padding: 3px 9px;
+}
+.subtask-section-toggle:hover {
+  color: var(--text);
+  background: var(--border);
+}
+
+.subtask-count-badge {
+  font-size: 0.64rem;
+  font-weight: 700;
+  color: var(--text);
+  background: var(--border);
+  border-radius: var(--radius-pill);
+  padding: 0 6px;
+}
+.subtask-section-toggle:hover .subtask-count-badge {
+  background: var(--surface);
+}
+
+.subtask-toggle-arrow {
+  display: inline-block;
+}
+
+/* Zone 3. Always-visible strip: toggle, progress bar, done/total, assignees.
+   The whole strip is the click/hover target, so the toggle inside it drops its
+   own chip styling. */
+.subtask-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 9px;
+  padding: 5px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-alt);
+  cursor: pointer;
+  user-select: none;
+}
+.subtask-strip:hover {
+  background: var(--border);
+}
+.subtask-strip .subtask-section-toggle {
+  background: transparent;
+  padding: 0;
+  flex-shrink: 0;
+}
+.subtask-strip:hover .subtask-section-toggle {
+  color: var(--text);
+  background: transparent;
+}
+.subtask-strip .subtask-count-badge {
+  flex-shrink: 0;
+}
+.subtask-strip:hover .subtask-count-badge {
+  background: var(--surface);
+}
+
+.subtask-progress-track {
+  display: block;
+  flex: 1 1 40px;
+  min-width: 40px;
+  height: 5px;
+  background: var(--border);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+.subtask-strip:hover .subtask-progress-track {
+  background: var(--surface);
+}
+
+.subtask-progress-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: var(--radius-pill);
+  transition: width 0.15s ease;
+}
+
+.subtask-strip-who {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* The checklist sits in an inset panel so the expanded rows read as a distinct
+   surface rather than as more card body. */
+.subtask-expand {
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px solid var(--border);
+}
+
+.subtask-rows {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px 6px;
+}
+
+.subtask-row:hover {
+  background: var(--surface);
+  border-radius: 5px;
+}
+
+.due-tag {
+  font-size: 0.75rem;
+  color: var(--text);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.due-tag.overdue {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.date-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 2px 9px;
+  cursor: pointer;
+}
+.date-pill:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.date-pill.overdue {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-color: var(--danger);
+  font-weight: 600;
+}
+
+.project-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 2px 9px;
+}
+
+/* Estimated-time label. Task-level (next to the date pill) gets the same
+   rounded-rectangle format as .date-pill, keeping its own font color/size.
+   Sub-task rows stay plain text, no box. */
+.time-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 2px 9px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Card-header remaining-time badge, bucketed the same way as the time
+   filter (0-15 / 15-60 / 60-120 / 120+ mins) so load reads at a glance. */
+.remaining-time-badge.bucket-0-15 {
+  color: #0b8a5c;
+  background: #e3f7ef;
+  border-color: #b9e8d3;
+}
+.remaining-time-badge.bucket-15-60 {
+  color: #2f5fed;
+  background: #eaf0ff;
+  border-color: #c9d8ff;
+}
+.remaining-time-badge.bucket-60-120 {
+  color: #9c36b5;
+  background: #f6e8fa;
+  border-color: #e3bdee;
+}
+.remaining-time-badge.bucket-120-plus {
+  color: #c23a2a;
+  background: #fdeceb;
+  border-color: #f5c6c0;
+}
+
+.subtask-time-badge {
+  margin-left: auto;
+  font-size: 0.62rem;
+  color: var(--accent);
+  font-weight: 700;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+/* ---- Due Date roll-up ----
+   A task's Due Date always follows its latest sub-task Due Date, so whenever a
+   sub-task pushes it out the task-level date input is disabled and this hint
+   explains why the field can't be typed into. */
+.due-derived-hint {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  white-space: nowrap;
+  align-self: center;
+}
+
+input[type="date"].due-derived {
+  background: var(--bg);
+  color: var(--text-muted);
+  border-style: dashed;
+  cursor: not-allowed;
+}
+
+/* Same signal on the board card: the pill still opens the popover, but the date
+   in it is read-only. */
+.date-pill-derived {
+  font-style: italic;
+}
+
+/* The sub-task's own Due Date, when it differs from the parent's Due Date.
+   Sits just before the time badge, which keeps its margin-left: auto. */
+.subtask-date-badge {
+  margin-left: auto;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.subtask-date-badge + .subtask-time-badge {
+  margin-left: 0;
+}
+
+/* Work owned by the delegate, not by you — italic + the DELEGATE color, the
+   same treatment delegated tasks get in the calendar. */
+.subtask-delegated .subtask-date-badge,
+.subtask-delegated .subtask-title,
+.subtask-delegated .cal-tooltip-subtask-name {
+  font-style: italic;
+  color: var(--delegate-color);
+}
+
+/* ---- Assignees ----
+   People get an initials disc, departments a code tag; both in the DELEGATE
+   color so they read as part of the same hand-off story as delegated rows. */
+.assignee-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  font-size: 0.6rem;
+  font-weight: 800;
+  font-style: normal;
+  letter-spacing: 0.02em;
+  color: var(--delegate-color);
+  background: rgba(0, 169, 163, 0.12);
+  border: 1px solid var(--delegate-color);
+  flex-shrink: 0;
+}
+.assignee-avatar-dept {
+  width: auto;
+  padding: 0 5px;
+  border-radius: 6px;
+  font-size: 0.56rem;
+}
+.assignee-avatar-sm {
+  width: 22px;
+  height: 22px;
+  font-size: 0.52rem;
+}
+.assignee-avatar-sm.assignee-avatar-dept {
+  width: auto;
+  padding: 0 4px;
+  font-size: 0.5rem;
+}
+.assignee-avatar-more {
+  color: var(--text-muted);
+  background: var(--border);
+  border-color: var(--border-strong);
+}
+/* Claude — the AI colour, same as the AI badge, so "automated" reads at a glance. */
+.assignee-avatar-ai {
+  color: var(--ai-color);
+  border-color: var(--ai-color);
+  background: rgba(217, 119, 87, 0.12);
+}
+.subtask-assignee-ai {
+  color: var(--ai-color);
+  background: rgba(217, 119, 87, 0.1);
+}
+
+/* Chip on an expanded (or previewed) sub-task row. Sits right after the title;
+   the date badge keeps its margin-left: auto so the row's right edge is unchanged. */
+.subtask-assignee {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.66rem;
+  font-weight: 600;
+  font-style: normal;
+  color: var(--delegate-color);
+  background: rgba(0, 169, 163, 0.1);
+  border-radius: var(--radius-pill);
+  padding: 1px 7px 1px 2px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.subtask-assignee-dept {
+  padding: 1px 2px;
+  background: transparent;
+}
+.subtask-assignee-unset {
+  color: var(--text-faint);
+  background: transparent;
+  border: 1px dashed var(--border-strong);
+  padding: 0 7px;
+}
+
+.subtask-preview-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.date-edit-popover {
+  position: fixed;
+  z-index: 150;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.date-edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.date-edit-field input {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.82rem;
+}
+
+.card-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 9px 0;
+}
+
+.task-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.badge {
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.badge.label-badge {
+  background: var(--chip-bg, var(--bg));
+  color: var(--chip-color, var(--text));
+  border-color: transparent;
+  border-radius: var(--radius-pill);
+  font-weight: 600;
+}
+
+.subtasks {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.subtask-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.76rem;
+  padding: 3px 5px;
+  cursor: pointer;
+}
+
+.subtask-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  border: 1.5px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.subtask-checkbox:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.subtask-done {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.card-dep-popover {
+  position: fixed;
+  max-width: 260px;
+}
+
+.project-manage-popover {
+  position: fixed;
+  max-width: 280px;
+  min-width: 220px;
+}
+
+.label-manage-popover {
+  position: fixed;
+  max-width: 280px;
+  min-width: 220px;
+}
+
+/* Can be opened from a dropdown inside the Add/Edit modal, so it has to sit
+   above the modal overlay (z-index 100). */
+.assignee-manage-popover {
+  position: fixed;
+  z-index: 150;
+  max-width: 320px;
+  min-width: 260px;
+}
+.assignee-add-row {
+  flex-wrap: wrap;
+}
+.assignee-kind-select {
+  flex: 0 0 auto;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.8rem;
+}
+
+/* ---- Paste from Loop (diagnostic) ---- */
+.modal-wide {
+  max-width: 900px;
+  width: min(900px, calc(100vw - 32px));
+}
+
+.paste-target {
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 2px dashed var(--accent);
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--form-font-size);
+  resize: vertical;
+}
+
+.paste-result {
+  margin-top: 12px;
+}
+
+.paste-result-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.paste-result-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.paste-changes {
+  margin-top: 10px;
+  max-height: 46vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.paste-group {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px 8px;
+  background: var(--surface-alt);
+}
+
+.paste-group-title {
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.paste-group-cat {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+
+.paste-change {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.paste-change input {
+  margin: 3px 0 0;
+  flex-shrink: 0;
+}
+.paste-change-warn {
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.paste-raw {
+  margin-top: 14px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.paste-raw summary {
+  cursor: pointer;
+}
+.paste-raw .filter-btn {
+  margin-top: 6px;
+}
+
+.diag-pre {
+  max-height: 220px;
+  overflow: auto;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-alt);
+  font-size: 0.72rem;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.label-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.settings-popover {
+  position: fixed;
+  min-width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.settings-popover .filter-btn {
+  width: 100%;
+  text-align: left;
+}
+
+.project-manage-btn {
+  flex: 0 0 auto;
+  width: 34px;
+  padding: 8px 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.project-manage-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Sized to its longest row so titles and the assignee chip stay on one line;
+   only a truly long title (past the cap) wraps. */
+.subtask-hover-preview {
+  position: fixed;
+  width: max-content;
+  min-width: 320px;
+  max-width: min(560px, calc(100vw - 24px));
+  font-size: 0.82rem;
+}
+
+.subtask-preview-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 2px;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.subtask-preview-row .subtask-title {
+  white-space: nowrap;
+}
+.subtask-hover-preview .subtask-preview-row .subtask-title {
+  max-width: 380px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.subtask-preview-row:hover {
+  background: var(--surface-alt);
+}
+.subtask-preview-row.subtask-done {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.notes-popover {
+  position: fixed;
+  z-index: 150;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  padding: 10px 12px;
+  max-width: 280px;
+  max-height: 200px;
+  overflow-y: auto;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.task-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.task-actions button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  padding: 4px;
+  border-radius: 6px;
+}
+.task-actions button:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+.task-actions button.delete-btn:hover {
+  color: var(--danger);
+}
+
+.empty-state {
+  text-align: center;
+  color: var(--text-muted);
+  margin-top: 40px;
+  display: none;
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 18px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: 0.85rem;
+}
+.link-btn:hover { color: var(--danger); }
+
+@media (max-width: 480px) {
+  .toolbar { flex-direction: column; align-items: stretch; }
+}
+
+.badge.category-tag {
+  background: var(--chip-color, var(--bg));
+  color: var(--chip-text, var(--text));
+  border-color: var(--chip-color, var(--border));
+  font-weight: 600;
+}
+
+.category-preview {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  height: 30px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  background: var(--chip-color, transparent);
+  color: #fff;
+}
+.category-preview:empty { padding: 0; }
+
+.week-range {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.week-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.week-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+  font-size: 0.75rem;
+  color: var(--text);
+}
+
+/* .task-item is shared with board cards for event delegation, but its flex/card
+   styling breaks a <tr> out of table layout — reset it back to a plain row here. */
+.week-table tr.task-item {
+  display: table-row;
+  background: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+.completed-toggle-row {
+  cursor: pointer;
+}
+.completed-toggle-row td {
+  padding: 8px 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg);
+  border-top: 1px dashed var(--border);
+}
+.completed-toggle-row:hover td {
+  color: var(--text);
+}
+.completed-toggle-arrow {
+  display: inline-block;
+  margin-right: 4px;
+}
+
+.week-table th {
+  text-align: left;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  background: var(--bg);
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.week-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.week-table tr:last-child td {
+  border-bottom: none;
+}
+
+.week-table tr.completed .week-task-name {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.week-task-name {
+  font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.week-table .task-meta {
+  margin-top: 0;
+  max-width: 220px;
+}
+
+.week-actions {
+  white-space: nowrap;
+}
+
+.week-table th.email-col,
+.week-table td.email-col,
+.week-table th.centered-col,
+.week-table td.centered-col {
+  text-align: center;
+}
+
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.calendar-month-label {
+  font-weight: 700;
+  font-size: 1.05rem;
+  min-width: 160px;
+  text-align: center;
+}
+
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.calendar-weekdays span {
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.calendar-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.calendar-week {
+  position: relative;
+}
+
+.calendar-week-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+
+.calendar-day {
+  min-height: 92px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.calendar-day.empty {
+  background: transparent;
+  border-color: transparent;
+}
+.calendar-day.today {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.calendar-day-number {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.calendar-day.today .calendar-day-number {
+  color: var(--accent);
+}
+
+.calendar-day-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  /* overflow-y removed — summary content doesn't overflow, and the tooltip
+     must be able to escape the day cell without being clipped. */
+}
+
+/* ---------- Calendar day load summary ---------- */
+
+.cal-day-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cal-day-stat {
+  font-size: 0.64rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.cal-day-stat strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.cal-view-tasks-wrap {
+  margin-top: 5px;
+}
+
+.cal-view-tasks {
+  position: relative;
+  display: inline-block;
+  font-size: 0.64rem;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: default;
+  user-select: none;
+}
+
+/* Tooltip appears above the trigger so it doesn't get clipped by the
+   bottom edge of the cell; z-index floats it above the grid. */
+.cal-tasks-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: -6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.14);
+  padding: 8px 10px;
+  z-index: 200;
+  min-width: 200px;
+  max-width: 320px;
+  white-space: normal;
+  cursor: default;
+}
+
+.cal-view-tasks:hover .cal-tasks-tooltip {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.cal-tooltip-task {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  font-size: 0.72rem;
+  color: var(--text);
+  line-height: 1.3;
+}
+
+.cal-flag {
+  font-size: 0.75rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.cal-flag.flag-urgent { color: var(--prio-urgent); }
+.cal-flag.flag-high   { color: var(--prio-high); }
+.cal-flag.flag-medium { color: var(--prio-medium); }
+.cal-flag.flag-low    { color: var(--prio-low); }
+
+.cal-tooltip-name {
+  flex: 1;
+  word-break: break-word;
+  font-weight: 600;
+}
+
+.cal-tooltip-time {
+  color: var(--text-muted);
+  font-size: 0.67rem;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* One task, plus whichever of its sub-tasks land on this particular day */
+.cal-tooltip-entry + .cal-tooltip-entry {
+  margin-top: 5px;
+}
+
+.cal-tooltip-subtask {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  padding-left: 16px;
+  font-size: 0.67rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.cal-tooltip-subtask-name {
+  flex: 1;
+  word-break: break-word;
+}
+
+.cal-tooltip-subtask.cal-tooltip-done .cal-tooltip-subtask-name {
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+/* Completed tasks in the tooltip show as muted strikethrough */
+.cal-tooltip-task.cal-tooltip-done .cal-tooltip-name {
+  text-decoration: line-through;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+.cal-tooltip-task.cal-tooltip-done .cal-tooltip-time {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+.cal-tooltip-task.cal-tooltip-done .cal-flag {
+  opacity: 0.35;
+}
+
+@media (max-width: 700px) {
+  .calendar-day { min-height: 64px; }
+  .calendar-task-chip, .calendar-bar { font-size: 0.62rem; }
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 16px;
+  overflow-y: auto;
+  z-index: 100;
+}
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  width: 100%;
+  max-width: 560px;
+  padding: 18px;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.modal-header h2 {
+  font-size: 1.15rem;
+  margin: 0;
+  color: var(--accent);
+}
+
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 14px;
+  margin-top: 16px;
+  align-items: center;
+}
+
+/* "Completed (N)" fold: done sub-tasks are hidden, not deleted, until this
+   row is clicked. Shared by the card checklist and the Add/Edit Task forms. */
+.subtask-done-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  margin-top: 3px;
+  padding: 4px 5px;
+  border: none;
+  border-top: 1px dashed var(--border);
+  background: none;
+  color: var(--text-muted, var(--text));
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-align: left;
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.subtask-done-toggle:hover {
+  opacity: 1;
+  background: var(--surface);
+  border-radius: 5px;
+}
+
+.subtask-done-rows {
+  opacity: 0.75;
+}
+
+.draft-done-toggle-row {
+  flex-basis: 100%;
+}

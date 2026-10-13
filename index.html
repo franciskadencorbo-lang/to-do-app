@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task Hub</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="meeting.css">
+</head>
+<body>
+<div class="app">
+
+  <div class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg class="icon" viewBox="0 0 24 24" fill="currentColor" stroke="none" width="18" height="18">
+          <rect x="3" y="3" width="8" height="8" rx="2"></rect>
+          <rect x="13" y="3" width="8" height="8" rx="2"></rect>
+          <rect x="3" y="13" width="8" height="8" rx="2"></rect>
+          <rect x="13" y="13" width="8" height="8" rx="2"></rect>
+        </svg>
+      </span>
+      <div>
+        <span class="brand-name">Task <span class="accent">Hub</span></span>
+        <span class="brand-tag">Eisenhower Matrix &amp; Action Ledger</span>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <div class="topbar-actions-row">
+        <button type="button" id="exportSummaryBtn" class="btn btn-secondary">⬇ Export Summary</button>
+        <button type="button" id="meetingModeBtn" class="btn btn-secondary" title="Run the team meeting from this list">👥 Meeting mode</button>
+        <button type="button" id="topbarAddTaskBtn" class="btn btn-primary">+ Add Task</button>
+      </div>
+      <div class="topbar-actions-row topbar-actions-row-secondary">
+        <span id="tasksFolderStatus" class="hint-text"></span>
+        <button type="button" id="tasksFolderBtn" class="btn btn-secondary" title="Create tasks sent from the Email Triage Desk (OneDrive Email Triage\Tasks folder)" hidden>📂 Connect tasks folder</button>
+        <button type="button" id="settingsBtn" class="icon-btn" title="Import / Export">⚙</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div class="board-panel">
+      <div class="view-tabs" id="viewTabs">
+        <button type="button" class="view-tab active" data-view="board"><span class="view-tab-icon">▦</span>Matrix Grid</button>
+        <button type="button" class="view-tab" data-view="calendar"><span class="view-tab-icon">📅</span>Calendar</button>
+        <button type="button" class="view-tab" data-view="overdue"><span class="view-tab-icon">⚠</span>Overdue</button>
+        <button type="button" class="view-tab" data-view="week"><span class="view-tab-icon">🗓</span>This Week</button>
+        <button type="button" class="view-tab" data-view="list"><span class="view-tab-icon">☰</span>All Tasks</button>
+        <button type="button" class="view-tab" data-view="triage"><span class="view-tab-icon">🎚</span>Triage Log</button>
+      </div>
+
+      <div class="pill-bar" id="labelPillBar"></div>
+
+      <div class="pill-bar" id="labelQuickFilterBar"></div>
+
+      <div class="toolbar">
+        <div class="filter-group" id="statusFilters">
+          <button class="filter-btn active" data-status="all">All</button>
+          <button class="filter-btn" data-status="active">Active</button>
+          <button class="filter-btn" data-status="completed">Completed</button>
+        </div>
+        <div class="filter-group">
+          <select id="categoryFilter">
+            <option value="all">All categories</option>
+            <option value="DO">DO</option>
+            <option value="PLAN">PLAN</option>
+            <option value="DELEGATE">DELEGATE</option>
+            <option value="NOT URGENT">NOT URGENT</option>
+          </select>
+          <select id="projectFilter">
+            <option value="all">All projects</option>
+          </select>
+          <select id="labelFilter">
+            <option value="all">All labels</option>
+          </select>
+          <select id="timeFilter">
+            <option value="all">All time</option>
+            <option value="0-15">0 to 15 mins</option>
+            <option value="15-60">15 to 60 mins</option>
+            <option value="60-120">60 to 120 mins</option>
+            <option value="120+">120 mins+</option>
+          </select>
+          <select id="sortBy">
+            <option value="created">Sort: Newest</option>
+            <option value="due">Sort: Due date</option>
+            <option value="priority">Sort: Priority</option>
+          </select>
+        </div>
+        <span id="resultsCount" class="hint-text results-count"></span>
+      </div>
+
+      <div id="boardView" class="view-content">
+        <div id="board" class="board">
+          <div class="board-column" data-category="DO">
+            <div class="board-column-header">
+              <span class="column-title-group">
+                <span class="column-icon">⚡</span>
+                <span class="column-title">DO</span>
+                <span class="column-subtitle">(High Impact / Low Effort)</span>
+              </span>
+              <span class="column-header-right">
+                <span class="column-count" id="countDO">0</span>
+                <button type="button" class="column-collapse-btn" data-collapse-toggle="DO" title="Collapse column">−</button>
+              </span>
+            </div>
+            <div class="column-collapsed-note"></div>
+            <div class="board-column-body">
+              <ul class="task-list" id="listDO"></ul>
+              <details class="completed-group hidden" id="completedGroupDO">
+                <summary>Completed (<span id="completedCountDO">0</span>)</summary>
+                <ul class="task-list completed-list" id="completedListDO"></ul>
+              </details>
+            </div>
+          </div>
+          <div class="board-column" data-category="PLAN">
+            <div class="board-column-header">
+              <span class="column-title-group">
+                <span class="column-icon">📅</span>
+                <span class="column-title">PLAN</span>
+                <span class="column-subtitle">(High Impact / High Effort)</span>
+              </span>
+              <span class="column-header-right">
+                <span class="column-count" id="countPLAN">0</span>
+                <button type="button" class="column-collapse-btn" data-collapse-toggle="PLAN" title="Collapse column">−</button>
+              </span>
+            </div>
+            <div class="column-collapsed-note"></div>
+            <div class="board-column-body">
+              <ul class="task-list" id="listPLAN"></ul>
+              <details class="completed-group hidden" id="completedGroupPLAN">
+                <summary>Completed (<span id="completedCountPLAN">0</span>)</summary>
+                <ul class="task-list completed-list" id="completedListPLAN"></ul>
+              </details>
+            </div>
+          </div>
+          <div class="board-column" data-category="DELEGATE">
+            <div class="board-column-header">
+              <span class="column-title-group">
+                <span class="column-icon">👥</span>
+                <span class="column-title">DELEGATE</span>
+                <span class="column-subtitle">(Low Impact / Low Effort / Not Low Priority)</span>
+              </span>
+              <span class="column-header-right">
+                <span class="column-count" id="countDELEGATE">0</span>
+                <button type="button" class="column-collapse-btn" data-collapse-toggle="DELEGATE" title="Collapse column">−</button>
+              </span>
+            </div>
+            <div class="column-collapsed-note"></div>
+            <div class="board-column-body">
+              <ul class="task-list" id="listDELEGATE"></ul>
+              <details class="completed-group hidden" id="completedGroupDELEGATE">
+                <summary>Completed (<span id="completedCountDELEGATE">0</span>)</summary>
+                <ul class="task-list completed-list" id="completedListDELEGATE"></ul>
+              </details>
+            </div>
+          </div>
+          <div class="board-column" data-category="NOT URGENT">
+            <div class="board-column-header">
+              <span class="column-title-group">
+                <span class="column-icon">🕒</span>
+                <span class="column-title">NOT URGENT</span>
+                <span class="column-subtitle">(Low Impact / Low Effort / Low Priority)</span>
+              </span>
+              <span class="column-header-right">
+                <span class="column-count" id="countNOTURGENT">0</span>
+                <button type="button" class="column-collapse-btn" data-collapse-toggle="NOT URGENT" title="Collapse column">−</button>
+              </span>
+            </div>
+            <div class="column-collapsed-note"></div>
+            <div class="board-column-body">
+              <form class="quick-add-form" id="quickAddForm" autocomplete="off">
+                <input type="text" id="quickAddInput" class="quick-add-input" placeholder="+ Quick add a task — press Enter" aria-label="Quick add a task to Not Urgent">
+              </form>
+              <ul class="task-list" id="listNOTURGENT"></ul>
+              <details class="completed-group hidden" id="completedGroupNOTURGENT">
+                <summary>Completed (<span id="completedCountNOTURGENT">0</span>)</summary>
+                <ul class="task-list completed-list" id="completedListNOTURGENT"></ul>
+              </details>
+            </div>
+          </div>
+        </div>
+
+        <p id="emptyState" class="empty-state">No tasks yet — add one above.</p>
+      </div>
+
+      <div id="listView" class="view-content hidden">
+        <div class="week-table-wrap">
+          <table class="week-table">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Task</th>
+                <th class="email-col">Email</th>
+                <th class="centered-col">Project</th>
+                <th>Category</th>
+                <th class="centered-col">Priority</th>
+                <th class="centered-col">Due Date</th>
+                <th class="centered-col">Est. Time</th>
+                <th>Labels</th>
+                <th class="centered-col">Sub-tasks</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="listTableBody"></tbody>
+            <tbody id="listCompletedToggleBody" class="hidden">
+              <tr class="completed-toggle-row">
+                <td colspan="11"><span class="completed-toggle-arrow">▸</span> Completed (<span id="listCompletedCount">0</span>)</td>
+              </tr>
+            </tbody>
+            <tbody id="listCompletedTableBody" class="hidden"></tbody>
+          </table>
+        </div>
+        <p id="listEmptyState" class="empty-state">No tasks match the current filters.</p>
+      </div>
+
+      <div id="weekView" class="view-content hidden">
+        <div class="week-range" id="weekRangeLabel"></div>
+        <div class="week-table-wrap">
+          <table class="week-table">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Task</th>
+                <th class="email-col">Email</th>
+                <th class="centered-col">Project</th>
+                <th>Category</th>
+                <th class="centered-col">Priority</th>
+                <th class="centered-col">Due Date</th>
+                <th>Labels</th>
+                <th class="centered-col">Sub-tasks</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="weekTableBody"></tbody>
+            <tbody id="weekCompletedToggleBody" class="hidden">
+              <tr class="completed-toggle-row">
+                <td colspan="10"><span class="completed-toggle-arrow">▸</span> Completed (<span id="weekCompletedCount">0</span>)</td>
+              </tr>
+            </tbody>
+            <tbody id="weekCompletedTableBody" class="hidden"></tbody>
+          </table>
+        </div>
+        <p id="weekEmptyState" class="empty-state">No tasks due this week.</p>
+      </div>
+
+      <div id="overdueView" class="view-content hidden">
+        <div class="week-table-wrap">
+          <table class="week-table">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Task</th>
+                <th class="email-col">Email</th>
+                <th class="centered-col">Project</th>
+                <th>Category</th>
+                <th class="centered-col">Priority</th>
+                <th class="centered-col">Due Date</th>
+                <th>Labels</th>
+                <th class="centered-col">Sub-tasks</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="overdueTableBody"></tbody>
+          </table>
+        </div>
+        <p id="overdueEmptyState" class="empty-state">No overdue tasks — nice work!</p>
+      </div>
+
+      <div id="calendarView" class="view-content hidden">
+        <div class="calendar-header">
+          <button type="button" class="icon-btn" id="calendarPrev" aria-label="Previous month">‹</button>
+          <span class="calendar-month-label" id="calendarMonthLabel"></span>
+          <button type="button" class="icon-btn" id="calendarNext" aria-label="Next month">›</button>
+        </div>
+        <div class="calendar-weekdays">
+          <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+        </div>
+        <div class="calendar-grid" id="calendarGrid"></div>
+      </div>
+
+      <div id="triageView" class="view-content hidden">
+        <div class="toolbar">
+          <div class="filter-group">
+            <label class="filter-btn" style="cursor:pointer;" title="Import a Triage Log JSON file produced by Claude for Chrome — additive only, never touches your existing tasks">
+              ⬆ Import Triage Log
+              <input type="file" id="importTriageLogFile" accept=".json" style="display:none;">
+            </label>
+            <button type="button" id="promoteSelectedBtn" class="filter-btn">Promote Selected → Not Urgent</button>
+          </div>
+          <div class="filter-group">
+            <span id="triageCount" class="hint-text"></span>
+          </div>
+        </div>
+        <div class="week-table-wrap">
+          <table class="week-table">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Subject</th>
+                <th class="email-col">Email</th>
+                <th class="centered-col">Priority</th>
+                <th>Notes</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="triageLogTableBody"></tbody>
+          </table>
+        </div>
+        <p id="triageEmptyState" class="empty-state">No items in the Triage Log.</p>
+      </div>
+
+      <footer class="footer">
+        <span id="countLabel">0 tasks</span>
+        <button id="clearCompleted" class="link-btn">Clear completed</button>
+      </footer>
+    </div>
+  </div>
+
+</div>
+
+<div class="modal-overlay hidden" id="addTaskModalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Add Task</h2>
+      <button type="button" class="icon-btn" id="addTaskModalClose" aria-label="Close">✕</button>
+    </div>
+    <form id="taskForm">
+      <input type="text" id="taskTitle" class="title-input" placeholder="Enter Task Name" required autocomplete="off">
+      <div class="task-form-row">
+        <select id="taskEffort" title="Effort" required>
+          <option value="" disabled selected>Effort</option>
+          <option value="high">High</option>
+          <option value="low">Low</option>
+        </select>
+        <select id="taskImpact" title="Impact" required>
+          <option value="" disabled selected>Impact</option>
+          <option value="high">High</option>
+          <option value="low">Low</option>
+        </select>
+        <span id="taskCategoryPreview" class="category-preview"></span>
+        <select id="taskProject" title="Project">
+          <option value="">No project</option>
+        </select>
+        <button type="button" class="project-manage-btn" id="taskProjectManageBtn" title="Add / manage projects">+</button>
+        <input type="date" id="taskDue" title="Due date">
+        <span class="due-derived-hint hidden" id="taskDueHint" title="A sub-task is due later than this task, so the task's Due Date follows it">⤴ from sub-task</span>
+        <select id="taskPriority" title="Priority">
+          <option value="low">Low</option>
+          <option value="medium" selected>Medium</option>
+          <option value="high">High</option>
+          <option value="urgent">Urgent</option>
+        </select>
+        <input type="number" id="taskEstimatedTime" class="estimated-time-input" placeholder="Estimated Time (min)" title="Estimated Time (minutes)" min="0" step="5">
+        <label class="ai-checkbox-label" title="AI-assisted task"><input type="checkbox" id="taskAiCheckbox">AI</label>
+      </div>
+      <div class="form-section-label">Labels</div>
+      <div id="labelPicker" class="label-picker"></div>
+
+      <div class="form-section-label">Sub-tasks</div>
+      <div class="subtask-input-row">
+        <input type="text" id="subtaskInput" class="subtask-input" placeholder="Enter Sub-Task Name" autocomplete="off">
+        <input type="number" id="subtaskMinutesInput" class="subtask-minutes-input" placeholder="Min" min="0" step="5">
+        <input type="date" id="subtaskDateInput" class="subtask-date-input" title="Optional sub-task Due Date — the task's own Due Date follows the latest one. Leave blank to count it on the task's Due Date">
+        <label class="ai-checkbox-label" title="AI-assisted sub-task"><input type="checkbox" id="subtaskAiInput">AI</label>
+        <label class="ai-checkbox-label delegated-checkbox-label hidden" id="subtaskDelegatedWrap" title="This sub-task is done by the delegate, not by you"><input type="checkbox" id="subtaskDelegatedInput">Deleg.</label>
+        <select id="subtaskAssigneeInput" class="subtask-assignee-select hidden" title="Who this sub-task is delegated to"></select>
+      </div>
+      <ul id="subtaskDraftList" class="subtask-draft-list"></ul>
+
+      <div class="form-section-label">Outlook Web URL</div>
+      <input type="url" id="emailLinkInput" class="subtask-input email-link-input" placeholder="Enter URL" autocomplete="off">
+
+      <div class="form-section-label">Notes</div>
+      <textarea id="taskNotes" class="notes-input" placeholder="Add Notes" rows="3"></textarea>
+
+      <div class="modal-actions">
+        <button type="button" class="link-btn" id="addTaskCancelBtn">Cancel</button>
+        <button type="submit" class="add-btn">Add Task</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="editModalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Edit Task</h2>
+      <button type="button" class="icon-btn" id="editModalClose" aria-label="Close">✕</button>
+    </div>
+    <form id="editForm">
+      <input type="text" id="editTitle" class="title-input" placeholder="Enter Task Name" required autocomplete="off">
+      <div class="task-form-row">
+        <select id="editEffort" title="Effort" required>
+          <option value="" disabled>Effort</option>
+          <option value="high">High</option>
+          <option value="low">Low</option>
+        </select>
+        <select id="editImpact" title="Impact" required>
+          <option value="" disabled>Impact</option>
+          <option value="high">High</option>
+          <option value="low">Low</option>
+        </select>
+        <span id="editCategoryPreview" class="category-preview"></span>
+        <select id="editProject" title="Project">
+          <option value="">No project</option>
+        </select>
+        <button type="button" class="project-manage-btn" id="editProjectManageBtn" title="Add / manage projects">+</button>
+        <input type="date" id="editDue" title="Due date">
+        <span class="due-derived-hint hidden" id="editDueHint" title="A sub-task is due later than this task, so the task's Due Date follows it">⤴ from sub-task</span>
+        <select id="editPriority" title="Priority">
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+          <option value="urgent">Urgent</option>
+        </select>
+        <input type="number" id="editEstimatedTime" class="estimated-time-input" placeholder="Estimated Time (min)" title="Estimated Time (minutes)" min="0" step="5">
+        <label class="ai-checkbox-label" title="AI-assisted task"><input type="checkbox" id="editAiCheckbox">AI</label>
+      </div>
+
+      <div class="form-section-label">Labels</div>
+      <div id="editLabelPicker" class="label-picker"></div>
+
+      <div class="form-section-label">Sub-tasks</div>
+      <div class="subtask-input-row">
+        <input type="text" id="editSubtaskInput" class="subtask-input" placeholder="Enter Sub-Task Name" autocomplete="off">
+        <input type="number" id="editSubtaskMinutesInput" class="subtask-minutes-input" placeholder="Min" min="0" step="5">
+        <input type="date" id="editSubtaskDateInput" class="subtask-date-input" title="Optional sub-task Due Date — the task's own Due Date follows the latest one. Leave blank to count it on the task's Due Date">
+        <label class="ai-checkbox-label" title="AI-assisted sub-task"><input type="checkbox" id="editSubtaskAiInput">AI</label>
+        <label class="ai-checkbox-label delegated-checkbox-label hidden" id="editSubtaskDelegatedWrap" title="This sub-task is done by the delegate, not by you"><input type="checkbox" id="editSubtaskDelegatedInput">Deleg.</label>
+        <select id="editSubtaskAssigneeInput" class="subtask-assignee-select hidden" title="Who this sub-task is delegated to"></select>
+      </div>
+      <ul id="editSubtaskDraftList" class="subtask-draft-list"></ul>
+
+      <div class="form-section-label">Outlook Web URL</div>
+      <input type="url" id="editEmailLinkInput" class="subtask-input email-link-input" placeholder="Enter URL" autocomplete="off">
+
+      <div class="form-section-label">Notes</div>
+      <textarea id="editNotes" class="notes-input" placeholder="Add Notes" rows="3"></textarea>
+
+      <div class="modal-actions">
+        <button type="button" class="link-btn" id="editCancelBtn">Cancel</button>
+        <button type="submit" class="add-btn">Save changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="pasteLoopModalOverlay">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h2>Paste from Loop</h2>
+      <button type="button" class="icon-btn" id="pasteLoopModalClose" aria-label="Close">✕</button>
+    </div>
+    <p class="hint-text">Copy the agenda table(s) in Loop, click in the box below and press Ctrl+V. You'll get a preview of every change found (assignee, due date, minutes, done, new sub-tasks) and nothing is applied until you confirm.</p>
+    <textarea id="pasteLoopTarget" class="paste-target" placeholder="Click here, then Ctrl+V" rows="3"></textarea>
+    <div id="pasteLoopResult" class="paste-result hidden">
+      <div class="paste-result-bar">
+        <span id="pasteLoopSummary" class="hint-text"></span>
+        <span class="paste-result-actions">
+          <button type="button" id="pasteLoopSelectAllBtn" class="link-btn">Select all</button>
+          <button type="button" id="pasteLoopSelectNoneBtn" class="link-btn">None</button>
+          <button type="button" id="pasteLoopApplyBtn" class="add-btn">Apply selected</button>
+        </span>
+      </div>
+      <div id="pasteLoopChanges" class="paste-changes"></div>
+      <details class="paste-raw">
+        <summary>Raw clipboard (for troubleshooting)</summary>
+        <button type="button" id="pasteLoopCopyBtn" class="filter-btn">Copy diagnostic</button>
+        <div class="form-section-label">Clipboard formats</div>
+        <pre id="pasteLoopTypes" class="diag-pre"></pre>
+        <div class="form-section-label">Plain text</div>
+        <pre id="pasteLoopText" class="diag-pre"></pre>
+        <div class="form-section-label">HTML</div>
+        <pre id="pasteLoopHtml" class="diag-pre"></pre>
+      </details>
+    </div>
+  </div>
+</div>
+
+<div class="date-edit-popover hidden" id="dateEditPopover">
+  <label class="date-edit-field">Due<input type="date" id="dateEditDue"></label>
+  <span class="due-derived-hint hidden" id="dateEditHint">⤴ from latest sub-task</span>
+</div>
+
+<div class="dropdown-panel card-dep-popover hidden" id="calTasksPopover"></div>
+
+<div class="dropdown-panel settings-popover hidden" id="settingsPopover">
+  <button type="button" id="manageProjectsBtn" class="filter-btn">🗂 Manage Projects</button>
+  <button type="button" id="manageLabelsBtn" class="filter-btn">🏷 Manage Labels</button>
+  <button type="button" id="manageAssigneesBtn" class="filter-btn" title="People and departments you delegate sub-tasks to">👥 Manage Assignees</button>
+  <button type="button" id="pasteLoopBtn" class="filter-btn" title="Paste the agenda table copied from Loop (diagnostic: shows what the clipboard contains)">📋 Paste from Loop</button>
+  <button type="button" id="exportBtn" class="filter-btn">⬇ Export</button>
+  <button type="button" id="exportCsvBtn" class="filter-btn">⬇ Export to Excel</button>
+  <button type="button" id="exportActiveJsonBtn" class="filter-btn" title="Export Not Started / In Progress tasks as JSON, for a Claude Skill">⬇ Export for AI Skill</button>
+  <button type="button" id="sendGithubBtn" class="filter-btn" title="Save the 'Export for AI Skill' tasks straight to GitHub for the staff-meeting agenda">☁ Send to GitHub</button>
+  <label class="filter-btn" style="cursor:pointer;" title="Import backup">⬆ Import<input type="file" id="importFile" accept=".json" style="display:none;"></label>
+  <label class="filter-btn" style="cursor:pointer;" title="Import a file produced by 'Export for AI Skill' — adds these tasks to your current list, does not replace it">⬆ Import AI Skill JSON<input type="file" id="importActiveTasksFile" accept=".json" style="display:none;"></label>
+</div>
+
+<div class="notes-popover hidden" id="notesPopover"></div>
+
+<div class="dropdown-panel project-manage-popover hidden" id="projectManagePopover">
+  <div class="project-add-row">
+    <input type="text" id="newProjectInput" placeholder="Enter Project Name" autocomplete="off">
+    <button type="button" id="addProjectBtn" class="add-btn">Add</button>
+  </div>
+  <ul id="projectListUl" class="project-list"></ul>
+</div>
+
+<div class="dropdown-panel label-manage-popover hidden" id="labelManagePopover">
+  <div class="project-add-row">
+    <input type="text" id="newLabelInput" placeholder="Enter Label Name" autocomplete="off">
+    <button type="button" id="addLabelBtn" class="add-btn">Add</button>
+  </div>
+  <ul id="labelListUl" class="project-list"></ul>
+</div>
+
+<div class="dropdown-panel assignee-manage-popover hidden" id="assigneeManagePopover">
+  <div class="project-add-row assignee-add-row">
+    <input type="text" id="newAssigneeInput" placeholder="Name or department code" autocomplete="off">
+    <select id="newAssigneeKind" class="assignee-kind-select" title="Person or department">
+      <option value="person">Person</option>
+      <option value="department">Department</option>
+    </select>
+    <button type="button" id="addAssigneeBtn" class="add-btn">Add</button>
+  </div>
+  <ul id="assigneeListUl" class="project-list"></ul>
+</div>
+
+<div class="dropdown-panel subtask-hover-preview hidden" id="subtaskHoverPreview"></div>
+
+<div class="meeting-overlay hidden" id="meetingOverlay"><div class="meeting-box" id="meetingBox" role="dialog" aria-modal="true" aria-label="Meeting mode"></div></div>
+
+<script src="app.js"></script>
+<script src="meeting.js"></script>
+</body>
+</html>

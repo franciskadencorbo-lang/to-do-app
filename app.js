@@ -1,0 +1,3915 @@
+const STORAGE_KEY = 'todo.tasks.v1';
+const PROJECTS_KEY = 'todo.projects.v1';
+const LABELS_KEY = 'todo.labels.v1';
+// People and departments a delegated sub-task can be handed to. One flat list
+// on purpose: a department (FIN, EXT…) is picked exactly like a person — it's
+// only rendered differently (a code badge instead of initials).
+const ASSIGNEES_KEY = 'todo.assignees.v1';
+const DEFAULT_ASSIGNEES = [
+  { name: 'Mhudang', kind: 'person' },
+  { name: 'Nink', kind: 'person' },
+  { name: 'Duong', kind: 'person' },
+  { name: 'Ha', kind: 'person' },
+  ...['FIN', 'LEG', 'OP', 'CON', 'AM', 'OM', 'HQ', 'PD', 'EXT'].map((name) => ({ name, kind: 'department' })),
+];
+// Built-in, not in the editable list: a sub-task that can be fully automated is
+// ticked AI and handed to Claude. Only offered while the sub-task's AI box is
+// ticked, so it never shows up as a choice for human work.
+const AI_ASSIGNEE = { name: 'Claude', kind: 'ai' };
+// Sentinel <option> value in every assignee dropdown that opens the manage popover.
+const MANAGE_ASSIGNEES_OPTION = '__manage__';
+// Deliberately its own key/array, never merged with STORAGE_KEY. The Triage
+// Log is a staging area Claude writes to and the user reviews — it must
+// never be able to touch or replace the real task list.
+const TRIAGE_STORAGE_KEY = 'todo.triageLog.v1';
+const COLLAPSED_COLUMNS_KEY = 'todo.collapsedColumns.v1';
+
+const CATEGORY_COLORS = {
+  DO: '#2f5fed',
+  PLAN: '#88B917',
+  DELEGATE: '#00A9A3',
+  'NOT URGENT': '#FCDCBD',
+};
+const CATEGORIES = Object.keys(CATEGORY_COLORS);
+
+// Category is derived from Effort × Impact × Priority (a simple Eisenhower-style
+// matrix). Low Effort + Low Impact splits two ways by Priority: Low priority is
+// genuinely not urgent (still needs doing, just no rush), while Medium/High/
+// Urgent priority is worth handing off — hence DELEGATE.
+function computeCategory(effort, impact, priority) {
+  if (effort === 'high' && impact === 'high') return 'PLAN';
+  if (effort === 'high' && impact === 'low') return 'DO';
+  if (effort === 'low' && impact === 'high') return 'DO';
+  if (effort === 'low' && impact === 'low') {
+    if (priority === 'low') return 'NOT URGENT';
+    if (priority === 'medium' || priority === 'high' || priority === 'urgent') return 'DELEGATE';
+  }
+  return null;
+}
+
+// A task's status is never set directly — it starts "Not started" and moves
+// to "In Progress" the moment any sub-task is completed (and back if none remain).
+function recalcStatus(task) {
+  const subtasks = task.subtasks || [];
+  task.status = subtasks.some((s) => s.completed) ? 'in_progress' : 'not_started';
+}
+
+// Category names can contain spaces ("To Allocate"), which are invalid in the
+// middle of an element id lookup pattern — strip them for id-building only.
+function categorySlug(cat) {
+  return cat.replace(/\s+/g, '');
+}
+
+// Seed labels for first-time users — from here on, labels are user-editable
+// (see `labels` / Manage Labels) and colors are assigned by cycling through
+// COLOR_CYCLE based on each label's position in the list, not a fixed map.
+const DEFAULT_LABELS = ['M&A', 'Financing', 'YOKO', 'Vietnam', 'Thailand', 'Philippines', 'Help', 'Reporting'];
+const COLOR_CYCLE = ['#E03131', '#B8860B', '#2F9E44', '#0C8599', '#1971C2', '#66A80F', '#9C36B5', '#8B5E3C'];
+
+function labelColor(name) {
+  const idx = labels.indexOf(name);
+  return COLOR_CYCLE[(idx < 0 ? 0 : idx) % COLOR_CYCLE.length];
+}
+
+const PRIORITY_ICON = '⚑';
+const STATUS_LABELS = { not_started: 'Not started', in_progress: 'In Progress', completed: 'Completed' };
+
+// Custom orange starburst — not a reproduction of Anthropic's Claude logo, just a
+// generic "AI-assisted" sparkle marker (an 8-ray asterisk) tinted with --ai-color.
+const AI_ICON_SVG = `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+  <g stroke="currentColor" stroke-width="3" stroke-linecap="round">
+    <line x1="12" y1="3" x2="12" y2="9"/>
+    <line x1="12" y1="15" x2="12" y2="21"/>
+    <line x1="3" y1="12" x2="9" y2="12"/>
+    <line x1="15" y1="12" x2="21" y2="12"/>
+    <line x1="5.5" y1="5.5" x2="9.5" y2="9.5"/>
+    <line x1="14.5" y1="14.5" x2="18.5" y2="18.5"/>
+    <line x1="18.5" y1="5.5" x2="14.5" y2="9.5"/>
+    <line x1="9.5" y1="14.5" x2="5.5" y2="18.5"/>
+  </g>
+</svg>`;
+
+function aiIconHtml(extraClass = '') {
+  return `<span class="ai-badge ${extraClass}" title="AI-assisted">${AI_ICON_SVG}</span>`;
+}
+
+// Creation form elements
+const taskForm = document.getElementById('taskForm');
+const taskTitle = document.getElementById('taskTitle');
+const taskEffort = document.getElementById('taskEffort');
+const taskImpact = document.getElementById('taskImpact');
+const taskCategoryPreview = document.getElementById('taskCategoryPreview');
+const taskProject = document.getElementById('taskProject');
+const taskDue = document.getElementById('taskDue');
+const taskDueHint = document.getElementById('taskDueHint');
+const taskPriority = document.getElementById('taskPriority');
+const taskEstimatedTime = document.getElementById('taskEstimatedTime');
+const taskAiCheckbox = document.getElementById('taskAiCheckbox');
+const labelPicker = document.getElementById('labelPicker');
+const subtaskInput = document.getElementById('subtaskInput');
+const subtaskMinutesInput = document.getElementById('subtaskMinutesInput');
+const subtaskAiInput = document.getElementById('subtaskAiInput');
+const subtaskDateInput = document.getElementById('subtaskDateInput');
+const subtaskDelegatedInput = document.getElementById('subtaskDelegatedInput');
+const subtaskDelegatedWrap = document.getElementById('subtaskDelegatedWrap');
+const subtaskAssigneeInput = document.getElementById('subtaskAssigneeInput');
+const subtaskDraftList = document.getElementById('subtaskDraftList');
+const emailLinkInput = document.getElementById('emailLinkInput');
+const taskNotes = document.getElementById('taskNotes');
+
+// Add Task modal
+const addTaskModalOverlay = document.getElementById('addTaskModalOverlay');
+const addTaskBtn = document.getElementById('topbarAddTaskBtn');
+const exportSummaryBtn = document.getElementById('exportSummaryBtn');
+const addTaskModalClose = document.getElementById('addTaskModalClose');
+const addTaskCancelBtn = document.getElementById('addTaskCancelBtn');
+
+// Projects (shared "manage projects" popover, opened from either form)
+const newProjectInput = document.getElementById('newProjectInput');
+const addProjectBtn = document.getElementById('addProjectBtn');
+const projectListUl = document.getElementById('projectListUl');
+const projectManagePopover = document.getElementById('projectManagePopover');
+const taskProjectManageBtn = document.getElementById('taskProjectManageBtn');
+const editProjectManageBtn = document.getElementById('editProjectManageBtn');
+const manageProjectsBtn = document.getElementById('manageProjectsBtn');
+
+// Labels (manage-labels popover, opened from the settings gear)
+const newLabelInput = document.getElementById('newLabelInput');
+const addLabelBtn = document.getElementById('addLabelBtn');
+const labelListUl = document.getElementById('labelListUl');
+const labelManagePopover = document.getElementById('labelManagePopover');
+const manageLabelsBtn = document.getElementById('manageLabelsBtn');
+
+// Assignees (manage-assignees popover, opened from the settings gear or from
+// the "Manage assignees…" entry at the bottom of any assignee dropdown)
+const newAssigneeInput = document.getElementById('newAssigneeInput');
+const newAssigneeKind = document.getElementById('newAssigneeKind');
+const addAssigneeBtn = document.getElementById('addAssigneeBtn');
+const assigneeListUl = document.getElementById('assigneeListUl');
+const assigneeManagePopover = document.getElementById('assigneeManagePopover');
+const manageAssigneesBtn = document.getElementById('manageAssigneesBtn');
+
+// Pill bars (project + label quick-filters)
+const labelPillBar = document.getElementById('labelPillBar');
+const labelQuickFilterBar = document.getElementById('labelQuickFilterBar');
+const resultsCount = document.getElementById('resultsCount');
+
+// Settings popover (Export/Import)
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsPopover = document.getElementById('settingsPopover');
+
+// Subtask hover preview (shared popover)
+const subtaskHoverPreview = document.getElementById('subtaskHoverPreview');
+
+// Edit modal elements
+const editModalOverlay = document.getElementById('editModalOverlay');
+const editForm = document.getElementById('editForm');
+const editTitle = document.getElementById('editTitle');
+const editEffort = document.getElementById('editEffort');
+const editImpact = document.getElementById('editImpact');
+const editCategoryPreview = document.getElementById('editCategoryPreview');
+const editProject = document.getElementById('editProject');
+const editDue = document.getElementById('editDue');
+const editDueHint = document.getElementById('editDueHint');
+const editPriority = document.getElementById('editPriority');
+const editEstimatedTime = document.getElementById('editEstimatedTime');
+const editAiCheckbox = document.getElementById('editAiCheckbox');
+const editLabelPicker = document.getElementById('editLabelPicker');
+const editSubtaskInput = document.getElementById('editSubtaskInput');
+const editSubtaskMinutesInput = document.getElementById('editSubtaskMinutesInput');
+const editSubtaskAiInput = document.getElementById('editSubtaskAiInput');
+const editSubtaskDateInput = document.getElementById('editSubtaskDateInput');
+const editSubtaskDelegatedInput = document.getElementById('editSubtaskDelegatedInput');
+const editSubtaskDelegatedWrap = document.getElementById('editSubtaskDelegatedWrap');
+const editSubtaskAssigneeInput = document.getElementById('editSubtaskAssigneeInput');
+const editSubtaskDraftList = document.getElementById('editSubtaskDraftList');
+const editEmailLinkInput = document.getElementById('editEmailLinkInput');
+const editNotes = document.getElementById('editNotes');
+const editCancelBtn = document.getElementById('editCancelBtn');
+const editModalClose = document.getElementById('editModalClose');
+
+// Filter / board elements
+const categoryFilter = document.getElementById('categoryFilter');
+const projectFilter = document.getElementById('projectFilter');
+const labelFilter = document.getElementById('labelFilter');
+const timeFilter = document.getElementById('timeFilter');
+const sortBy = document.getElementById('sortBy');
+const statusFilters = document.getElementById('statusFilters');
+const board = document.getElementById('board');
+const emptyState = document.getElementById('emptyState');
+const countLabel = document.getElementById('countLabel');
+const clearCompletedBtn = document.getElementById('clearCompleted');
+
+// View tabs
+const viewTabs = document.getElementById('viewTabs');
+const boardView = document.getElementById('boardView');
+const listView = document.getElementById('listView');
+const weekView = document.getElementById('weekView');
+const overdueView = document.getElementById('overdueView');
+const calendarView = document.getElementById('calendarView');
+
+// List elements
+const listTableBody = document.getElementById('listTableBody');
+const listEmptyState = document.getElementById('listEmptyState');
+
+// This Week elements
+const weekRangeLabel = document.getElementById('weekRangeLabel');
+const weekTableBody = document.getElementById('weekTableBody');
+const weekEmptyState = document.getElementById('weekEmptyState');
+
+// Overdue elements
+const overdueTableBody = document.getElementById('overdueTableBody');
+const overdueEmptyState = document.getElementById('overdueEmptyState');
+
+// Calendar elements
+const calendarPrev = document.getElementById('calendarPrev');
+const calendarNext = document.getElementById('calendarNext');
+const calendarMonthLabel = document.getElementById('calendarMonthLabel');
+const calendarGrid = document.getElementById('calendarGrid');
+
+// Triage Log elements
+const triageView = document.getElementById('triageView');
+const triageLogTableBody = document.getElementById('triageLogTableBody');
+const triageEmptyState = document.getElementById('triageEmptyState');
+const triageCount = document.getElementById('triageCount');
+const importTriageLogFile = document.getElementById('importTriageLogFile');
+const promoteSelectedBtn = document.getElementById('promoteSelectedBtn');
+const tasksFolderBtn = document.getElementById('tasksFolderBtn');
+const tasksFolderStatus = document.getElementById('tasksFolderStatus');
+
+// Board card date-edit popover (shared, positioned near whichever date pill was clicked)
+const dateEditPopover = document.getElementById('dateEditPopover');
+const dateEditDue = document.getElementById('dateEditDue');
+const dateEditHint = document.getElementById('dateEditHint');
+
+// Board card notes popover (shared, read-only, positioned near whichever notes icon was clicked)
+const notesPopover = document.getElementById('notesPopover');
+
+// Calendar day "View Tasks" popover (shared, positioned near whichever day's link was clicked)
+const calTasksPopover = document.getElementById('calTasksPopover');
+
+// One-time migration: old category names -> the new Effort/Impact-derived
+// set, and the DECIDE column's tasks specifically move to PLAN. "TO ALLOCATE"
+// (the old untriaged-staging column) folds into "NOT URGENT".
+const CATEGORY_MIGRATION = { Do: 'DO', Decide: 'PLAN', Delegate: 'DELEGATE', 'To Allocate': 'NOT URGENT', 'TO ALLOCATE': 'NOT URGENT' };
+
+// ---------- Due Date roll-up ----------
+// A task can't be finished before its last sub-task, so its Due Date is always
+// the latest of its own date and its sub-tasks' dates. Dates are YYYY-MM-DD
+// strings throughout, so a plain string comparison is a date comparison.
+// Sub-tasks without a date are ignored; completed ones still count, since the
+// work landing on that day is what set the deadline in the first place.
+function latestSubtaskDue(subtasks) {
+  return (subtasks || []).reduce((max, s) => (s.date && s.date > max ? s.date : max), '') || null;
+}
+
+// Resolves the pair (task's own date, sub-task dates) into the effective Due Date.
+function rollupDue(baseDue, subtasks) {
+  const latest = latestSubtaskDue(subtasks);
+  if (!latest) return baseDue || null;
+  if (!baseDue || latest > baseDue) return latest;
+  return baseDue;
+}
+
+// The ONLY place task.due / task.startDate are assigned. `baseDue` keeps the
+// date actually typed at Task level, so the roll-up stays reversible: delete the
+// late sub-tasks and the task falls back to its own date instead of being
+// stranded on an orphaned sub-task's. Call this after any change to a task's own
+// date or to its sub-task list, before saveTasks().
+function applyDueRollup(task) {
+  if (task.baseDue === undefined) task.baseDue = task.due || null;
+  task.due = rollupDue(task.baseDue, task.subtasks);
+  task.startDate = task.baseDue || task.due;
+  return task;
+}
+
+// True when the displayed Due Date comes from a sub-task rather than the task
+// itself — i.e. when the task-level date field should be locked.
+function hasDerivedDue(task) {
+  return !!task && task.due !== (task.baseDue || null);
+}
+
+// Runs on every load (cheap, idempotent) so category always reflects the
+// current Effort/Impact/Priority rules — not just at creation time. That's
+// the actual fix for tasks whose category went stale after a rule change —
+// e.g. Low Effort + Low Impact now splits into NOT URGENT (Priority=Low) vs
+// DELEGATE (anything else). Tasks with real Effort+Impact get recomputed;
+// tasks with neither (no signal to recompute from) AND no valid existing
+// category (genuinely untriaged, e.g. old Triage Log promotions) default to
+// Low/Low/Low, landing in NOT URGENT. Tasks with a valid category but no
+// Effort/Impact on file (e.g. some "Import for AI Skill" entries never carry
+// those fields) are left exactly as categorized, since there's nothing to
+// recompute from. Delegate tasks always carry 0 estimated minutes — that
+// time isn't yours to track. Start Date is no longer user-editable and
+// always tracks the task's own Due Date (`baseDue`). Also backfills the Due
+// Date roll-up above onto tasks that predate it.
+function normalizeTasks(list) {
+  let changed = false;
+  list.forEach((t) => {
+    // Captured before the name migration below overwrites t.category, since
+    // the old "TO ALLOCATE" / "To Allocate" name is itself the untriaged
+    // signal — once renamed to "NOT URGENT" it would look like a valid,
+    // deliberately-chosen category and be mistaken for one.
+    const rawCategory = t.category;
+    const wasLegacyStaging = rawCategory === 'To Allocate' || rawCategory === 'TO ALLOCATE';
+
+    if (CATEGORY_MIGRATION[rawCategory]) {
+      t.category = CATEGORY_MIGRATION[rawCategory];
+      changed = true;
+    }
+
+    const hasEffortImpact = !!(t.effort && t.impact);
+    if (!hasEffortImpact && (wasLegacyStaging || !CATEGORIES.includes(rawCategory))) {
+      t.effort = 'low';
+      t.impact = 'low';
+      t.priority = 'low';
+      t.category = 'NOT URGENT';
+      changed = true;
+    } else if (hasEffortImpact) {
+      const recomputed = computeCategory(t.effort, t.impact, t.priority);
+      if (recomputed && t.category !== recomputed) {
+        t.category = recomputed;
+        changed = true;
+      }
+    }
+
+    if (t.category === 'DELEGATE' && t.estimatedMinutes) {
+      t.estimatedMinutes = 0;
+      changed = true;
+    }
+
+    // Sub-tasks predating per-sub-task scheduling/delegation get the fields
+    // filled in with their no-op defaults: no date (counted on the task's Due
+    // Date) and not delegated.
+    (t.subtasks || []).forEach((s) => {
+      if (s.date === undefined) { s.date = null; changed = true; }
+      if (s.delegated === undefined) { s.delegated = false; changed = true; }
+      if (s.assignee === undefined) { s.assignee = null; changed = true; }
+    });
+
+    // Backfill the Due Date roll-up. Runs last, after the sub-task defaults
+    // above, so it sees every sub-task date. Tasks predating `baseDue` get it
+    // seeded from their current `due`, so the date they were given at Task level
+    // is preserved even as `due` moves out to the latest sub-task. Also owns
+    // startDate, which used to be force-synced to `due` here and now tracks
+    // baseDue instead — a task starts on your date and ends on the roll-up.
+    const beforeDue = t.due || null;
+    const beforeStart = t.startDate || null;
+    const hadBase = t.baseDue !== undefined;
+    applyDueRollup(t);
+    if (!hadBase || t.due !== beforeDue || t.startDate !== beforeStart) changed = true;
+  });
+  return changed;
+}
+
+let tasks = loadTasks();
+if (normalizeTasks(tasks)) saveTasks();
+let projects = loadProjects();
+let labels = loadLabels();
+let assignees = loadAssignees();
+let triageLog = loadTriageLog();
+let currentStatus = 'all';
+let currentView = 'board';
+let calendarViewDate = new Date();
+
+let selectedLabels = new Set();
+let subtaskDraft = [];
+// The Due Date input shows the *rolled-up* date and locks once a sub-task is
+// due later, so the date actually typed at Task level is parked here instead of
+// living in the input — that's what makes the lock reversible when the late
+// sub-task is removed.
+let addBaseDue = null;
+
+let editingTaskId = null;
+let editSelectedLabels = new Set();
+let editSubtaskDraft = [];
+let editBaseDue = null;
+
+let collapsedSubtaskIds = new Set();
+// Completed sub-tasks are folded under a "Completed (N)" row so long checklists
+// stay short with the panel open. Nothing is deleted: one click on that row
+// brings them back. Folded is the default; these remember what's been unfolded
+// (card: per task id, for the session; forms: per open form).
+let expandedDoneSubtaskIds = new Set();
+const draftDoneExpanded = { add: false, edit: false };
+
+function doneToggleLabel(expanded, count) {
+  return `<span class="subtask-toggle-arrow">${expanded ? '▾' : '▸'}</span>Completed (${count})`;
+}
+let dateEditTaskId = null;
+let calTasksDayKey = null;
+let collapsedColumns = loadCollapsedColumns();
+
+function loadTasks() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveTasks() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+}
+
+function loadProjects() {
+  try {
+    const raw = localStorage.getItem(PROJECTS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveProjects() {
+  localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+}
+
+function loadLabels() {
+  try {
+    const raw = localStorage.getItem(LABELS_KEY);
+    return raw ? JSON.parse(raw) : [...DEFAULT_LABELS];
+  } catch {
+    return [...DEFAULT_LABELS];
+  }
+}
+
+function saveLabels() {
+  localStorage.setItem(LABELS_KEY, JSON.stringify(labels));
+}
+
+// First run (no key yet) seeds the default staff + departments; after that the
+// list is whatever Manage Assignees left it as, even if that's empty.
+function loadAssignees() {
+  try {
+    const raw = localStorage.getItem(ASSIGNEES_KEY);
+    const list = raw ? JSON.parse(raw) : null;
+    if (!Array.isArray(list)) return DEFAULT_ASSIGNEES.map((a) => ({ ...a }));
+    return list.filter((a) => a && typeof a.name === 'string' && a.name.trim())
+      .map((a) => ({ name: a.name.trim(), kind: a.kind === 'department' ? 'department' : 'person' }));
+  } catch {
+    return DEFAULT_ASSIGNEES.map((a) => ({ ...a }));
+  }
+}
+
+function saveAssignees() {
+  localStorage.setItem(ASSIGNEES_KEY, JSON.stringify(assignees));
+}
+
+function loadTriageLog() {
+  try {
+    const raw = localStorage.getItem(TRIAGE_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveTriageLog() {
+  localStorage.setItem(TRIAGE_STORAGE_KEY, JSON.stringify(triageLog));
+}
+
+function loadCollapsedColumns() {
+  try {
+    const raw = localStorage.getItem(COLLAPSED_COLUMNS_KEY);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function saveCollapsedColumns() {
+  localStorage.setItem(COLLAPSED_COLUMNS_KEY, JSON.stringify([...collapsedColumns]));
+}
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+// ---------- Email attachment storage (legacy) ----------
+// Task creation/editing now only accepts an Outlook Web link — uploading new
+// .eml files is no longer offered. This IndexedDB read/delete plumbing is kept
+// so tasks that already have a file attached (from before this change) can
+// still be opened and cleaned up.
+
+const EMAIL_DB_NAME = 'todoAppFiles';
+const EMAIL_STORE = 'emails';
+
+function openEmailDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(EMAIL_DB_NAME, 1);
+    req.onupgradeneeded = () => {
+      req.result.createObjectStore(EMAIL_STORE, { keyPath: 'id' });
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function getEmailFile(id) {
+  const db = await openEmailDB();
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(EMAIL_STORE, 'readonly').objectStore(EMAIL_STORE).get(id);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function deleteEmailFile(id) {
+  const db = await openEmailDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(EMAIL_STORE, 'readwrite');
+    tx.objectStore(EMAIL_STORE).delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function openEmailAttachment(emailId, fallbackFilename) {
+  let record;
+  try {
+    record = await getEmailFile(emailId);
+  } catch {
+    record = null;
+  }
+  if (!record) {
+    alert('This email attachment could not be found — it may have been cleared from browser storage.');
+    return;
+  }
+  const url = URL.createObjectURL(record.blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = record.filename || fallbackFilename || 'email.eml';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+// Outlook Web hands out several equivalent URL shapes for the same message
+// (outlook.office.com/mail/inbox/id/..., outlook.cloud.microsoft/mail/inbox/id/..., etc.)
+// but only the .../mail/deeplink/read/{id}?popoutv2=1 form reliably opens the
+// message directly instead of just navigating into the inbox. Reconstruct that
+// canonical form from whatever Outlook link gets pasted in. Deliberately excludes
+// the `version=` param some copied links carry — that's an OWA build number that
+// changes on every Outlook update, so hardcoding it would go stale.
+function normalizeEmailLink(url) {
+  if (!url) return url;
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return url;
+  }
+  if (!/outlook/i.test(parsed.hostname)) return url;
+  const match = parsed.pathname.match(/\/(?:id|deeplink\/read)\/([^/?#]+)/i);
+  if (!match) return url;
+  return `https://outlook.office.com/mail/deeplink/read/${match[1]}?popoutv2=1`;
+}
+
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function getContrastText(hex) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+  return yiq >= 150 ? '#1c1e21' : '#ffffff';
+}
+
+// Pulls a hex toward black by `amount` (0-1). Used to derive readable text from
+// a category color when that color sits on a pale tint of itself — pale
+// quadrant colors like NOT URGENT's #FCDCBD are unreadable used as-is.
+function darkenHex(hex, amount) {
+  const channel = (start) => {
+    const v = Math.round(parseInt(hex.slice(start, start + 2), 16) * (1 - amount));
+    return Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0');
+  };
+  return `#${channel(1)}${channel(3)}${channel(5)}`;
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function getTaskById(id) {
+  return tasks.find((t) => t.id === id);
+}
+
+// Dates are stored as 'YYYY-MM-DD' strings (native <input type="date"> format).
+// Always parse/format via local Y-M-D components — never `new Date(dateString)`,
+// which parses date-only strings as UTC and can shift the displayed day near timezone boundaries.
+function fromDateKey(key) {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function toDateKey(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+// Compact day label for sub-task date badges, e.g. "Aug 20".
+function formatShortDate(dateKey) {
+  if (!dateKey) return '';
+  return fromDateKey(dateKey).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+// ---------- Sub-task delegation ----------
+// A sub-task's `delegated` flag only means anything on a DELEGATE task: it
+// marks the work as the delegate's, not yours, so its minutes drop out of your
+// remaining time. On DO/PLAN/NOT URGENT tasks the flag is ignored (it isn't
+// even shown in the forms) — the whole task is yours by definition there.
+// New sub-tasks on a DELEGATE task default to delegated, matching the old
+// all-or-nothing "DELEGATE tasks cost you 0 minutes" behavior; you uncheck the
+// ones you're personally doing.
+const DELEGATED_SUBTASK_DEFAULT = true;
+
+function isDelegateTask(task) {
+  return task.category === 'DELEGATE';
+}
+
+// True when a sub-task's minutes count toward *your* workload: it isn't done
+// yet, and it isn't handed off to a delegate.
+function subtaskCountsForMe(subtask, isDelegate) {
+  if (subtask.completed) return false;
+  return !(isDelegate && subtask.delegated);
+}
+
+// ---------- Assignees (who a delegated sub-task is with) ----------
+// `assignee` only means anything while the sub-task is flagged delegated on a
+// DELEGATE task. It's kept, not cleared, when the flag is unticked — so a
+// mis-click doesn't lose the choice — and every reader here checks the flag.
+
+function getAssignee(name) {
+  if (name === AI_ASSIGNEE.name) return AI_ASSIGNEE;
+  return assignees.find((a) => a.name === name) || null;
+}
+
+function subtaskShowsAssignee(subtask, isDelegate) {
+  return isDelegate && !!subtask.delegated;
+}
+
+// "Mhudang" -> "MH", "Van Anh" -> "VA". Departments show their code as-is.
+function assigneeInitials(name) {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
+
+function assigneeAvatarHtml(name, extraClass = '') {
+  const entry = getAssignee(name);
+  const kind = entry ? entry.kind : 'person';
+  const text = kind === 'department' ? name : assigneeInitials(name);
+  const kindClass = kind === 'department' ? ' assignee-avatar-dept' : (kind === 'ai' ? ' assignee-avatar-ai' : '');
+  return `<span class="assignee-avatar${kindClass} ${extraClass}" title="${escapeHtml(name)}">${escapeHtml(text)}</span>`;
+}
+
+// Chip on a sub-task row: avatar + name, or a dashed "Unassigned" so a
+// delegated sub-task with nobody on it stands out before a meeting.
+function subtaskAssigneeChipHtml(subtask, isDelegate) {
+  if (!subtaskShowsAssignee(subtask, isDelegate)) return '';
+  if (!subtask.assignee) return '<span class="subtask-assignee subtask-assignee-unset" title="Delegated, but not assigned to anyone yet — set it in Edit Task">Unassigned</span>';
+  // A department's badge already is its name — don't print "FIN FIN".
+  const entry = getAssignee(subtask.assignee);
+  const isDept = !!entry && entry.kind === 'department';
+  const isAi = !!entry && entry.kind === 'ai';
+  const kindClass = isDept ? ' subtask-assignee-dept' : (isAi ? ' subtask-assignee-ai' : '');
+  return `<span class="subtask-assignee${kindClass}">${assigneeAvatarHtml(subtask.assignee, 'assignee-avatar-sm')}${isDept ? '' : escapeHtml(subtask.assignee)}</span>`;
+}
+
+// Distinct assignees across a task's open delegated sub-tasks — the collapsed
+// card's "who has this" signal. Three avatars, then a +N.
+function taskAssigneeAvatarsHtml(task) {
+  if (!isDelegateTask(task)) return '';
+  const names = [];
+  (task.subtasks || []).forEach((s) => {
+    if (s.completed || !s.delegated || !s.assignee || names.includes(s.assignee)) return;
+    names.push(s.assignee);
+  });
+  if (!names.length) return '';
+  const shown = names.slice(0, 3).map((n) => assigneeAvatarHtml(n)).join('');
+  const extra = names.length > 3
+    ? `<span class="assignee-avatar assignee-avatar-more" title="${escapeHtml(names.slice(3).join(', '))}">+${names.length - 3}</span>`
+    : '';
+  return `<span class="subtask-strip-who">${shown}${extra}</span>`;
+}
+
+// `includeAi` mirrors the sub-task's AI checkbox. Claude is also kept in the
+// list while it's the current value, so an existing choice never silently
+// disappears from a dropdown.
+function buildAssigneeOptionsHtml(selected, includeAi = false) {
+  const group = (items, label) => {
+    if (!items.length) return '';
+    return `<optgroup label="${label}">${items.map((a) => `<option value="${escapeHtml(a.name)}" ${a.name === selected ? 'selected' : ''}>${escapeHtml(a.name)}</option>`).join('')}</optgroup>`;
+  };
+  const ai = includeAi || selected === AI_ASSIGNEE.name ? group([AI_ASSIGNEE], 'AI') : '';
+  return `<option value="">Assignee…</option>${ai}${group(assignees.filter((a) => a.kind === 'person'), 'People')}${group(assignees.filter((a) => a.kind === 'department'), 'Departments')}<option value="${MANAGE_ASSIGNEES_OPTION}">Manage assignees…</option>`;
+}
+
+// ---------- Label picker (shared by create + edit forms) ----------
+
+function buildLabelPickerHtml(selectedSet) {
+  return labels.map((label) => `
+    <button type="button" class="label-chip ${selectedSet.has(label) ? 'selected' : ''}" data-label="${escapeHtml(label)}"
+      style="--chip-color: ${labelColor(label)}; --chip-bg: ${hexToRgba(labelColor(label), 0.15)};">
+      ${escapeHtml(label)}
+    </button>
+  `).join('');
+}
+
+function wireLabelPicker(container, selectedSet) {
+  container.addEventListener('click', (e) => {
+    const chip = e.target.closest('.label-chip');
+    if (!chip) return;
+    const label = chip.dataset.label;
+    if (selectedSet.has(label)) {
+      selectedSet.delete(label);
+      chip.classList.remove('selected');
+    } else {
+      selectedSet.add(label);
+      chip.classList.add('selected');
+    }
+  });
+}
+
+wireLabelPicker(labelPicker, selectedLabels);
+wireLabelPicker(editLabelPicker, editSelectedLabels);
+
+function initLabelFilter() {
+  labelFilter.innerHTML = '<option value="all">All labels</option>'
+    + labels.map((l) => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join('');
+}
+
+// ---------- Project quick-filter pill bar ----------
+// A faster, always-visible alternative to the "All projects" dropdown —
+// clicking a pill sets the same projectFilter value, so both stay in sync.
+// Driven by the live `projects` list, so it's re-rendered whenever projects
+// are added/removed (see renderProjectOptions), not just once at init.
+
+function renderProjectPillBar() {
+  labelPillBar.innerHTML = `<button type="button" class="pill-btn" data-project="all">All Projects</button>`
+    + projects.map((p, i) => `
+      <button type="button" class="pill-btn" data-project="${escapeHtml(p)}" style="--pill-color: ${COLOR_CYCLE[i % COLOR_CYCLE.length]};">
+        <span class="pill-dot"></span>${escapeHtml(p)}
+      </button>
+    `).join('');
+  updateProjectPillBarActive();
+}
+
+function updateProjectPillBarActive() {
+  const active = projectFilter.value || 'all';
+  [...labelPillBar.children].forEach((btn) => btn.classList.toggle('active', btn.dataset.project === active));
+}
+
+labelPillBar.addEventListener('click', (e) => {
+  const btn = e.target.closest('.pill-btn');
+  if (!btn) return;
+  projectFilter.value = btn.dataset.project;
+  updateProjectPillBarActive();
+  render();
+});
+
+// ---------- Label quick-filter pill bar ----------
+// Same pattern as the project pill bar above, driven by the user-editable
+// `labels` array (see renderLabelOptions).
+
+function renderLabelPillBar() {
+  labelQuickFilterBar.innerHTML = `<button type="button" class="pill-btn" data-label-filter="all">All Labels</button>`
+    + labels.map((l) => `
+      <button type="button" class="pill-btn" data-label-filter="${escapeHtml(l)}" style="--pill-color: ${labelColor(l)};">
+        <span class="pill-dot"></span>${escapeHtml(l)}
+      </button>
+    `).join('');
+  updateLabelPillBarActive();
+}
+
+function updateLabelPillBarActive() {
+  const active = labelFilter.value || 'all';
+  [...labelQuickFilterBar.children].forEach((btn) => btn.classList.toggle('active', btn.dataset.labelFilter === active));
+}
+
+labelQuickFilterBar.addEventListener('click', (e) => {
+  const btn = e.target.closest('.pill-btn');
+  if (!btn) return;
+  labelFilter.value = btn.dataset.labelFilter;
+  updateLabelPillBarActive();
+  render();
+});
+
+// ---------- Sub-task draft list (shared pattern by create + edit forms) ----------
+
+// Each chip carries its own date picker (and, on a DELEGATE task, its own
+// "delegated" toggle) so both fields stay editable after the sub-task has been
+// added — there's no other place to set them on an existing sub-task.
+// `showDelegated` mirrors the parent task's category as currently selected in
+// the form: the toggle is hidden outside DELEGATE rather than disabled, since
+// delegation-tracking is meaningless there and the row is already crowded.
+function buildSubtaskDraftHtml(draft, showDelegated = false, scope = 'add') {
+  const chip = (s) => `
+    <li class="draft-chip${showDelegated && s.delegated ? ' draft-chip-delegated' : ''}">${s.ai ? aiIconHtml('ai-badge-sm') : ''}<span class="draft-chip-title ${s.completed ? 'subtask-done' : ''}">${escapeHtml(s.title)}</span>${s.minutes ? `<span class="draft-chip-time">${formatMinutes(s.minutes)}</span>` : ''}<input type="date" class="draft-chip-date" data-id="${s.id}" value="${s.date || ''}" title="Sub-task Due Date — the task's own Due Date follows the latest one. Blank counts it on the task's Due Date">${showDelegated ? `<label class="ai-checkbox-label delegated-checkbox-label" title="Done by the delegate, not by you"><input type="checkbox" class="draft-chip-delegated-toggle" data-id="${s.id}" ${s.delegated ? 'checked' : ''}>Deleg.</label>` : ''}${showDelegated && s.delegated ? `<select class="draft-chip-assignee" data-id="${s.id}" title="Who this sub-task is delegated to">${buildAssigneeOptionsHtml(s.assignee, !!s.ai)}</select>` : ''}<button type="button" class="remove-draft-btn" data-id="${s.id}" title="${s.completed ? 'Delete this completed sub-task for good (it is already tucked under Completed)' : 'Delete sub-task'}">×</button></li>
+  `;
+  const open = draft.filter((s) => !s.completed);
+  const done = draft.filter((s) => s.completed);
+  if (!done.length) return open.map(chip).join('');
+  const expanded = draftDoneExpanded[scope];
+  return open.map(chip).join('')
+    + `<li class="draft-done-toggle-row"><button type="button" class="subtask-done-toggle draft-done-toggle" data-scope="${scope}" title="${expanded ? 'Hide' : 'Show'} completed sub-tasks">${doneToggleLabel(expanded, done.length)}</button></li>`
+    + (expanded ? done.map(chip).join('') : '');
+}
+
+// Deleting a completed sub-task loses it from the inventory, so ask first.
+// Open ones go straight away, as before.
+function confirmRemoveDraft(entry) {
+  if (!entry || !entry.completed) return true;
+  return confirm(`Delete the completed sub-task "${entry.title}" for good?
+
+It is already hidden under "Completed", so you don't need to delete it to save space.`);
+}
+
+// The forms need to know whether the *currently selected* Effort/Impact/
+// Priority resolves to DELEGATE (not what the saved task's category is), since
+// that's what decides whether the delegation toggles are shown.
+let addFormIsDelegate = false;
+let editFormIsDelegate = false;
+
+// Mirrors applyDueRollup into an open form: as soon as a draft sub-task is due
+// later than the task's own date, the Due Date input shows that derived date and
+// locks, so what's on screen is always what will be saved. The typed base date
+// lives in add/editBaseDue rather than in the input, so removing the late
+// sub-task puts the original date straight back.
+function refreshDueRollupUi(scope) {
+  const isEdit = scope === 'edit';
+  const input = isEdit ? editDue : taskDue;
+  const hint = isEdit ? editDueHint : taskDueHint;
+  const base = isEdit ? editBaseDue : addBaseDue;
+  const draft = isEdit ? editSubtaskDraft : subtaskDraft;
+
+  const effective = rollupDue(base, draft);
+  const derived = effective !== (base || null);
+  input.value = effective || '';
+  input.disabled = derived;
+  input.classList.toggle('due-derived', derived);
+  input.title = derived
+    ? "Due date — follows the latest sub-task Due Date, so it can't be edited here"
+    : 'Due date';
+  hint.classList.toggle('hidden', !derived);
+}
+
+// Both renders re-run the roll-up, so every draft mutation that re-renders the
+// chips keeps the Due Date input in sync for free.
+function renderSubtaskDraftList() {
+  subtaskDraftList.innerHTML = buildSubtaskDraftHtml(subtaskDraft, addFormIsDelegate, 'add');
+  refreshDueRollupUi('add');
+}
+
+function renderEditSubtaskDraftList() {
+  editSubtaskDraftList.innerHTML = buildSubtaskDraftHtml(editSubtaskDraft, editFormIsDelegate, 'edit');
+  refreshDueRollupUi('edit');
+}
+
+// The input is disabled whenever the date is derived, so a change event here is
+// always a deliberate task-level edit — safe to record as the new base date.
+taskDue.addEventListener('change', () => {
+  addBaseDue = taskDue.value || null;
+  refreshDueRollupUi('add');
+});
+
+editDue.addEventListener('change', () => {
+  editBaseDue = editDue.value || null;
+  refreshDueRollupUi('edit');
+});
+
+// Shows/hides the delegation controls in one form and re-renders its chips.
+// The new-entry checkbox is reset to the category's default each time, so a
+// DELEGATE task's sub-tasks come in pre-flagged as the delegate's.
+function refreshSubtaskDelegateUi(scope) {
+  const isEdit = scope === 'edit';
+  const isDelegate = isEdit ? editFormIsDelegate : addFormIsDelegate;
+  const wrap = isEdit ? editSubtaskDelegatedWrap : subtaskDelegatedWrap;
+  const checkbox = isEdit ? editSubtaskDelegatedInput : subtaskDelegatedInput;
+  wrap.classList.toggle('hidden', !isDelegate);
+  checkbox.checked = isDelegate && DELEGATED_SUBTASK_DEFAULT;
+  refreshNewSubtaskAssigneeUi(scope);
+  if (isEdit) renderEditSubtaskDraftList();
+  else renderSubtaskDraftList();
+}
+
+// The new-entry Assignee dropdown follows the new-entry "Deleg." checkbox: it
+// only shows while the sub-task about to be added is flagged as the delegate's.
+function refreshNewSubtaskAssigneeUi(scope) {
+  const isEdit = scope === 'edit';
+  const isDelegate = isEdit ? editFormIsDelegate : addFormIsDelegate;
+  const checkbox = isEdit ? editSubtaskDelegatedInput : subtaskDelegatedInput;
+  const select = isEdit ? editSubtaskAssigneeInput : subtaskAssigneeInput;
+  const show = isDelegate && checkbox.checked;
+  select.classList.toggle('hidden', !show);
+  if (!show) select.value = '';
+}
+
+subtaskDelegatedInput.addEventListener('change', () => refreshNewSubtaskAssigneeUi('add'));
+editSubtaskDelegatedInput.addEventListener('change', () => refreshNewSubtaskAssigneeUi('edit'));
+
+// The new-entry dropdown offers Claude only while the new-entry AI box is
+// ticked. Unticking AI with Claude selected drops back to "Assignee…".
+function refreshNewSubtaskAssigneeOptions(scope) {
+  const isEdit = scope === 'edit';
+  const select = isEdit ? editSubtaskAssigneeInput : subtaskAssigneeInput;
+  const includeAi = (isEdit ? editSubtaskAiInput : subtaskAiInput).checked;
+  const prev = select.value;
+  const keep = prev !== MANAGE_ASSIGNEES_OPTION && (prev !== AI_ASSIGNEE.name || includeAi) ? prev : '';
+  select.innerHTML = buildAssigneeOptionsHtml(keep, includeAi);
+  select.value = getAssignee(keep) ? keep : '';
+}
+
+subtaskAiInput.addEventListener('change', () => refreshNewSubtaskAssigneeOptions('add'));
+editSubtaskAiInput.addEventListener('change', () => refreshNewSubtaskAssigneeOptions('edit'));
+
+// Picking "Manage assignees…" in any dropdown opens the popover instead of
+// being a value. Deferred a tick so the click that closed the native dropdown
+// finishes bubbling (the document-level click handler would close the popover
+// straight after it opened otherwise).
+function handleAssigneeSelectManage(select, restoreValue) {
+  if (select.value !== MANAGE_ASSIGNEES_OPTION) return false;
+  select.value = restoreValue || '';
+  setTimeout(() => openAssigneeManagePopover(select), 0);
+  return true;
+}
+
+subtaskAssigneeInput.addEventListener('change', () => handleAssigneeSelectManage(subtaskAssigneeInput, ''));
+editSubtaskAssigneeInput.addEventListener('change', () => handleAssigneeSelectManage(editSubtaskAssigneeInput, ''));
+
+function addSubtaskDraftEntry() {
+  const title = subtaskInput.value.trim();
+  if (!title) return;
+  const minutes = Number(subtaskMinutesInput.value) || 0;
+  const ai = subtaskAiInput.checked;
+  const date = subtaskDateInput.value || null;
+  const delegated = addFormIsDelegate && subtaskDelegatedInput.checked;
+  let assignee = delegated ? (subtaskAssigneeInput.value || null) : null;
+  if (assignee === AI_ASSIGNEE.name && !ai) assignee = null;
+  subtaskDraft.push({ id: uid(), title, completed: false, minutes, ai, date, delegated, assignee });
+  subtaskInput.value = '';
+  subtaskMinutesInput.value = '';
+  subtaskAiInput.checked = false;
+  subtaskDateInput.value = '';
+  subtaskDelegatedInput.checked = addFormIsDelegate && DELEGATED_SUBTASK_DEFAULT;
+  refreshNewSubtaskAssigneeUi('add');
+  refreshNewSubtaskAssigneeOptions('add');
+  renderSubtaskDraftList();
+  subtaskInput.focus();
+}
+
+subtaskInput.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  addSubtaskDraftEntry();
+});
+
+subtaskMinutesInput.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  addSubtaskDraftEntry();
+});
+
+subtaskDateInput.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  addSubtaskDraftEntry();
+});
+
+subtaskDraftList.addEventListener('click', (e) => {
+  if (e.target.closest('.draft-done-toggle')) {
+    draftDoneExpanded.add = !draftDoneExpanded.add;
+    renderSubtaskDraftList();
+    return;
+  }
+  const btn = e.target.closest('.remove-draft-btn');
+  if (!btn) return;
+  if (!confirmRemoveDraft(subtaskDraft.find((s) => s.id === btn.dataset.id))) return;
+  subtaskDraft = subtaskDraft.filter((s) => s.id !== btn.dataset.id);
+  renderSubtaskDraftList();
+});
+
+// Chip-level edits write straight into the draft object. Only the delegated
+// toggle re-renders (it restyles its own chip); re-rendering on a date change
+// would tear the open date picker out from under the cursor.
+subtaskDraftList.addEventListener('change', (e) => {
+  const dateEl = e.target.closest('.draft-chip-date');
+  if (dateEl) {
+    const entry = subtaskDraft.find((s) => s.id === dateEl.dataset.id);
+    if (entry) entry.date = dateEl.value || null;
+    refreshDueRollupUi('add');
+    return;
+  }
+  const assigneeEl = e.target.closest('.draft-chip-assignee');
+  if (assigneeEl) {
+    const entry = subtaskDraft.find((s) => s.id === assigneeEl.dataset.id);
+    if (handleAssigneeSelectManage(assigneeEl, entry && entry.assignee)) return;
+    if (entry) entry.assignee = assigneeEl.value || null;
+    return;
+  }
+  const delegatedEl = e.target.closest('.draft-chip-delegated-toggle');
+  if (delegatedEl) {
+    const entry = subtaskDraft.find((s) => s.id === delegatedEl.dataset.id);
+    if (entry) entry.delegated = delegatedEl.checked;
+    renderSubtaskDraftList();
+  }
+});
+
+function addEditSubtaskDraftEntry() {
+  const title = editSubtaskInput.value.trim();
+  if (!title) return;
+  const minutes = Number(editSubtaskMinutesInput.value) || 0;
+  const ai = editSubtaskAiInput.checked;
+  const date = editSubtaskDateInput.value || null;
+  const delegated = editFormIsDelegate && editSubtaskDelegatedInput.checked;
+  let assignee = delegated ? (editSubtaskAssigneeInput.value || null) : null;
+  if (assignee === AI_ASSIGNEE.name && !ai) assignee = null;
+  editSubtaskDraft.push({ id: uid(), title, completed: false, minutes, ai, date, delegated, assignee });
+  editSubtaskInput.value = '';
+  editSubtaskMinutesInput.value = '';
+  editSubtaskAiInput.checked = false;
+  editSubtaskDateInput.value = '';
+  editSubtaskDelegatedInput.checked = editFormIsDelegate && DELEGATED_SUBTASK_DEFAULT;
+  refreshNewSubtaskAssigneeUi('edit');
+  refreshNewSubtaskAssigneeOptions('edit');
+  renderEditSubtaskDraftList();
+  editSubtaskInput.focus();
+}
+
+editSubtaskInput.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  addEditSubtaskDraftEntry();
+});
+
+editSubtaskMinutesInput.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  addEditSubtaskDraftEntry();
+});
+
+editSubtaskDateInput.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  addEditSubtaskDraftEntry();
+});
+
+editSubtaskDraftList.addEventListener('click', (e) => {
+  if (e.target.closest('.draft-done-toggle')) {
+    draftDoneExpanded.edit = !draftDoneExpanded.edit;
+    renderEditSubtaskDraftList();
+    return;
+  }
+  const btn = e.target.closest('.remove-draft-btn');
+  if (!btn) return;
+  if (!confirmRemoveDraft(editSubtaskDraft.find((s) => s.id === btn.dataset.id))) return;
+  editSubtaskDraft = editSubtaskDraft.filter((s) => s.id !== btn.dataset.id);
+  renderEditSubtaskDraftList();
+});
+
+editSubtaskDraftList.addEventListener('change', (e) => {
+  const dateEl = e.target.closest('.draft-chip-date');
+  if (dateEl) {
+    const entry = editSubtaskDraft.find((s) => s.id === dateEl.dataset.id);
+    if (entry) entry.date = dateEl.value || null;
+    refreshDueRollupUi('edit');
+    return;
+  }
+  const assigneeEl = e.target.closest('.draft-chip-assignee');
+  if (assigneeEl) {
+    const entry = editSubtaskDraft.find((s) => s.id === assigneeEl.dataset.id);
+    if (handleAssigneeSelectManage(assigneeEl, entry && entry.assignee)) return;
+    if (entry) entry.assignee = assigneeEl.value || null;
+    return;
+  }
+  const delegatedEl = e.target.closest('.draft-chip-delegated-toggle');
+  if (delegatedEl) {
+    const entry = editSubtaskDraft.find((s) => s.id === delegatedEl.dataset.id);
+    if (entry) entry.delegated = delegatedEl.checked;
+    renderEditSubtaskDraftList();
+  }
+});
+
+// ---------- Outlook Web URL (create + edit forms) ----------
+
+emailLinkInput.addEventListener('blur', () => {
+  emailLinkInput.value = normalizeEmailLink(emailLinkInput.value.trim());
+});
+
+editEmailLinkInput.addEventListener('blur', () => {
+  editEmailLinkInput.value = normalizeEmailLink(editEmailLinkInput.value.trim());
+});
+
+// ---------- Projects ----------
+
+function renderProjectOptions() {
+  const prevTaskVal = taskProject.value;
+  const prevEditVal = editProject.value;
+  const prevFilterVal = projectFilter.value;
+
+  const optionsHtml = '<option value="">No project</option>'
+    + projects.map((p) => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
+
+  taskProject.innerHTML = optionsHtml;
+  editProject.innerHTML = optionsHtml;
+  if (projects.includes(prevTaskVal)) taskProject.value = prevTaskVal;
+  if (projects.includes(prevEditVal)) editProject.value = prevEditVal;
+
+  projectFilter.innerHTML = '<option value="all">All projects</option>'
+    + projects.map((p) => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
+  if (prevFilterVal === 'all' || projects.includes(prevFilterVal)) projectFilter.value = prevFilterVal;
+
+  projectListUl.innerHTML = projects.length
+    ? projects.map((p) => `<li class="draft-chip" data-project="${escapeHtml(p)}">
+        <span class="draft-chip-label">${escapeHtml(p)}</span>
+        <button type="button" class="edit-draft-btn" data-project="${escapeHtml(p)}" title="Rename project">✎</button>
+        <button type="button" class="remove-draft-btn" data-project="${escapeHtml(p)}" title="Delete project">×</button>
+      </li>`).join('')
+    : '<li class="hint-text">No projects yet.</li>';
+
+  renderProjectPillBar();
+}
+
+function addProject() {
+  const name = newProjectInput.value.trim();
+  newProjectInput.value = '';
+  if (!name || projects.includes(name)) return;
+  projects.push(name);
+  saveProjects();
+  renderProjectOptions();
+}
+
+function removeProject(name) {
+  projects = projects.filter((p) => p !== name);
+  saveProjects();
+  tasks.forEach((t) => {
+    if (t.project === name) t.project = null;
+  });
+  saveTasks();
+  renderProjectOptions();
+  render();
+}
+
+function renameProject(oldName, newName) {
+  newName = (newName || '').trim();
+  if (!newName || newName === oldName || projects.includes(newName)) {
+    renderProjectOptions();
+    return;
+  }
+  const idx = projects.indexOf(oldName);
+  if (idx === -1) return;
+  projects[idx] = newName;
+  saveProjects();
+  tasks.forEach((t) => {
+    if (t.project === oldName) t.project = newName;
+  });
+  saveTasks();
+  renderProjectOptions();
+  render();
+}
+
+function startEditProject(li, name) {
+  li.innerHTML = `<input type="text" class="draft-chip-edit-input" value="${escapeHtml(name)}">
+    <button type="button" class="save-edit-btn" title="Save">✓</button>
+    <button type="button" class="cancel-edit-btn" title="Cancel">×</button>`;
+  const input = li.querySelector('.draft-chip-edit-input');
+  input.focus();
+  input.select();
+  const commit = () => renameProject(name, input.value);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); commit(); }
+    if (e.key === 'Escape') { e.preventDefault(); renderProjectOptions(); }
+  });
+  li.querySelector('.save-edit-btn').addEventListener('click', commit);
+  li.querySelector('.cancel-edit-btn').addEventListener('click', () => renderProjectOptions());
+}
+
+addProjectBtn.addEventListener('click', addProject);
+newProjectInput.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  addProject();
+});
+projectListUl.addEventListener('click', (e) => {
+  const removeBtn = e.target.closest('.remove-draft-btn');
+  if (removeBtn) { removeProject(removeBtn.dataset.project); return; }
+  const editBtn = e.target.closest('.edit-draft-btn');
+  if (editBtn) { startEditProject(editBtn.closest('.draft-chip'), editBtn.dataset.project); }
+});
+
+// ---------- Manage-projects popover (shared, opened from either form's "+" button) ----------
+
+function openProjectManagePopover(anchorEl) {
+  const rect = anchorEl.getBoundingClientRect();
+  const popoverWidth = 280; // matches .project-manage-popover max-width
+  projectManagePopover.style.top = `${rect.bottom + 6}px`;
+  if (rect.left + popoverWidth > window.innerWidth) {
+    projectManagePopover.style.left = 'auto';
+    projectManagePopover.style.right = `${window.innerWidth - rect.right}px`;
+  } else {
+    projectManagePopover.style.left = `${rect.left}px`;
+    projectManagePopover.style.right = 'auto';
+  }
+  projectManagePopover.classList.remove('hidden');
+  newProjectInput.focus();
+}
+
+function closeProjectManagePopover() {
+  projectManagePopover.classList.add('hidden');
+}
+
+[taskProjectManageBtn, editProjectManageBtn].forEach((btn) => {
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const alreadyOpen = !projectManagePopover.classList.contains('hidden');
+    document.querySelectorAll('.dropdown-panel').forEach((p) => { if (p !== projectManagePopover) p.classList.add('hidden'); });
+    if (alreadyOpen) closeProjectManagePopover();
+    else openProjectManagePopover(btn);
+  });
+});
+projectManagePopover.addEventListener('click', (e) => e.stopPropagation());
+document.addEventListener('click', () => closeProjectManagePopover());
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeProjectManagePopover();
+});
+
+// ---------- Labels ----------
+
+function renderLabelOptions() {
+  initLabelFilter();
+  renderLabelPillBar();
+  labelPicker.innerHTML = buildLabelPickerHtml(selectedLabels);
+  editLabelPicker.innerHTML = buildLabelPickerHtml(editSelectedLabels);
+
+  labelListUl.innerHTML = labels.length
+    ? labels.map((l) => `<li class="draft-chip" data-label="${escapeHtml(l)}">
+        <span class="label-swatch" style="background: ${labelColor(l)};"></span>
+        <span class="draft-chip-label">${escapeHtml(l)}</span>
+        <button type="button" class="edit-draft-btn" data-label="${escapeHtml(l)}" title="Rename label">✎</button>
+        <button type="button" class="remove-draft-btn" data-label="${escapeHtml(l)}" title="Delete label">×</button>
+      </li>`).join('')
+    : '<li class="hint-text">No labels yet.</li>';
+}
+
+function addLabel() {
+  const name = newLabelInput.value.trim();
+  newLabelInput.value = '';
+  if (!name || labels.includes(name)) return;
+  labels.push(name);
+  saveLabels();
+  renderLabelOptions();
+}
+
+function removeLabel(name) {
+  labels = labels.filter((l) => l !== name);
+  saveLabels();
+  tasks.forEach((t) => {
+    if (t.labels) t.labels = t.labels.filter((l) => l !== name);
+  });
+  saveTasks();
+  renderLabelOptions();
+  render();
+}
+
+function renameLabel(oldName, newName) {
+  newName = (newName || '').trim();
+  if (!newName || newName === oldName || labels.includes(newName)) {
+    renderLabelOptions();
+    return;
+  }
+  const idx = labels.indexOf(oldName);
+  if (idx === -1) return;
+  labels[idx] = newName;
+  saveLabels();
+  tasks.forEach((t) => {
+    if (t.labels) t.labels = t.labels.map((l) => (l === oldName ? newName : l));
+  });
+  saveTasks();
+  renderLabelOptions();
+  render();
+}
+
+function startEditLabel(li, name) {
+  li.innerHTML = `<input type="text" class="draft-chip-edit-input" value="${escapeHtml(name)}">
+    <button type="button" class="save-edit-btn" title="Save">✓</button>
+    <button type="button" class="cancel-edit-btn" title="Cancel">×</button>`;
+  const input = li.querySelector('.draft-chip-edit-input');
+  input.focus();
+  input.select();
+  const commit = () => renameLabel(name, input.value);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); commit(); }
+    if (e.key === 'Escape') { e.preventDefault(); renderLabelOptions(); }
+  });
+  li.querySelector('.save-edit-btn').addEventListener('click', commit);
+  li.querySelector('.cancel-edit-btn').addEventListener('click', () => renderLabelOptions());
+}
+
+addLabelBtn.addEventListener('click', addLabel);
+newLabelInput.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  addLabel();
+});
+labelListUl.addEventListener('click', (e) => {
+  const removeBtn = e.target.closest('.remove-draft-btn');
+  if (removeBtn) { removeLabel(removeBtn.dataset.label); return; }
+  const editBtn = e.target.closest('.edit-draft-btn');
+  if (editBtn) { startEditLabel(editBtn.closest('.draft-chip'), editBtn.dataset.label); }
+});
+
+// ---------- Manage-labels popover (opened from the settings gear) ----------
+
+function openLabelManagePopover(anchorEl) {
+  const rect = anchorEl.getBoundingClientRect();
+  const popoverWidth = 280; // matches .label-manage-popover max-width
+  labelManagePopover.style.top = `${rect.bottom + 6}px`;
+  if (rect.left + popoverWidth > window.innerWidth) {
+    labelManagePopover.style.left = 'auto';
+    labelManagePopover.style.right = `${window.innerWidth - rect.right}px`;
+  } else {
+    labelManagePopover.style.left = `${rect.left}px`;
+    labelManagePopover.style.right = 'auto';
+  }
+  labelManagePopover.classList.remove('hidden');
+  newLabelInput.focus();
+}
+
+function closeLabelManagePopover() {
+  labelManagePopover.classList.add('hidden');
+}
+
+labelManagePopover.addEventListener('click', (e) => e.stopPropagation());
+document.addEventListener('click', () => closeLabelManagePopover());
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeLabelManagePopover();
+});
+
+// ---------- Assignees (manage popover + every dropdown that lists them) ----------
+
+function renderAssigneeOptions() {
+  refreshNewSubtaskAssigneeOptions('add');
+  refreshNewSubtaskAssigneeOptions('edit');
+  // Draft chips carry their own dropdowns, so an open form picks the change up too.
+  renderSubtaskDraftList();
+  renderEditSubtaskDraftList();
+
+  assigneeListUl.innerHTML = assignees.length
+    ? assignees.map((a) => `<li class="draft-chip" data-assignee="${escapeHtml(a.name)}">
+        ${assigneeAvatarHtml(a.name, 'assignee-avatar-sm')}
+        <span class="draft-chip-label">${escapeHtml(a.name)}</span>
+        <button type="button" class="edit-draft-btn" data-assignee="${escapeHtml(a.name)}" title="Rename">✎</button>
+        <button type="button" class="remove-draft-btn" data-assignee="${escapeHtml(a.name)}" title="Remove">×</button>
+      </li>`).join('')
+    : '<li class="hint-text">No assignees yet.</li>';
+}
+
+function addAssignee() {
+  const name = newAssigneeInput.value.trim();
+  newAssigneeInput.value = '';
+  if (!name || name === MANAGE_ASSIGNEES_OPTION || getAssignee(name)) return;
+  assignees.push({ name, kind: newAssigneeKind.value === 'department' ? 'department' : 'person' });
+  saveAssignees();
+  renderAssigneeOptions();
+  render();
+}
+
+// Removing someone unassigns their sub-tasks (the delegated flag stays — the
+// work is still handed off, just to nobody named).
+function removeAssignee(name) {
+  assignees = assignees.filter((a) => a.name !== name);
+  saveAssignees();
+  tasks.forEach((t) => {
+    (t.subtasks || []).forEach((s) => { if (s.assignee === name) s.assignee = null; });
+  });
+  [subtaskDraft, editSubtaskDraft].forEach((draft) => draft.forEach((s) => { if (s.assignee === name) s.assignee = null; }));
+  saveTasks();
+  renderAssigneeOptions();
+  render();
+}
+
+function renameAssignee(oldName, newName) {
+  newName = (newName || '').trim();
+  if (!newName || newName === oldName || newName === MANAGE_ASSIGNEES_OPTION || getAssignee(newName)) {
+    renderAssigneeOptions();
+    return;
+  }
+  const entry = getAssignee(oldName);
+  if (!entry) return;
+  entry.name = newName;
+  saveAssignees();
+  tasks.forEach((t) => {
+    (t.subtasks || []).forEach((s) => { if (s.assignee === oldName) s.assignee = newName; });
+  });
+  [subtaskDraft, editSubtaskDraft].forEach((draft) => draft.forEach((s) => { if (s.assignee === oldName) s.assignee = newName; }));
+  saveTasks();
+  renderAssigneeOptions();
+  render();
+}
+
+function startEditAssignee(li, name) {
+  li.innerHTML = `<input type="text" class="draft-chip-edit-input" value="${escapeHtml(name)}">
+    <button type="button" class="save-edit-btn" title="Save">✓</button>
+    <button type="button" class="cancel-edit-btn" title="Cancel">×</button>`;
+  const input = li.querySelector('.draft-chip-edit-input');
+  input.focus();
+  input.select();
+  const commit = () => renameAssignee(name, input.value);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); commit(); }
+    if (e.key === 'Escape') { e.preventDefault(); renderAssigneeOptions(); }
+  });
+  li.querySelector('.save-edit-btn').addEventListener('click', commit);
+  li.querySelector('.cancel-edit-btn').addEventListener('click', () => renderAssigneeOptions());
+}
+
+addAssigneeBtn.addEventListener('click', addAssignee);
+newAssigneeInput.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  addAssignee();
+});
+assigneeListUl.addEventListener('click', (e) => {
+  const removeBtn = e.target.closest('.remove-draft-btn');
+  if (removeBtn) { removeAssignee(removeBtn.dataset.assignee); return; }
+  const editBtn = e.target.closest('.edit-draft-btn');
+  if (editBtn) { startEditAssignee(editBtn.closest('.draft-chip'), editBtn.dataset.assignee); }
+});
+
+// Anchored to whatever opened it: the settings gear, or an assignee dropdown
+// inside an open Add/Edit modal (it sits above the modal — see its z-index).
+function openAssigneeManagePopover(anchorEl) {
+  document.querySelectorAll('.dropdown-panel').forEach((p) => { if (p !== assigneeManagePopover) p.classList.add('hidden'); });
+  const rect = anchorEl.getBoundingClientRect();
+  const popoverWidth = 320; // matches .assignee-manage-popover max-width
+  assigneeManagePopover.style.top = `${rect.bottom + 6}px`;
+  if (rect.left + popoverWidth > window.innerWidth) {
+    assigneeManagePopover.style.left = 'auto';
+    assigneeManagePopover.style.right = `${Math.max(8, window.innerWidth - rect.right)}px`;
+  } else {
+    assigneeManagePopover.style.left = `${rect.left}px`;
+    assigneeManagePopover.style.right = 'auto';
+  }
+  assigneeManagePopover.classList.remove('hidden');
+  newAssigneeInput.focus();
+}
+
+function closeAssigneeManagePopover() {
+  assigneeManagePopover.classList.add('hidden');
+}
+
+assigneeManagePopover.addEventListener('click', (e) => e.stopPropagation());
+document.addEventListener('click', () => closeAssigneeManagePopover());
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeAssigneeManagePopover();
+});
+
+// ---------- Settings popover (Export / Import, opened from the gear icon) ----------
+
+function openSettingsPopover() {
+  const rect = settingsBtn.getBoundingClientRect();
+  settingsPopover.style.top = `${rect.bottom + 6}px`;
+  settingsPopover.style.right = `${window.innerWidth - rect.right}px`;
+  settingsPopover.style.left = 'auto';
+  settingsPopover.classList.remove('hidden');
+}
+
+function closeSettingsPopover() {
+  settingsPopover.classList.add('hidden');
+}
+
+settingsBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const alreadyOpen = !settingsPopover.classList.contains('hidden');
+  document.querySelectorAll('.dropdown-panel').forEach((p) => { if (p !== settingsPopover) p.classList.add('hidden'); });
+  if (alreadyOpen) closeSettingsPopover();
+  else openSettingsPopover();
+});
+settingsPopover.addEventListener('click', (e) => e.stopPropagation());
+document.addEventListener('click', () => closeSettingsPopover());
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeSettingsPopover();
+});
+
+manageProjectsBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  closeSettingsPopover();
+  document.querySelectorAll('.dropdown-panel').forEach((p) => { if (p !== projectManagePopover) p.classList.add('hidden'); });
+  openProjectManagePopover(settingsBtn);
+});
+
+manageLabelsBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  closeSettingsPopover();
+  document.querySelectorAll('.dropdown-panel').forEach((p) => { if (p !== labelManagePopover) p.classList.add('hidden'); });
+  openLabelManagePopover(settingsBtn);
+});
+
+manageAssigneesBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  closeSettingsPopover();
+  openAssigneeManagePopover(settingsBtn);
+});
+
+// ---------- Paste from Loop (agenda table -> app) ----------
+// The return path of the meeting agenda. Loop copies its table as real HTML
+// (checked against a real paste): a header row with the column names, one
+// <tr> per row, and blank Task/Project cells on the rows that continue a
+// task. Rows are matched to tasks and sub-tasks by title, every difference
+// becomes a line in a preview, and nothing is written until "Apply selected".
+// Task-level fields and task titles are deliberately not editable this way —
+// the title is what the match relies on.
+
+const LOOP_ME_NAME = 'Francis';        // what the agenda prints for non-delegated rows
+const LOOP_UNASSIGNED = 'Unassigned';
+
+const pasteLoopBtn = document.getElementById('pasteLoopBtn');
+const pasteLoopModalOverlay = document.getElementById('pasteLoopModalOverlay');
+const pasteLoopModalClose = document.getElementById('pasteLoopModalClose');
+const pasteLoopTarget = document.getElementById('pasteLoopTarget');
+const pasteLoopResult = document.getElementById('pasteLoopResult');
+const pasteLoopSummary = document.getElementById('pasteLoopSummary');
+const pasteLoopChanges = document.getElementById('pasteLoopChanges');
+const pasteLoopApplyBtn = document.getElementById('pasteLoopApplyBtn');
+const pasteLoopSelectAllBtn = document.getElementById('pasteLoopSelectAllBtn');
+const pasteLoopSelectNoneBtn = document.getElementById('pasteLoopSelectNoneBtn');
+const pasteLoopTypes = document.getElementById('pasteLoopTypes');
+const pasteLoopText = document.getElementById('pasteLoopText');
+const pasteLoopHtml = document.getElementById('pasteLoopHtml');
+const pasteLoopCopyBtn = document.getElementById('pasteLoopCopyBtn');
+let lastLoopDiagnostic = null;
+let loopPlan = null;
+
+function openPasteLoopModal() {
+  pasteLoopTarget.value = '';
+  pasteLoopResult.classList.add('hidden');
+  pasteLoopChanges.innerHTML = '';
+  loopPlan = null;
+  pasteLoopModalOverlay.classList.remove('hidden');
+  pasteLoopTarget.focus();
+}
+
+function closePasteLoopModal() {
+  pasteLoopModalOverlay.classList.add('hidden');
+}
+
+pasteLoopBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  closeSettingsPopover();
+  openPasteLoopModal();
+});
+pasteLoopModalClose.addEventListener('click', closePasteLoopModal);
+pasteLoopModalOverlay.addEventListener('click', (e) => {
+  if (e.target === pasteLoopModalOverlay) closePasteLoopModal();
+});
+
+// Titles are compared without the 📝/✉ markers the agenda appends, case- and
+// whitespace-insensitively.
+function normTitle(s) {
+  return (s || '').replace(/[📝✉]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+function cellText(td) {
+  return (td.textContent || '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+const LOOP_MONTHS = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, sept: 8, oct: 9, nov: 10, dec: 11 };
+
+// Accepts what the agenda prints ("Thu Sep 24 · overdue") and what someone is
+// likely to type into the cell during the meeting: "Oct 3", "3 Oct",
+// "Oct 3, 2026", "3/10/2026" (day first), "2026-10-03". A date with no year
+// gets whichever year puts it nearest to today.
+function parseLoopDate(text) {
+  let s = (text || '').replace(/·.*$/, '').trim();
+  if (!s || s === '—' || s === '-') return null;
+  s = s.replace(/^(mon|tue|wed|thu|fri|sat|sun)[a-z]*\.?,?\s+/i, '');
+  let m;
+  if ((m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))) return toDateKey(new Date(+m[1], +m[2] - 1, +m[3]));
+  if ((m = s.match(/^(\d{1,2})[/.](\d{1,2})[/.](\d{2,4})$/))) {
+    let y = +m[3];
+    if (y < 100) y += 2000;
+    return toDateKey(new Date(y, +m[2] - 1, +m[1]));
+  }
+  let mon; let day; let year = null;
+  if ((m = s.match(/^([a-z]+)\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s+(\d{4}))?$/i))) {
+    mon = LOOP_MONTHS[m[1].toLowerCase()]; day = +m[2]; year = m[3] ? +m[3] : null;
+  } else if ((m = s.match(/^(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]+)\.?(?:,?\s+(\d{4}))?$/i))) {
+    day = +m[1]; mon = LOOP_MONTHS[m[2].toLowerCase()]; year = m[3] ? +m[3] : null;
+  }
+  if (mon === undefined || !day) return null;
+  if (year) return toDateKey(new Date(year, mon, day));
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const y0 = today.getFullYear();
+  let best = null; let bestDist = Infinity;
+  [y0 - 1, y0, y0 + 1].forEach((y) => {
+    const d = new Date(y, mon, day);
+    const dist = Math.abs(d - today);
+    if (dist < bestDist) { best = d; bestDist = dist; }
+  });
+  return toDateKey(best);
+}
+
+// "☐ Prepare COMEX Slides (60 min)" -> title, done flag, minutes. A ticked box
+// (☑ ✓ ✔ [x]) or a struck-through-looking marker means done; a missing marker
+// is treated as open, not as a change.
+function parseSubtaskCell(text) {
+  let s = (text || '').trim();
+  if (!s || s === '—' || s === '-') return null;
+  let done = false;
+  const marker = s.match(/^(\[\s*[xX✓✔]\s*\]|\[\s*\]|[☐☑☒✓✔✅✗✘])\s*/);
+  if (marker) {
+    done = /[xX✓✔☑☒✅]/.test(marker[1]);
+    s = s.slice(marker[0].length);
+  }
+  let minutes = null;
+  const mm = s.match(/\((\d+)\s*mins?\)\s*$/i);
+  if (mm) {
+    minutes = +mm[1];
+    s = s.slice(0, mm.index);
+  }
+  return { title: s.trim(), done, minutes };
+}
+
+// Every table with a "Task" and a sub-task column, in document order. Columns
+// are found by header text, so reordering them in Loop is fine.
+function parseLoopTables(htmlData) {
+  const doc = new DOMParser().parseFromString(htmlData, 'text/html');
+  const rows = [];
+  doc.querySelectorAll('table').forEach((table) => {
+    const trs = [...table.querySelectorAll('tr')];
+    if (trs.length < 2) return;
+    const header = [...trs[0].children].map((c) => cellText(c).toLowerCase());
+    const col = {
+      task: header.findIndex((h) => /^task/.test(h)),
+      project: header.findIndex((h) => /^project/.test(h)),
+      sub: header.findIndex((h) => /sub-?task/.test(h)),
+      assignee: header.findIndex((h) => /^(assignee|owner)/.test(h)),
+      due: header.findIndex((h) => /^due/.test(h)),
+    };
+    if (col.task < 0 || col.sub < 0) return;
+    let currentTask = null;
+    trs.slice(1).forEach((tr) => {
+      const cells = [...tr.children];
+      const get = (i) => (i >= 0 && cells[i] ? cellText(cells[i]) : '');
+      const rawTask = get(col.task);
+      if (rawTask) currentTask = rawTask;
+      if (!currentTask) return;
+      rows.push({ taskTitle: currentTask, project: get(col.project), sub: get(col.sub), assignee: get(col.assignee), due: get(col.due) });
+    });
+  });
+  return rows;
+}
+
+function findTaskByTitle(title) {
+  const key = normTitle(title);
+  if (!key) return null;
+  return tasks.find((t) => !t.completed && normTitle(t.title) === key)
+    || tasks.find((t) => normTitle(t.title) === key)
+    || null;
+}
+
+// Turns parsed rows into a list of independent, individually-selectable
+// changes. Each carries an apply() that writes to the live task object.
+function planLoopImport(rows) {
+  const changes = [];
+  const unmatched = [];
+  const unmatchedSeen = new Set();
+
+  rows.forEach((row) => {
+    const task = findTaskByTitle(row.taskTitle);
+    if (!task) {
+      const key = normTitle(row.taskTitle);
+      if (!unmatchedSeen.has(key)) {
+        unmatchedSeen.add(key);
+        unmatched.push(row.taskTitle.replace(/[📝✉]/g, '').trim());
+      }
+      return;
+    }
+    const parsed = parseSubtaskCell(row.sub);
+    if (!parsed || !parsed.title) return; // task-only row — nothing editable here in v1
+
+    const isDelegate = isDelegateTask(task);
+    const sub = (task.subtasks || []).find((s) => normTitle(s.title) === normTitle(parsed.title));
+    const assigneeText = (row.assignee || '').trim();
+    const wantsPerson = !!assigneeText && ![LOOP_ME_NAME, LOOP_UNASSIGNED, '—', '-'].includes(assigneeText);
+    const newDate = parseLoopDate(row.due);
+    const q = (s) => `“${s}”`;
+
+    if (!sub) {
+      const entry = {
+        id: uid(), title: parsed.title, completed: parsed.done, minutes: parsed.minutes || 0,
+        ai: assigneeText === AI_ASSIGNEE.name, date: newDate, delegated: false, assignee: null,
+      };
+      const notes = [];
+      if (wantsPerson && isDelegate) { entry.delegated = true; entry.assignee = assigneeText; notes.push(`→ ${assigneeText}`); }
+      else if (wantsPerson) notes.push(`(${assigneeText} ignored — task isn't DELEGATE)`);
+      if (entry.minutes) notes.push(`${entry.minutes} min`);
+      if (newDate) notes.push(formatShortDate(newDate));
+      if (parsed.done) notes.push('done');
+      changes.push({
+        task, kind: 'add',
+        label: `New sub-task ${q(parsed.title)}${notes.length ? ' · ' + notes.join(' · ') : ''}`,
+        apply: () => {
+          if (!getAssignee(entry.assignee) && entry.assignee) { assignees.push({ name: entry.assignee, kind: 'person' }); saveAssignees(); }
+          task.subtasks = task.subtasks || [];
+          task.subtasks.push(entry);
+        },
+      });
+      return;
+    }
+
+    if (parsed.done && !sub.completed) {
+      changes.push({ task, kind: 'done', label: `Mark ${q(sub.title)} done`, apply: () => { sub.completed = true; } });
+    }
+    if (parsed.minutes !== null && parsed.minutes !== (sub.minutes || 0)) {
+      changes.push({ task, kind: 'minutes', label: `${q(sub.title)}: ${sub.minutes || 0} → ${parsed.minutes} min`, apply: () => { sub.minutes = parsed.minutes; } });
+    }
+    const effectiveDate = sub.date || task.due || null;
+    if (newDate && newDate !== effectiveDate) {
+      changes.push({
+        task, kind: 'date',
+        label: `${q(sub.title)}: due ${effectiveDate ? formatShortDate(effectiveDate) : '—'} → ${formatShortDate(newDate)}`,
+        apply: () => { sub.date = newDate; },
+      });
+    }
+    if (assigneeText) {
+      if (wantsPerson) {
+        if (!isDelegate) {
+          changes.push({ task, kind: 'warn', disabled: true, label: `${q(sub.title)}: can't assign to ${assigneeText} — the task isn't DELEGATE (change its Effort/Impact first)` });
+        } else if (!(sub.delegated && sub.assignee === assigneeText)) {
+          const known = !!getAssignee(assigneeText);
+          changes.push({
+            task, kind: 'assign',
+            label: `${q(sub.title)}: assign to ${assigneeText}${sub.assignee ? ` (was ${sub.assignee})` : ''}${known ? '' : ' — new name, will be added to Manage Assignees'}`,
+            apply: () => {
+              if (!getAssignee(assigneeText)) { assignees.push({ name: assigneeText, kind: 'person' }); saveAssignees(); }
+              sub.delegated = true;
+              sub.assignee = assigneeText;
+              if (assigneeText === AI_ASSIGNEE.name) sub.ai = true;
+            },
+          });
+        }
+      } else if (assigneeText === LOOP_ME_NAME && isDelegate && sub.delegated) {
+        changes.push({ task, kind: 'assign', label: `${q(sub.title)}: back to ${LOOP_ME_NAME} (no longer delegated)`, apply: () => { sub.delegated = false; } });
+      } else if (assigneeText === LOOP_UNASSIGNED && isDelegate && sub.delegated && sub.assignee) {
+        changes.push({ task, kind: 'assign', label: `${q(sub.title)}: clear assignee (was ${sub.assignee})`, apply: () => { sub.assignee = null; } });
+      }
+    }
+  });
+
+  return { changes, unmatched };
+}
+
+function renderLoopPlan(plan, rowCount) {
+  loopPlan = plan;
+  const byTask = new Map();
+  plan.changes.forEach((c, i) => {
+    c.idx = i;
+    if (!byTask.has(c.task.id)) byTask.set(c.task.id, { task: c.task, items: [] });
+    byTask.get(c.task.id).items.push(c);
+  });
+  let htmlOut = '';
+  byTask.forEach(({ task, items }) => {
+    htmlOut += `<div class="paste-group"><div class="paste-group-title">${escapeHtml(task.title)} <span class="paste-group-cat">${escapeHtml(task.category)}</span></div>`
+      + items.map((c) => (c.disabled
+        ? `<div class="paste-change paste-change-warn">⚠ ${escapeHtml(c.label)}</div>`
+        : `<label class="paste-change"><input type="checkbox" class="paste-change-cb" data-idx="${c.idx}" checked> ${escapeHtml(c.label)}</label>`)).join('')
+      + '</div>';
+  });
+  if (plan.unmatched.length) {
+    htmlOut += `<div class="paste-group"><div class="paste-group-title">Not found in your tasks — skipped</div>${plan.unmatched.map((t) => `<div class="paste-change paste-change-warn">${escapeHtml(t)}</div>`).join('')}</div>`;
+  }
+  const n = plan.changes.filter((c) => !c.disabled).length;
+  pasteLoopChanges.innerHTML = htmlOut || '<p class="hint-text">No differences found — your tasks already match the table.</p>';
+  pasteLoopSummary.textContent = `${rowCount} row(s) read · ${n} change(s) found`;
+  pasteLoopApplyBtn.disabled = n === 0;
+}
+
+pasteLoopTarget.addEventListener('paste', (e) => {
+  const cd = e.clipboardData;
+  if (!cd) return;
+  e.preventDefault();
+  const types = [...cd.types];
+  const htmlData = cd.getData('text/html') || '';
+  const textData = cd.getData('text/plain') || '';
+  lastLoopDiagnostic = { capturedAt: new Date().toISOString(), userAgent: navigator.userAgent, types, text: textData, html: htmlData };
+  pasteLoopTypes.textContent = types.join('\n') || '(none)';
+  pasteLoopText.textContent = textData || '(empty)';
+  pasteLoopHtml.textContent = htmlData || '(empty)';
+  pasteLoopResult.classList.remove('hidden');
+  pasteLoopTarget.value = 'Captured — review the changes below. Paste again to replace.';
+
+  if (!htmlData) {
+    pasteLoopChanges.innerHTML = '<p class="hint-text">The clipboard has no HTML table — copy the table itself in Loop (not the plain text) and paste again.</p>';
+    pasteLoopSummary.textContent = 'No table found';
+    pasteLoopApplyBtn.disabled = true;
+    loopPlan = null;
+    return;
+  }
+  try {
+    const rows = parseLoopTables(htmlData);
+    renderLoopPlan(planLoopImport(rows), rows.length);
+  } catch (err) {
+    pasteLoopChanges.innerHTML = `<p class="hint-text">Could not read the table: ${escapeHtml(err.message)}. The raw clipboard below can be sent for troubleshooting.</p>`;
+    pasteLoopSummary.textContent = 'Error';
+    pasteLoopApplyBtn.disabled = true;
+    loopPlan = null;
+  }
+});
+
+pasteLoopSelectAllBtn.addEventListener('click', () => {
+  pasteLoopChanges.querySelectorAll('.paste-change-cb').forEach((cb) => { cb.checked = true; });
+});
+pasteLoopSelectNoneBtn.addEventListener('click', () => {
+  pasteLoopChanges.querySelectorAll('.paste-change-cb').forEach((cb) => { cb.checked = false; });
+});
+
+pasteLoopApplyBtn.addEventListener('click', () => {
+  if (!loopPlan) return;
+  const selected = [...pasteLoopChanges.querySelectorAll('.paste-change-cb:checked')].map((cb) => loopPlan.changes[+cb.dataset.idx]).filter(Boolean);
+  if (!selected.length) return;
+  const touched = new Set();
+  selected.forEach((c) => { c.apply(); touched.add(c.task); });
+  // Same follow-through as the Edit Task form: dates roll up, status follows sub-tasks.
+  touched.forEach((t) => { applyDueRollup(t); recalcStatus(t); });
+  saveTasks();
+  renderAssigneeOptions();
+  render();
+  pasteLoopChanges.innerHTML = `<p class="hint-text">Applied ${selected.length} change(s) across ${touched.size} task(s). Re-export for the next agenda when you're done.</p>`;
+  pasteLoopSummary.textContent = 'Done';
+  pasteLoopApplyBtn.disabled = true;
+  loopPlan = null;
+});
+
+pasteLoopCopyBtn.addEventListener('click', async () => {
+  if (!lastLoopDiagnostic) return;
+  const payload = JSON.stringify(lastLoopDiagnostic, null, 2);
+  const done = () => {
+    pasteLoopCopyBtn.textContent = 'Copied ✓';
+    setTimeout(() => { pasteLoopCopyBtn.textContent = 'Copy diagnostic'; }, 1500);
+  };
+  try {
+    await navigator.clipboard.writeText(payload);
+    done();
+  } catch {
+    // Older browsers / blocked clipboard API: fall back to a selected textarea.
+    const ta = document.createElement('textarea');
+    ta.value = payload;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch { /* leave the panels visible to copy by hand */ }
+    document.body.removeChild(ta);
+  }
+});
+
+// ---------- Effort/Impact/Priority -> Category preview (create + edit forms) ----------
+// Delegate tasks track 0 minutes — that time isn't yours to spend, so the
+// Estimated Time field is locked to 0 the moment the matrix resolves to Delegate.
+
+function updateCategoryPreview(effortEl, impactEl, priorityEl, previewEl, estInputEl, scope) {
+  const cat = computeCategory(effortEl.value, impactEl.value, priorityEl.value);
+  if (!cat) {
+    previewEl.textContent = '';
+    previewEl.style.removeProperty('--chip-color');
+  } else {
+    previewEl.textContent = cat;
+    previewEl.style.setProperty('--chip-color', CATEGORY_COLORS[cat]);
+  }
+
+  const isDelegate = cat === 'DELEGATE';
+  estInputEl.disabled = isDelegate;
+  estInputEl.title = isDelegate
+    ? 'Delegated tasks always track 0 minutes — that time isn\'t yours to spend'
+    : 'Estimated Time (minutes)';
+  if (isDelegate) estInputEl.value = '0';
+
+  // The per-sub-task delegation toggles follow the same switch — they only
+  // appear once the matrix resolves to Delegate.
+  if (scope === 'edit') editFormIsDelegate = isDelegate;
+  else if (scope === 'add') addFormIsDelegate = isDelegate;
+  if (scope) refreshSubtaskDelegateUi(scope);
+}
+
+taskEffort.addEventListener('change', () => updateCategoryPreview(taskEffort, taskImpact, taskPriority, taskCategoryPreview, taskEstimatedTime, 'add'));
+taskImpact.addEventListener('change', () => updateCategoryPreview(taskEffort, taskImpact, taskPriority, taskCategoryPreview, taskEstimatedTime, 'add'));
+taskPriority.addEventListener('change', () => updateCategoryPreview(taskEffort, taskImpact, taskPriority, taskCategoryPreview, taskEstimatedTime, 'add'));
+editEffort.addEventListener('change', () => updateCategoryPreview(editEffort, editImpact, editPriority, editCategoryPreview, editEstimatedTime, 'edit'));
+editImpact.addEventListener('change', () => updateCategoryPreview(editEffort, editImpact, editPriority, editCategoryPreview, editEstimatedTime, 'edit'));
+editPriority.addEventListener('change', () => updateCategoryPreview(editEffort, editImpact, editPriority, editCategoryPreview, editEstimatedTime, 'edit'));
+
+// ---------- Create task (Add Task modal) ----------
+
+function resetTaskForm() {
+  taskForm.reset();
+  taskPriority.value = 'medium';
+  taskCategoryPreview.textContent = '';
+  taskCategoryPreview.style.removeProperty('--chip-color');
+  taskEstimatedTime.disabled = false;
+
+  selectedLabels.clear();
+  labelPicker.innerHTML = buildLabelPickerHtml(selectedLabels);
+
+  subtaskDraft = [];
+  addBaseDue = null;
+  addFormIsDelegate = false;
+  subtaskDateInput.value = '';
+  refreshSubtaskDelegateUi('add');
+}
+
+function openAddTaskModal() {
+  resetTaskForm();
+  addTaskModalOverlay.classList.remove('hidden');
+  taskTitle.focus();
+}
+
+function closeAddTaskModal() {
+  addTaskModalOverlay.classList.add('hidden');
+}
+
+addTaskBtn.addEventListener('click', openAddTaskModal);
+addTaskCancelBtn.addEventListener('click', closeAddTaskModal);
+addTaskModalClose.addEventListener('click', closeAddTaskModal);
+addTaskModalOverlay.addEventListener('click', (e) => {
+  if (e.target === addTaskModalOverlay) closeAddTaskModal();
+});
+
+taskForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const title = taskTitle.value.trim();
+  const category = computeCategory(taskEffort.value, taskImpact.value, taskPriority.value);
+  if (!title || !category) return;
+
+  const linkValue = normalizeEmailLink(emailLinkInput.value.trim()) || null;
+  // Read from the parked base date, not the input — while a sub-task is due
+  // later the input holds the derived value, and is disabled.
+  const baseDue = addBaseDue;
+
+  const task = {
+    id: uid(),
+    title,
+    category,
+    effort: taskEffort.value,
+    impact: taskImpact.value,
+    project: taskProject.value || null,
+    labels: [...selectedLabels],
+    subtasks: subtaskDraft,
+    estimatedMinutes: category === 'DELEGATE' ? 0 : (Number(taskEstimatedTime.value) || 0),
+    ai: taskAiCheckbox.checked,
+    email: linkValue ? { link: linkValue } : null,
+    notes: taskNotes.value.trim() || null,
+    baseDue,
+    startDate: baseDue,
+    due: baseDue,
+    priority: taskPriority.value,
+    completed: false,
+    createdAt: Date.now(),
+  };
+  applyDueRollup(task);
+  recalcStatus(task);
+  tasks.push(task);
+
+  saveTasks();
+  closeAddTaskModal();
+  render();
+});
+
+// Quick Add: capture a task by name only, straight into NOT URGENT as
+// Effort=Low/Impact=Low/Priority=Low, to be triaged later via Edit. The input
+// keeps focus after Enter so several tasks can be jotted down in a row.
+const quickAddForm = document.getElementById('quickAddForm');
+const quickAddInput = document.getElementById('quickAddInput');
+
+quickAddForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const title = quickAddInput.value.trim();
+  if (!title) return;
+
+  const task = {
+    id: uid(),
+    title,
+    category: 'NOT URGENT',
+    effort: 'low',
+    impact: 'low',
+    project: null,
+    labels: [],
+    subtasks: [],
+    dependsOn: [],
+    estimatedMinutes: 0,
+    ai: false,
+    email: null,
+    notes: null,
+    startDate: null,
+    baseDue: null,
+    due: null,
+    priority: 'low',
+    completed: false,
+    createdAt: Date.now(),
+  };
+  recalcStatus(task);
+  tasks.push(task);
+
+  saveTasks();
+  quickAddInput.value = '';
+  render();
+  quickAddInput.focus();
+});
+
+// ---------- Edit task modal ----------
+
+function openEditModal(id) {
+  const task = getTaskById(id);
+  if (!task) return;
+
+  editingTaskId = id;
+  editTitle.value = task.title;
+  editEffort.value = task.effort || '';
+  editImpact.value = task.impact || '';
+  editProject.value = task.project || '';
+  editBaseDue = task.baseDue || null;
+  editDue.value = editBaseDue || '';
+  editPriority.value = task.priority;
+  editEstimatedTime.value = task.estimatedMinutes || '';
+  editEstimatedTime.disabled = false;
+  editAiCheckbox.checked = !!task.ai;
+
+  editSelectedLabels.clear();
+  (task.labels || []).forEach((l) => editSelectedLabels.add(l));
+  editLabelPicker.innerHTML = buildLabelPickerHtml(editSelectedLabels);
+
+  // Populated before the category preview runs — it re-renders the draft chips
+  // with (or without) the per-sub-task delegation toggles.
+  editSubtaskDraft = (task.subtasks || []).map((s) => ({ ...s }));
+  draftDoneExpanded.edit = false;
+  editSubtaskDateInput.value = '';
+  updateCategoryPreview(editEffort, editImpact, editPriority, editCategoryPreview, editEstimatedTime, 'edit');
+
+  editEmailLinkInput.value = (task.email && task.email.link) || '';
+  editNotes.value = task.notes || '';
+
+  editModalOverlay.classList.remove('hidden');
+}
+
+function closeEditModal() {
+  editModalOverlay.classList.add('hidden');
+  editingTaskId = null;
+}
+
+editCancelBtn.addEventListener('click', closeEditModal);
+editModalClose.addEventListener('click', closeEditModal);
+editModalOverlay.addEventListener('click', (e) => {
+  if (e.target === editModalOverlay) closeEditModal();
+});
+
+editForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const title = editTitle.value.trim();
+  const category = computeCategory(editEffort.value, editImpact.value, editPriority.value);
+  if (!title || !category || !editingTaskId) return;
+
+  const task = getTaskById(editingTaskId);
+  if (!task) return;
+
+  // Only the link is editable here; any pre-existing file attachment (from
+  // before upload was removed) is preserved untouched, not manageable via this form.
+  const linkValue = normalizeEmailLink(editEmailLinkInput.value.trim()) || null;
+  const previousEmail = task.email || null;
+  const fileFields = previousEmail && previousEmail.id
+    ? { id: previousEmail.id, filename: previousEmail.filename, subject: previousEmail.subject, from: previousEmail.from, date: previousEmail.date }
+    : null;
+  task.email = (fileFields || linkValue) ? { ...(fileFields || {}), link: linkValue } : null;
+
+  task.title = title;
+  task.category = category;
+  task.effort = editEffort.value;
+  task.impact = editImpact.value;
+  task.project = editProject.value || null;
+  task.baseDue = editBaseDue;
+  task.priority = editPriority.value;
+  task.estimatedMinutes = category === 'DELEGATE' ? 0 : (Number(editEstimatedTime.value) || 0);
+  task.ai = editAiCheckbox.checked;
+  task.labels = [...editSelectedLabels];
+  task.subtasks = editSubtaskDraft;
+  // After the sub-task list is in place, so the roll-up sees the final dates.
+  applyDueRollup(task);
+  recalcStatus(task);
+  task.notes = editNotes.value.trim() || null;
+
+  saveTasks();
+  closeEditModal();
+  render();
+});
+
+// ---------- Filters, sort, status ----------
+
+statusFilters.addEventListener('click', (e) => {
+  const btn = e.target.closest('.filter-btn');
+  if (!btn) return;
+  currentStatus = btn.dataset.status;
+  [...statusFilters.children].forEach((b) => b.classList.toggle('active', b === btn));
+  render();
+});
+
+categoryFilter.addEventListener('change', render);
+projectFilter.addEventListener('change', () => { updateProjectPillBarActive(); render(); });
+labelFilter.addEventListener('change', () => { updateLabelPillBarActive(); render(); });
+timeFilter.addEventListener('change', render);
+sortBy.addEventListener('change', render);
+
+clearCompletedBtn.addEventListener('click', () => {
+  tasks = tasks.filter((t) => !t.completed);
+  saveTasks();
+  render();
+});
+
+// ---------- Task list interactions (shared by board + this-week table) ----------
+
+function handleTaskListClick(e) {
+  const item = e.target.closest('.task-item');
+  if (!item) return;
+  const id = item.dataset.id;
+
+  if (e.target.closest('.email-badge')) {
+    const task = getTaskById(id);
+    if (task && task.email) {
+      if (task.email.link) {
+        window.open(task.email.link, '_blank', 'noopener');
+      } else if (task.email.id) {
+        openEmailAttachment(task.email.id, task.email.filename);
+      }
+    }
+    return;
+  }
+
+  if (e.target.closest('.date-pill')) {
+    e.stopPropagation();
+    openDateEditPopover(id, e.target.closest('.date-pill'));
+    return;
+  }
+
+  if (e.target.closest('[data-notes-toggle]')) {
+    e.stopPropagation();
+    openNotesPopover(id, e.target.closest('[data-notes-toggle]'));
+    return;
+  }
+
+  if (e.target.closest('[data-toggle-done-subtasks]')) {
+    e.stopPropagation();
+    const doneId = e.target.closest('[data-toggle-done-subtasks]').dataset.toggleDoneSubtasks;
+    if (expandedDoneSubtaskIds.has(doneId)) expandedDoneSubtaskIds.delete(doneId);
+    else expandedDoneSubtaskIds.add(doneId);
+    render();
+    return;
+  }
+
+  if (e.target.closest('[data-toggle-subtasks]')) {
+    e.stopPropagation();
+    const toggleId = e.target.closest('[data-toggle-subtasks]').dataset.toggleSubtasks;
+    if (collapsedSubtaskIds.has(toggleId)) collapsedSubtaskIds.delete(toggleId);
+    else collapsedSubtaskIds.add(toggleId);
+    render();
+    return;
+  }
+
+  if (e.target.closest('.mark-complete-btn')) {
+    const task = getTaskById(id);
+    if (task) {
+      task.completed = !task.completed;
+      saveTasks();
+      render();
+    }
+    return;
+  }
+
+  if (e.target.classList.contains('subtask-checkbox')) {
+    const task = getTaskById(id);
+    const subtask = task && (task.subtasks || []).find((s) => s.id === e.target.dataset.subtaskId);
+    if (subtask) {
+      subtask.completed = e.target.checked;
+      recalcStatus(task);
+      saveTasks();
+      render();
+    }
+    return;
+  }
+
+  if (e.target.classList.contains('task-checkbox')) {
+    const task = getTaskById(id);
+    if (task) {
+      task.completed = e.target.checked;
+      saveTasks();
+      render();
+    }
+    return;
+  }
+
+  if (e.target.closest('.delete-btn')) {
+    const task = getTaskById(id);
+    if (task && task.email && task.email.id) deleteEmailFile(task.email.id);
+    collapsedSubtaskIds.delete(id);
+    if (dateEditTaskId === id) closeDateEditPopover();
+    tasks = tasks.filter((t) => t.id !== id);
+    tasks.forEach((t) => {
+      t.dependsOn = (t.dependsOn || []).filter((depId) => depId !== id);
+    });
+    saveTasks();
+    render();
+    return;
+  }
+
+  if (e.target.closest('.edit-btn')) {
+    openEditModal(id);
+    return;
+  }
+
+  // Fallback: clicking anywhere else on a Matrix Grid card (not a table row)
+  // opens the edit modal. Excludes the sub-task rows themselves, whose label
+  // text would otherwise both toggle the checkbox (via the native
+  // <label>/<input> association) and open the modal.
+  if (item.tagName === 'LI' && !e.target.closest('.subtask-row')) {
+    openEditModal(id);
+  }
+}
+
+board.addEventListener('click', handleTaskListClick);
+
+board.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-collapse-toggle]');
+  if (!btn) return;
+  const cat = btn.dataset.collapseToggle;
+  if (collapsedColumns.has(cat)) collapsedColumns.delete(cat);
+  else collapsedColumns.add(cat);
+  saveCollapsedColumns();
+  render();
+});
+listTableBody.addEventListener('click', handleTaskListClick);
+weekTableBody.addEventListener('click', handleTaskListClick);
+overdueTableBody.addEventListener('click', handleTaskListClick);
+
+// ---------- Sub-task hover preview (Matrix Grid cards) ----------
+// A quick glance at a card's sub-tasks on hover, without needing to click the
+// arrow and expand them in place. Clicking a row's circle toggles that
+// sub-task complete right from the preview (see click handler below).
+
+function openSubtaskHoverPreview(taskId, anchorEl) {
+  const task = getTaskById(taskId);
+  const subtasks = (task && task.subtasks) || [];
+  if (!subtasks.length) return;
+  const isDelegate = isDelegateTask(task);
+  subtaskHoverPreview.innerHTML = subtasks.map((s) => `
+    <div class="subtask-preview-row ${s.completed ? 'subtask-done' : ''}${isDelegate && s.delegated ? ' subtask-delegated' : ''}" data-subtask-id="${s.id}" title="Click to mark ${s.completed ? 'incomplete' : 'complete'}">
+      <span class="subtask-title">${s.completed ? '✓' : '○'} ${s.ai ? aiIconHtml('ai-badge-sm ai-badge-before') : ''}${escapeHtml(s.title)}</span>
+      <span class="subtask-preview-meta">${subtaskAssigneeChipHtml(s, isDelegate)}${subtaskDateBadgeHtml(s)}${s.minutes ? `<span class="time-badge subtask-time-badge">${formatMinutesBadge(s.minutes)}</span>` : ''}</span>
+    </div>
+  `).join('');
+  subtaskHoverPreview.dataset.taskId = taskId;
+  const rect = anchorEl.getBoundingClientRect();
+  subtaskHoverPreview.style.top = `${rect.bottom + 6}px`;
+  subtaskHoverPreview.style.left = `${rect.left}px`;
+  subtaskHoverPreview.style.right = 'auto';
+  subtaskHoverPreview.classList.remove('hidden');
+  // The popover is wider than a board column now (it sizes to its rows), so
+  // pull it back in when the strip sits near the right edge of the window.
+  const width = subtaskHoverPreview.offsetWidth;
+  const overflow = rect.left + width - (window.innerWidth - 12);
+  if (overflow > 0) subtaskHoverPreview.style.left = `${Math.max(12, rect.left - overflow)}px`;
+}
+
+// Toggling from the preview re-renders the whole app (status circle, board
+// counts, etc. all depend on this), which closes the preview along with
+// everything else — so it's explicitly reopened against the freshly-rendered
+// trigger element afterward instead of just patching the popover in place.
+subtaskHoverPreview.addEventListener('click', (e) => {
+  const row = e.target.closest('.subtask-preview-row');
+  if (!row) return;
+  const taskId = subtaskHoverPreview.dataset.taskId;
+  const task = getTaskById(taskId);
+  const subtask = task && (task.subtasks || []).find((s) => s.id === row.dataset.subtaskId);
+  if (!subtask) return;
+
+  subtask.completed = !subtask.completed;
+  recalcStatus(task);
+  saveTasks();
+  render();
+
+  const trigger = document.querySelector(`[data-subtask-hover="${taskId}"]`);
+  if (trigger) openSubtaskHoverPreview(taskId, trigger);
+});
+
+function closeSubtaskHoverPreview() {
+  clearTimeout(subtaskHoverCloseTimer);
+  subtaskHoverPreview.classList.add('hidden');
+  delete subtaskHoverPreview.dataset.taskId;
+}
+
+// The popover renders outside .board (it's a shared fixed-position overlay),
+// so crossing the gap between the trigger and the popover briefly leaves both
+// elements — a plain mouseout would close it mid-crossing. Instead, closing
+// is delayed a beat and cancelled if the pointer lands on either the trigger
+// or the popover itself, so it survives the hop between them.
+let subtaskHoverCloseTimer = null;
+
+function cancelSubtaskHoverClose() {
+  clearTimeout(subtaskHoverCloseTimer);
+  subtaskHoverCloseTimer = null;
+}
+
+function scheduleSubtaskHoverClose() {
+  cancelSubtaskHoverClose();
+  subtaskHoverCloseTimer = setTimeout(closeSubtaskHoverPreview, 200);
+}
+
+board.addEventListener('mouseover', (e) => {
+  const trigger = e.target.closest('[data-subtask-hover]');
+  if (!trigger) return;
+  // Expanded cards already list their sub-tasks in place — no preview needed.
+  if (!collapsedSubtaskIds.has(trigger.dataset.subtaskHover)) return;
+  cancelSubtaskHoverClose();
+  if (trigger.dataset.subtaskHover === subtaskHoverPreview.dataset.taskId && !subtaskHoverPreview.classList.contains('hidden')) return;
+  openSubtaskHoverPreview(trigger.dataset.subtaskHover, trigger);
+});
+board.addEventListener('mouseout', (e) => {
+  const trigger = e.target.closest('[data-subtask-hover]');
+  if (!trigger || (e.relatedTarget && trigger.contains(e.relatedTarget))) return;
+  scheduleSubtaskHoverClose();
+});
+subtaskHoverPreview.addEventListener('mouseenter', cancelSubtaskHoverClose);
+subtaskHoverPreview.addEventListener('mouseleave', scheduleSubtaskHoverClose);
+
+// ---------- View tabs ----------
+
+function switchView(view) {
+  currentView = view;
+  [...viewTabs.children].forEach((btn) => btn.classList.toggle('active', btn.dataset.view === view));
+  boardView.classList.toggle('hidden', view !== 'board');
+  listView.classList.toggle('hidden', view !== 'list');
+  weekView.classList.toggle('hidden', view !== 'week');
+  overdueView.classList.toggle('hidden', view !== 'overdue');
+  calendarView.classList.toggle('hidden', view !== 'calendar');
+  triageView.classList.toggle('hidden', view !== 'triage');
+  render();
+}
+
+viewTabs.addEventListener('click', (e) => {
+  const btn = e.target.closest('.view-tab');
+  if (!btn) return;
+  switchView(btn.dataset.view);
+});
+
+// ---------- Calendar navigation ----------
+
+calendarPrev.addEventListener('click', () => {
+  calendarViewDate = new Date(calendarViewDate.getFullYear(), calendarViewDate.getMonth() - 1, 1);
+  renderCalendarView();
+});
+
+calendarNext.addEventListener('click', () => {
+  calendarViewDate = new Date(calendarViewDate.getFullYear(), calendarViewDate.getMonth() + 1, 1);
+  renderCalendarView();
+});
+
+// Clicking "View Tasks" also opens the day's task popover (see below) — useful
+// on touch devices where hover doesn't apply.
+calendarGrid.addEventListener('click', (e) => {
+  const trigger = e.target.closest('.cal-view-tasks');
+  if (!trigger) return;
+  e.stopPropagation();
+  const dayKey = trigger.dataset.dayKey;
+  const tasksByDay = computeCalTasksByDay();
+  openCalTasksPopover(dayKey, trigger, tasksByDay[dayKey] || []);
+});
+
+// ---------- Calendar day "View Tasks" popover ----------
+// Rendered into a single shared popover outside the calendar grid, same
+// pattern as the dependency-edit popover below, so it's never clipped by a
+// day cell's overflow. Opens on hover of "View Tasks" and stays open as long
+// as the mouse is over the trigger OR the popover — a short grace delay
+// before hiding covers the physical gap between the two, so the cursor has
+// time to travel from the trigger into the popover without it vanishing
+// mid-move.
+let calTasksHideTimer = null;
+
+function openCalTasksPopover(dayKey, anchorEl, dayEntries) {
+  clearTimeout(calTasksHideTimer);
+  calTasksDayKey = dayKey;
+  calTasksPopover.innerHTML = buildCalTasksPopoverHtml(dayEntries);
+
+  const rect = anchorEl.getBoundingClientRect();
+  calTasksPopover.style.top = `${rect.bottom + 6}px`;
+  calTasksPopover.style.left = `${rect.left}px`;
+  calTasksPopover.classList.remove('hidden');
+}
+
+function closeCalTasksPopover() {
+  clearTimeout(calTasksHideTimer);
+  calTasksPopover.classList.add('hidden');
+  calTasksDayKey = null;
+}
+
+function scheduleCloseCalTasksPopover() {
+  clearTimeout(calTasksHideTimer);
+  calTasksHideTimer = setTimeout(closeCalTasksPopover, 300);
+}
+
+calendarGrid.addEventListener('mouseover', (e) => {
+  const trigger = e.target.closest('.cal-view-tasks');
+  if (!trigger) return;
+  const dayKey = trigger.dataset.dayKey;
+  const tasksByDay = computeCalTasksByDay();
+  openCalTasksPopover(dayKey, trigger, tasksByDay[dayKey] || []);
+});
+
+calendarGrid.addEventListener('mouseout', (e) => {
+  const trigger = e.target.closest('.cal-view-tasks');
+  if (!trigger) return;
+  const to = e.relatedTarget;
+  if (to && (trigger.contains(to) || calTasksPopover.contains(to))) return;
+  scheduleCloseCalTasksPopover();
+});
+
+calTasksPopover.addEventListener('mouseenter', () => clearTimeout(calTasksHideTimer));
+calTasksPopover.addEventListener('mouseleave', (e) => {
+  const to = e.relatedTarget;
+  if (to && to.closest && to.closest('.cal-view-tasks')) return;
+  scheduleCloseCalTasksPopover();
+});
+
+// Clicking a task name still opens the Edit panel directly.
+calTasksPopover.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const nameEl = e.target.closest('[data-cal-edit-task]');
+  if (!nameEl) return;
+  openEditModal(nameEl.dataset.calEditTask);
+  closeCalTasksPopover();
+});
+document.addEventListener('click', () => closeCalTasksPopover());
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeCalTasksPopover();
+});
+
+
+// ---------- Board card date-edit popover ----------
+// Lets you update Due Date from the board card's date pill via a native
+// <input type="date"> picker, without opening the full edit modal. Start
+// Date is no longer separately tracked — it always mirrors Due Date.
+
+function openDateEditPopover(taskId, anchorEl) {
+  const task = getTaskById(taskId);
+  if (!task) return;
+  dateEditTaskId = taskId;
+  // Shows the effective date either way; locked when a sub-task is what set it,
+  // matching the Add/Edit modals.
+  const derived = hasDerivedDue(task);
+  dateEditDue.value = task.due || '';
+  dateEditDue.disabled = derived;
+  dateEditDue.classList.toggle('due-derived', derived);
+  dateEditHint.classList.toggle('hidden', !derived);
+
+  const rect = anchorEl.getBoundingClientRect();
+  dateEditPopover.style.top = `${rect.bottom + 6}px`;
+  dateEditPopover.style.left = `${rect.left}px`;
+  dateEditPopover.classList.remove('hidden');
+}
+
+function closeDateEditPopover() {
+  dateEditPopover.classList.add('hidden');
+  dateEditTaskId = null;
+}
+
+function saveDateEdit() {
+  const task = getTaskById(dateEditTaskId);
+  if (!task) return;
+  task.baseDue = dateEditDue.value || null;
+  applyDueRollup(task);
+  saveTasks();
+  render();
+}
+
+dateEditDue.addEventListener('change', saveDateEdit);
+dateEditPopover.addEventListener('click', (e) => e.stopPropagation());
+document.addEventListener('click', () => closeDateEditPopover());
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeDateEditPopover();
+});
+
+// ---------- Board card notes popover ----------
+// Read-only — the notes icon shows the full note via native title-tooltip on
+// hover, and this popover on click (a native tooltip alone is too easy to
+// lose track of / too small for a longer summary).
+
+function openNotesPopover(taskId, anchorEl) {
+  const task = getTaskById(taskId);
+  if (!task || !task.notes) return;
+  notesPopover.textContent = task.notes;
+
+  const rect = anchorEl.getBoundingClientRect();
+  notesPopover.style.top = `${rect.bottom + 6}px`;
+  notesPopover.style.left = `${rect.left}px`;
+  notesPopover.classList.remove('hidden');
+}
+
+function closeNotesPopover() {
+  notesPopover.classList.add('hidden');
+}
+
+notesPopover.addEventListener('click', (e) => e.stopPropagation());
+document.addEventListener('click', () => closeNotesPopover());
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeNotesPopover();
+});
+
+// ---------- Rendering ----------
+
+function isOverdue(task) {
+  if (!task.due || task.completed) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return fromDateKey(task.due) < today;
+}
+
+const priorityRank = { urgent: 0, high: 1, medium: 2, low: 3 };
+
+// Estimated-time buckets for the time filter, keyed the same way the
+// <select> options are — checked against a task's total estimated minutes
+// (taskTotalMinutes), consistent with what the List view's Est. Time column shows.
+const TIME_RANGES = {
+  '0-15': (m) => m >= 0 && m <= 15,
+  '15-60': (m) => m > 15 && m <= 60,
+  '60-120': (m) => m > 60 && m <= 120,
+  '120+': (m) => m > 120,
+};
+
+function matchesTimeFilter(task, rangeKey) {
+  if (!rangeKey || rangeKey === 'all') return true;
+  const test = TIME_RANGES[rangeKey];
+  return test ? test(taskTotalMinutes(task)) : true;
+}
+
+function getFilteredSortedTasks() {
+  let list = [...tasks];
+
+  if (currentStatus === 'active') list = list.filter((t) => !t.completed);
+  if (currentStatus === 'completed') list = list.filter((t) => t.completed);
+
+  const cat = categoryFilter.value;
+  if (cat && cat !== 'all') list = list.filter((t) => t.category === cat);
+
+  const proj = projectFilter.value;
+  if (proj && proj !== 'all') list = list.filter((t) => t.project === proj);
+
+  const label = labelFilter.value;
+  if (label && label !== 'all') list = list.filter((t) => (t.labels || []).includes(label));
+
+  list = list.filter((t) => matchesTimeFilter(t, timeFilter.value));
+
+  const sort = sortBy.value;
+  if (sort === 'due') {
+    list.sort((a, b) => {
+      if (!a.due && !b.due) return 0;
+      if (!a.due) return 1;
+      if (!b.due) return -1;
+      return a.due.localeCompare(b.due);
+    });
+  } else if (sort === 'priority') {
+    list.sort((a, b) => priorityRank[a.priority] - priorityRank[b.priority]);
+  } else {
+    list.sort((a, b) => b.createdAt - a.createdAt);
+  }
+
+  return list;
+}
+
+function formatDue(dateStr) {
+  return fromDateKey(dateStr).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function categoryTag(category) {
+  const color = CATEGORY_COLORS[category];
+  if (!color) return '';
+  return `<span class="badge category-tag" style="--chip-color: ${color}; --chip-text: ${getContrastText(color)};">${escapeHtml(category)}</span>`;
+}
+
+// Pale background + solid-colored dot/text, matching the company's status-pill
+// style (e.g. "On track", "Blocked") rather than a solid-fill chip.
+function labelBadges(task) {
+  return (task.labels || []).map((label) => {
+    const color = labelColor(label);
+    return `<span class="badge label-badge" style="--chip-color: ${color}; --chip-bg: ${hexToRgba(color, 0.15)};">${escapeHtml(label)}</span>`;
+  }).join('');
+}
+
+// The completed count rides in its own inner pill rather than being baked into
+// the label string, so the toggle can render as a chip with a badge on it.
+function subtaskCountBadgeHtml(task) {
+  const subtasks = task.subtasks || [];
+  if (!subtasks.length) return '';
+  const done = subtasks.filter((s) => s.completed).length;
+  return `<span class="subtask-count-badge">${done}/${subtasks.length}</span>`;
+}
+
+// Total estimated time for a task: the sum of its sub-tasks' estimates when it
+// has sub-tasks (their estimates roll up into the task), otherwise the
+// manually-entered estimate on the task itself.
+function taskTotalMinutes(task) {
+  const subtasks = task.subtasks || [];
+  if (subtasks.length) return subtasks.reduce((sum, s) => sum + (Number(s.minutes) || 0), 0);
+  return Number(task.estimatedMinutes) || 0;
+}
+
+// Remaining estimated time *for you*: completed sub-tasks' minutes are deducted
+// from the total, and on a DELEGATE task so are the sub-tasks flagged as the
+// delegate's — only the ones you kept for yourself are time you still owe.
+// A DELEGATE task with no sub-tasks falls through to estimatedMinutes, which is
+// forced to 0 for that category, so it still reads as 0 as before.
+function taskRemainingMinutes(task) {
+  const subtasks = task.subtasks || [];
+  if (subtasks.length) {
+    const isDelegate = isDelegateTask(task);
+    return subtasks
+      .filter((s) => subtaskCountsForMe(s, isDelegate))
+      .reduce((sum, s) => sum + (Number(s.minutes) || 0), 0);
+  }
+  return Number(task.estimatedMinutes) || 0;
+}
+
+// Formats a minute total as e.g. "3h40", "1h", "30 mins", or "—".
+function formatMinutes(totalMins) {
+  if (!totalMins) return '—';
+  const h = Math.floor(totalMins / 60);
+  const m = totalMins % 60;
+  if (h && m) return `${h}h${m}`;
+  if (h) return `${h}h`;
+  return `${m} mins`;
+}
+
+// Formats a minute total for the estimated-time badges: "XX mins" under an
+// hour, "XhXX" (zero-padded minutes) once it crosses an hour.
+function formatMinutesBadge(totalMins) {
+  if (!totalMins) return '—';
+  const h = Math.floor(totalMins / 60);
+  const m = totalMins % 60;
+  if (h) return `${h}h${String(m).padStart(2, '0')}`;
+  return `${m} mins`;
+}
+
+// Sub-tasks start expanded on every card; the strip below is always visible
+// and is the whole click target for collapsing them in place (and the hover
+// target for subtaskHoverPreview). Sub-tasks are only added/removed via the
+// Edit Task modal — there's no inline add here.
+//
+// Zone 3 of the card: arrow + "Sub-tasks", a slim progress bar (share of
+// sub-tasks ticked, by count, not minutes — the remaining-time pill already
+// covers minutes), the done/total count, and on a DELEGATE task the initials
+// of whoever holds the open delegated sub-tasks, so a column can be scanned
+// for "who has what" without opening a single card.
+function subtaskStripHtml(task) {
+  const subtasks = task.subtasks || [];
+  if (!subtasks.length) return '';
+  const collapsed = collapsedSubtaskIds.has(task.id);
+  const done = subtasks.filter((s) => s.completed).length;
+  const percent = Math.round((done / subtasks.length) * 100);
+  return `
+    <div class="subtask-strip" data-toggle-subtasks="${task.id}" data-subtask-hover="${task.id}" title="${percent}% of sub-tasks done — click to ${collapsed ? 'expand' : 'collapse'}">
+      <span class="subtask-section-toggle"><span class="subtask-toggle-arrow">${collapsed ? '▸' : '▾'}</span>Sub-tasks</span>
+      <span class="subtask-progress-track"><span class="subtask-progress-fill" style="width: ${percent}%"></span></span>
+      ${subtaskCountBadgeHtml(task)}
+      ${taskAssigneeAvatarsHtml(task)}
+    </div>`;
+}
+
+// A sub-task's own work day, shown wherever sub-tasks are listed. Undated
+// sub-tasks show nothing — they're implicitly on the task's Due Date, which the
+// card already displays.
+function subtaskDateBadgeHtml(subtask) {
+  if (!subtask.date) return '';
+  return `<span class="subtask-date-badge" title="Sub-task due ${subtask.date}">${formatShortDate(subtask.date)}</span>`;
+}
+
+function subtaskRowsHtml(task) {
+  const subtasks = task.subtasks || [];
+  if (!subtasks.length) return '';
+  const collapsed = collapsedSubtaskIds.has(task.id);
+
+  const isDelegate = isDelegateTask(task);
+
+  const row = (s) => `
+    <label class="subtask-row${isDelegate && s.delegated ? ' subtask-delegated' : ''}"${isDelegate && s.delegated ? ' title="Done by the delegate — not counted in your remaining time"' : ''}>
+      <input type="checkbox" class="subtask-checkbox" data-subtask-id="${s.id}" ${s.completed ? 'checked' : ''}>
+      ${s.ai ? aiIconHtml('ai-badge-sm') : ''}
+      <span class="subtask-title ${s.completed ? 'subtask-done' : ''}">${escapeHtml(s.title)}</span>
+      ${subtaskAssigneeChipHtml(s, isDelegate)}
+      ${subtaskDateBadgeHtml(s)}
+      ${s.minutes ? `<span class="time-badge subtask-time-badge">${formatMinutesBadge(s.minutes)}</span>` : ''}
+    </label>
+  `;
+
+  const open = subtasks.filter((s) => !s.completed);
+  const done = subtasks.filter((s) => s.completed);
+  let rows = open.map(row).join('');
+  if (done.length) {
+    const expanded = expandedDoneSubtaskIds.has(task.id);
+    rows += `<button type="button" class="subtask-done-toggle" data-toggle-done-subtasks="${task.id}" title="${expanded ? 'Hide' : 'Show'} completed sub-tasks">${doneToggleLabel(expanded, done.length)}</button>`;
+    if (expanded) rows += `<div class="subtask-done-rows">${done.map(row).join('')}</div>`;
+  }
+
+  return `<div class="subtasks"><div class="subtask-expand ${collapsed ? 'hidden' : ''}"><div class="subtask-rows">${rows}</div></div></div>`;
+}
+
+// True if the task itself, or any of its sub-tasks, is AI-assisted — the
+// card shows one combined AI badge in the header meta rather than one per
+// sub-task (those still show individually once the sub-tasks are expanded).
+function taskHasAi(task) {
+  return !!task.ai || (task.subtasks || []).some((s) => s.ai);
+}
+
+// Remaining-time badge for the card header — bucketed the same way as the
+// time filter (0-15 / 15-60 / 60-120 / 120+ mins) and color-coded so load
+// is readable at a glance. Hidden entirely when a task has no time tracked
+// at all (e.g. a Delegate task with no sub-tasks).
+function remainingTimeBadgeHtml(task) {
+  const total = taskTotalMinutes(task);
+  if (!total) return '';
+  const remaining = taskRemainingMinutes(task);
+  const rangeKey = Object.keys(TIME_RANGES).find((key) => TIME_RANGES[key](remaining)) || '120+';
+  const bucketClass = `bucket-${rangeKey.replace('+', '-plus')}`;
+  return `<span class="time-badge remaining-time-badge ${bucketClass}" title="Estimated time remaining">${formatMinutesBadge(remaining)}</span>`;
+}
+
+function emailBadgeHtml(task) {
+  if (!task.email || (!task.email.link && !task.email.id)) return '';
+  const label = task.email.subject || task.email.filename || task.email.link;
+  const via = task.email.link ? 'email link' : 'download .eml';
+  return `<span class="email-badge outlook-badge" title="Open ${escapeHtml(label)} (${via})">✉</span>`;
+}
+
+// Hovering shows the full note via the native title tooltip; clicking opens
+// a popover too, since long notes get cut off or disappear too fast in a
+// native tooltip to read comfortably.
+function notesBadgeHtml(task) {
+  if (!task.notes) return '';
+  return `<span class="notes-badge" data-notes-toggle="${task.id}" title="${escapeHtml(task.notes)}">📝</span>`;
+}
+
+// Empty ring = not started, half-filled = in progress, solid = completed.
+// Status is derived automatically from sub-task completion, not editable directly.
+function statusCircleHtml(task) {
+  const status = task.completed ? 'completed' : (task.status || 'not_started');
+  const title = status === 'completed' ? 'Completed' : STATUS_LABELS[status];
+  return `<span class="status-circle status-${status}" title="${escapeHtml(title)}"></span>`;
+}
+
+function projectTagHtml(task) {
+  if (!task.project) return '';
+  return `<span class="project-tag">📁 ${escapeHtml(task.project)}</span>`;
+}
+
+function dateRangeLabel(task) {
+  return task.due ? formatDue(task.due) : null;
+}
+
+// The card is three zones, each answering one question when you scan a column:
+//   1. card-title-row  — what is it, and when: flag, status, title, then only
+//                        the two pills that decide urgency (due date, time left).
+//   2. card-row-2      — where it belongs: project + labels on the left; the
+//                        small AI / email / notes indicators in a fixed slot
+//                        on the right so they're always in the same place.
+//   3. subtask-strip   — how far along, and who has it (see subtaskStripHtml);
+//                        the expanded rows render below it.
+function taskItemHtml(task) {
+  const hasLabels = (task.labels || []).length > 0;
+  const dateLabel = dateRangeLabel(task);
+  const derivedDue = hasDerivedDue(task);
+  const overdue = isOverdue(task);
+  const icons = `${taskHasAi(task) ? aiIconHtml() : ''}${emailBadgeHtml(task)}${notesBadgeHtml(task)}`;
+  const showRow2 = !!task.project || hasLabels || !!icons;
+
+  return `
+    <li class="task-item ${task.completed ? 'completed' : ''} ${overdue ? 'overdue' : ''}" data-id="${task.id}" data-priority="${task.priority}" title="Click to edit">
+      <div class="card-hover-actions">
+        <button class="mark-complete-btn" title="${task.completed ? 'Mark incomplete' : 'Mark complete'}">${task.completed ? '↺' : '✓'}</button>
+        <button class="edit-btn" title="Edit">✏️</button>
+        <button class="delete-btn" title="Delete">✕</button>
+      </div>
+      <div class="task-body">
+        <div class="card-title-row">
+          <span class="priority-tag priority-${task.priority}">${PRIORITY_ICON}</span>
+          ${statusCircleHtml(task)}
+          <span class="task-title">${escapeHtml(task.title)}</span>
+          <span class="card-title-meta">
+            ${dateLabel ? `<span class="date-pill ${overdue ? 'overdue' : ''}${derivedDue ? ' date-pill-derived' : ''}" title="${derivedDue ? 'Due Date follows the latest sub-task Due Date' : 'Click to edit dates'}">📅 ${overdue ? 'Overdue · ' : ''}${dateLabel}${derivedDue ? ' ⤴' : ''}</span>` : ''}
+            ${remainingTimeBadgeHtml(task)}
+          </span>
+        </div>
+
+        ${showRow2 ? `
+        <div class="card-row-2">
+          <div class="card-context">${projectTagHtml(task)}${hasLabels ? labelBadges(task) : ''}</div>
+          ${icons ? `<span class="card-icons">${icons}</span>` : ''}
+        </div>` : ''}
+        ${subtaskStripHtml(task)}
+        ${subtaskRowsHtml(task)}
+      </div>
+    </li>
+  `;
+}
+
+// Each column header is a pale wash of its own category color. The wash and the
+// border come straight from the color; the text is a darkened derivation of it,
+// so pale quadrant colors stay legible on their own tint.
+function initColumnHeaders() {
+  CATEGORIES.forEach((cat) => {
+    const column = board.querySelector(`.board-column[data-category="${cat}"]`);
+    const color = CATEGORY_COLORS[cat];
+    column.style.setProperty('--column-color', color);
+    column.style.setProperty('--column-tint', hexToRgba(color, 0.14));
+    column.style.setProperty('--column-edge', hexToRgba(color, 0.35));
+    column.style.setProperty('--column-ink', darkenHex(color, 0.45));
+  });
+}
+
+function renderBoard(list) {
+  const activeCategory = categoryFilter.value;
+
+  CATEGORIES.forEach((cat) => {
+    const slug = categorySlug(cat);
+    const column = board.querySelector(`.board-column[data-category="${cat}"]`);
+    const listEl = document.getElementById(`list${slug}`);
+    const countEl = document.getElementById(`count${slug}`);
+    const completedGroupEl = document.getElementById(`completedGroup${slug}`);
+    const completedListEl = document.getElementById(`completedList${slug}`);
+    const completedCountEl = document.getElementById(`completedCount${slug}`);
+    const collapseBtn = column.querySelector('[data-collapse-toggle]');
+    const catTasks = list.filter((t) => t.category === cat);
+    const activeTasks = catTasks.filter((t) => !t.completed);
+    const completedTasks = catTasks.filter((t) => t.completed);
+
+    column.style.display = (activeCategory === 'all' || activeCategory === cat) ? '' : 'none';
+
+    const isCollapsed = collapsedColumns.has(cat);
+    column.classList.toggle('collapsed', isCollapsed);
+    if (collapseBtn) {
+      collapseBtn.textContent = isCollapsed ? '+' : '−';
+      collapseBtn.title = isCollapsed ? 'Expand column' : 'Collapse column';
+    }
+
+    // Only visible while collapsed (CSS), so it's safe to keep in sync always.
+    const collapsedNote = column.querySelector('.column-collapsed-note');
+    if (collapsedNote) {
+      collapsedNote.textContent = `Column collapsed (${catTasks.length} ${catTasks.length === 1 ? 'task' : 'tasks'})`;
+    }
+
+    listEl.innerHTML = activeTasks.length
+      ? activeTasks.map(taskItemHtml).join('')
+      : (completedTasks.length ? '' : '<li class="column-empty">No tasks</li>');
+    countEl.textContent = catTasks.length;
+
+    if (completedTasks.length) {
+      completedGroupEl.classList.remove('hidden');
+      completedListEl.innerHTML = completedTasks.map(taskItemHtml).join('');
+      completedCountEl.textContent = completedTasks.length;
+      if (currentStatus === 'completed') completedGroupEl.open = true;
+    } else {
+      completedGroupEl.classList.add('hidden');
+      completedListEl.innerHTML = '';
+    }
+  });
+
+  emptyState.style.display = list.length === 0 ? 'block' : 'none';
+}
+
+// ---------- This Week ----------
+
+function getWeekDateKeys(date = new Date()) {
+  const day = date.getDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate() + diffToMonday);
+  const keys = [];
+  for (let i = 0; i < 7; i++) {
+    keys.push(toDateKey(new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i)));
+  }
+  return keys;
+}
+
+function taskRowHtml(task, { estTimeCol = false } = {}) {
+  const subtasks = task.subtasks || [];
+  const subtaskSummary = subtasks.length ? `${subtasks.filter((s) => s.completed).length}/${subtasks.length}` : '—';
+  const dueCell = task.due
+    ? `<span class="due-tag ${isOverdue(task) ? 'overdue' : ''}">${isOverdue(task) ? '⚠ ' : ''}${formatDue(task.due)}</span>`
+    : '—';
+  const estTimeCell = estTimeCol ? `<td class="centered-col">${formatMinutesBadge(taskTotalMinutes(task))}</td>` : '';
+
+  return `
+    <tr class="task-item ${task.completed ? 'completed' : ''}" data-id="${task.id}" data-priority="${task.priority}">
+      <td><input type="checkbox" class="task-checkbox" ${task.completed ? 'checked' : ''}></td>
+      <td class="week-task-name">${task.ai ? aiIconHtml('ai-badge-sm ai-badge-before') : ''}${escapeHtml(task.title)}</td>
+      <td class="email-col">${emailBadgeHtml(task) || '—'}</td>
+      <td class="centered-col">${task.project ? escapeHtml(task.project) : '—'}</td>
+      <td>${categoryTag(task.category)}</td>
+      <td class="centered-col"><span class="priority-tag priority-${task.priority}">${PRIORITY_ICON}</span></td>
+      <td class="centered-col">${dueCell}</td>
+      ${estTimeCell}
+      <td><div class="task-meta">${labelBadges(task) || '—'}</div></td>
+      <td class="centered-col">${subtaskSummary}</td>
+      <td class="week-actions">
+        <div class="task-actions">
+          <button class="edit-btn" title="Edit">✏️</button>
+          <button class="delete-btn" title="Delete">🗑️</button>
+        </div>
+      </td>
+    </tr>
+  `;
+}
+
+// <details>/<summary> can't nest inside a <table>, so table views group completed
+// rows into their own <tbody> behind a plain toggle row instead, mirroring the
+// board's collapsible "Completed" section.
+function renderCompletedGroup(prefix, completedTasks, rowOpts = {}) {
+  const toggleBody = document.getElementById(`${prefix}CompletedToggleBody`);
+  const completedBody = document.getElementById(`${prefix}CompletedTableBody`);
+  const countEl = document.getElementById(`${prefix}CompletedCount`);
+  const arrow = toggleBody.querySelector('.completed-toggle-arrow');
+
+  if (completedTasks.length) {
+    toggleBody.classList.remove('hidden');
+    completedBody.innerHTML = completedTasks.map((t) => taskRowHtml(t, rowOpts)).join('');
+    countEl.textContent = completedTasks.length;
+    if (currentStatus === 'completed') completedBody.classList.remove('hidden');
+  } else {
+    toggleBody.classList.add('hidden');
+    completedBody.classList.add('hidden');
+    completedBody.innerHTML = '';
+  }
+  arrow.textContent = completedBody.classList.contains('hidden') ? '▸' : '▾';
+}
+
+function wireCompletedToggle(prefix) {
+  const toggleBody = document.getElementById(`${prefix}CompletedToggleBody`);
+  const completedBody = document.getElementById(`${prefix}CompletedTableBody`);
+  const arrow = toggleBody.querySelector('.completed-toggle-arrow');
+  toggleBody.querySelector('.completed-toggle-row').addEventListener('click', () => {
+    completedBody.classList.toggle('hidden');
+    arrow.textContent = completedBody.classList.contains('hidden') ? '▸' : '▾';
+  });
+}
+
+function renderListView(list) {
+  const activeTasks = list.filter((t) => !t.completed);
+  const completedTasks = list.filter((t) => t.completed);
+
+  listTableBody.innerHTML = activeTasks.map((t) => taskRowHtml(t, { estTimeCol: true })).join('');
+  listEmptyState.style.display = list.length === 0 ? 'block' : 'none';
+  renderCompletedGroup('list', completedTasks, { estTimeCol: true });
+}
+
+function getWeekTasks(list) {
+  const weekKeys = getWeekDateKeys();
+  return list
+    .filter((t) => t.due && weekKeys.includes(t.due))
+    .sort((a, b) => a.due.localeCompare(b.due) || priorityRank[a.priority] - priorityRank[b.priority]);
+}
+
+function getOverdueTasks(list) {
+  // isOverdue() excludes completed tasks by definition (a done task can't be
+  // overdue), so this set never has anything to group under "Completed".
+  return list
+    .filter((t) => isOverdue(t))
+    .sort((a, b) => a.due.localeCompare(b.due) || priorityRank[a.priority] - priorityRank[b.priority]);
+}
+
+function renderWeekView(weekTasks) {
+  const weekKeys = getWeekDateKeys();
+  weekRangeLabel.textContent = `${formatDue(weekKeys[0])} – ${formatDue(weekKeys[6])}, ${weekKeys[6].slice(0, 4)}`;
+
+  const activeTasks = weekTasks.filter((t) => !t.completed);
+  const completedTasks = weekTasks.filter((t) => t.completed);
+
+  weekTableBody.innerHTML = activeTasks.map(taskRowHtml).join('');
+  weekEmptyState.style.display = weekTasks.length === 0 ? 'block' : 'none';
+  renderCompletedGroup('week', completedTasks);
+}
+
+function renderOverdueView(overdueTasks) {
+  overdueTableBody.innerHTML = overdueTasks.map(taskRowHtml).join('');
+  overdueEmptyState.style.display = overdueTasks.length === 0 ? 'block' : 'none';
+}
+
+// ---------- Calendar ----------
+
+// The calendar always shows all tasks (active + completed) on their due date,
+// regardless of the status filter, so progress is always visible.
+// Structural filters (category / project / label / time) are still respected.
+// Shared by the month grid render and the "View Tasks" popover (which needs
+// the same day's tasks again at click time).
+//
+// Multi-day work is spread by sub-task rather than by duplicating the task: a
+// task with sub-tasks is bucketed once per day its sub-tasks fall on (their own
+// `date`, or the task's `due` when they have none), and each day only carries
+// the sub-tasks that belong to it. A task with no sub-tasks is bucketed whole
+// under its due date, as before. Board/List views are untouched — the task is
+// still a single card there.
+//
+// Each day maps to a list of { task, subtasks } entries; `subtasks` is empty
+// for a whole-task (no sub-tasks) entry.
+function computeCalTasksByDay() {
+  const calTasks = tasks.filter((t) => {
+    const cat = categoryFilter.value;
+    if (cat && cat !== 'all' && t.category !== cat) return false;
+    const proj = projectFilter.value;
+    if (proj && proj !== 'all' && t.project !== proj) return false;
+    const lbl = labelFilter.value;
+    if (lbl && lbl !== 'all' && !(t.labels || []).includes(lbl)) return false;
+    if (!matchesTimeFilter(t, timeFilter.value)) return false;
+    return true;
+  });
+
+  const tasksByDay = {};
+
+  // Same task + same day always merges into one entry, so a task never shows
+  // up twice on a single day no matter how many of its sub-tasks land there.
+  const addToDay = (dayKey, task, subtask) => {
+    const dayEntries = tasksByDay[dayKey] = tasksByDay[dayKey] || [];
+    let entry = dayEntries.find((e) => e.task.id === task.id);
+    if (!entry) {
+      entry = { task, subtasks: [] };
+      dayEntries.push(entry);
+    }
+    if (subtask) entry.subtasks.push(subtask);
+  };
+
+  calTasks.forEach((t) => {
+    const subtasks = t.subtasks || [];
+    if (!subtasks.length) {
+      if (t.due) addToDay(t.due, t, null);
+      return;
+    }
+    subtasks.forEach((s) => {
+      const dayKey = s.date || t.baseDue || t.due;
+      // An undated sub-task on a task with no due date has no day to land on.
+      if (!dayKey) return;
+      addToDay(dayKey, t, s);
+    });
+  });
+
+  return tasksByDay;
+}
+
+// What a task costs *you* on one specific calendar day: only the sub-tasks
+// scheduled for that day, and of those only the ones still open and not handed
+// to a delegate. A whole-task entry (no sub-tasks) falls back to the task's own
+// estimate, which is 0 for DELEGATE tasks — so a fully-delegated task still
+// reads as 0, exactly as before.
+function calEntryMinutes(entry) {
+  const { task, subtasks } = entry;
+  if (!subtasks.length) return taskRemainingMinutes(task);
+  const isDelegate = isDelegateTask(task);
+  return subtasks
+    .filter((s) => subtaskCountsForMe(s, isDelegate))
+    .reduce((sum, s) => sum + (Number(s.minutes) || 0), 0);
+}
+
+// DELEGATE tasks render italicized in the category color, and their delegated
+// sub-tasks contribute no time — that time isn't yours to spend, so it's
+// excluded from the day's Estimated Time total too (see renderCalendarView
+// below). Completed tasks are struck through and aren't a click target, since
+// there's nothing left to rebalance. Everything else is a link that opens the
+// Edit panel directly, so a day can be rebalanced without leaving the calendar.
+// Sub-tasks are listed under their parent task, but only the ones scheduled for
+// this day — the parent title stays visible so it's clear what they belong to.
+function buildCalTasksPopoverHtml(dayEntries) {
+  const activeEntries = dayEntries.filter((e) => !e.task.completed);
+  const completedEntries = dayEntries.filter((e) => e.task.completed);
+
+  return [...activeEntries, ...completedEntries].map((entry) => {
+    const t = entry.task;
+    const isDelegate = isDelegateTask(t);
+    const mins = calEntryMinutes(entry);
+    const timeLabel = mins ? formatMinutes(mins) : (isDelegate ? '0 mins' : null);
+
+    const styleParts = ['font-weight: normal;'];
+    if (t.completed) styleParts.push('text-decoration: line-through; cursor: default;');
+    else styleParts.push('text-decoration: underline; cursor: pointer;');
+    if (isDelegate) styleParts.push(`font-style: italic; color: ${CATEGORY_COLORS.DELEGATE};`);
+
+    const nameAttr = t.completed ? '' : ` data-cal-edit-task="${t.id}"`;
+
+    const subtaskLines = entry.subtasks.map((s) => {
+      const subtaskDelegated = isDelegate && s.delegated;
+      const subtaskTimeLabel = (s.completed || subtaskDelegated) ? '0 mins' : (s.minutes ? formatMinutes(s.minutes) : '');
+      return `
+      <div class="cal-tooltip-subtask${s.completed ? ' cal-tooltip-done' : ''}${subtaskDelegated ? ' subtask-delegated' : ''}">
+        <span class="cal-tooltip-subtask-name">${s.completed ? '✓' : '○'} ${escapeHtml(s.title)}</span>
+        ${subtaskTimeLabel ? `<span class="cal-tooltip-time">(${subtaskTimeLabel})</span>` : ''}
+      </div>
+    `;
+    }).join('');
+
+    return `<div class="cal-tooltip-entry">
+      <div class="cal-tooltip-task${t.completed ? ' cal-tooltip-done' : ''}">
+        <span class="cal-flag flag-${t.priority}">⚑</span>
+        <span class="cal-tooltip-name" style="${styleParts.join(' ')}"${nameAttr}>${escapeHtml(t.title)}</span>
+        ${timeLabel ? `<span class="cal-tooltip-time">(${timeLabel})</span>` : ''}
+      </div>
+      ${subtaskLines}
+    </div>`;
+  }).join('');
+}
+
+function renderCalendarView(list = getFilteredSortedTasks()) {
+  const year = calendarViewDate.getFullYear();
+  const month = calendarViewDate.getMonth();
+
+  calendarMonthLabel.textContent = calendarViewDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstWeekday = new Date(year, month, 1).getDay();
+  const leadingBlanks = firstWeekday === 0 ? 6 : firstWeekday - 1;
+  const totalCells = Math.ceil((leadingBlanks + daysInMonth) / 7) * 7;
+  const weekCount = totalCells / 7;
+
+  const tasksByDay = computeCalTasksByDay();
+
+  const todayKey = toDateKey(new Date());
+
+  let html = '';
+  for (let w = 0; w < weekCount; w++) {
+    const weekStart = w * 7;
+    const weekEnd = weekStart + 6;
+
+    let dayCellsHtml = '';
+    for (let i = weekStart; i <= weekEnd; i++) {
+      const dayNum = i - leadingBlanks + 1;
+      if (dayNum < 1 || dayNum > daysInMonth) {
+        dayCellsHtml += '<div class="calendar-day empty"></div>';
+        continue;
+      }
+      const dateKey = toDateKey(new Date(year, month, dayNum));
+      const dayEntries = tasksByDay[dateKey] || [];
+      const activeEntries = dayEntries.filter((e) => !e.task.completed);
+
+      // --- Daily load summary (active tasks only) ---
+      // Counts only what's actually scheduled for this day: the sub-tasks that
+      // land here (a multi-day task contributes only its share, not its whole
+      // remaining time), minus completed ones and minus anything a delegate is
+      // doing — that time isn't yours to spend, so counting it here would
+      // misrepresent your own workload for the day.
+      const totalMins = activeEntries.reduce((sum, e) => sum + calEntryMinutes(e), 0);
+      const subtaskCount = activeEntries.reduce((sum, e) => sum + e.subtasks.length, 0);
+      const urgentHighCount = activeEntries.filter((e) => e.task.priority === 'urgent' || e.task.priority === 'high').length;
+
+      // "View Tasks" opens a click-triggered popover (see openCalTasksPopover)
+      // instead of a CSS hover tooltip — hover tooltips here used to vanish the
+      // moment the mouse moved off the trigger, before you could reach a link
+      // inside them.
+      const summaryHtml = dayEntries.length ? `
+        <div class="cal-day-summary">
+          <div class="cal-day-stat">Estimated Time: <strong>${formatMinutes(totalMins)}</strong></div>
+          <div class="cal-day-stat"># of Tasks: <strong>${activeEntries.length}</strong></div>
+          <div class="cal-day-stat"># of Sub-tasks: <strong>${subtaskCount}</strong></div>
+          <div class="cal-day-stat"># of Tasks Urgent/High: <strong>${urgentHighCount}</strong></div>
+          <div class="cal-view-tasks-wrap">
+            <span class="cal-view-tasks" data-day-key="${dateKey}">View Tasks</span>
+          </div>
+        </div>
+      ` : '';
+
+      dayCellsHtml += `
+        <div class="calendar-day ${dateKey === todayKey ? 'today' : ''}">
+          <div class="calendar-day-number">${dayNum}</div>
+          <div class="calendar-day-tasks">
+            ${summaryHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    html += `
+      <div class="calendar-week">
+        <div class="calendar-week-days">${dayCellsHtml}</div>
+      </div>
+    `;
+  }
+  calendarGrid.innerHTML = html;
+}
+
+// The footer count reflects whatever the current tab is actually showing —
+// e.g. "Overdue" counts overdue tasks, not the global task list — rather than
+// a single global number that stays the same no matter which tab is open.
+function updateFooterCount(list, weekTasks, overdueTasks) {
+  let scoped = list;
+  if (currentView === 'week') scoped = weekTasks;
+  else if (currentView === 'overdue') scoped = overdueTasks;
+
+  const activeCount = scoped.filter((t) => !t.completed).length;
+  countLabel.textContent = `${activeCount} active / ${scoped.length} total`;
+}
+
+function render() {
+  closeSubtaskHoverPreview();
+  const list = getFilteredSortedTasks();
+  const weekTasks = getWeekTasks(list);
+  const overdueTasks = getOverdueTasks(list);
+
+  renderBoard(list);
+  renderListView(list);
+  renderWeekView(weekTasks);
+  renderOverdueView(overdueTasks);
+  renderCalendarView(list);
+  renderTriageView();
+
+  updateFooterCount(list, weekTasks, overdueTasks);
+  resultsCount.textContent = `Showing ${list.length} task${list.length === 1 ? '' : 's'}`;
+}
+
+// ---------- Export / Import ----------
+
+function exportBackupJson() {
+  const data = {
+    tasks: JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'),
+    projects: JSON.parse(localStorage.getItem(PROJECTS_KEY) || '[]'),
+    labels: JSON.parse(localStorage.getItem(LABELS_KEY) || '[]'),
+    assignees,
+    exportedAt: new Date().toISOString(),
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `planner-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+document.getElementById('exportBtn').addEventListener('click', exportBackupJson);
+exportSummaryBtn.addEventListener('click', exportBackupJson);
+
+// Quotes any field containing a comma, quote, or newline, doubling embedded quotes
+// per RFC 4180 so Excel (and other CSV importers) parse it back correctly.
+function toCsvField(value) {
+  const str = value === null || value === undefined ? '' : String(value);
+  if (/[",\r\n]/.test(str)) return `"${str.replace(/"/g, '""')}"`;
+  return str;
+}
+
+document.getElementById('exportCsvBtn').addEventListener('click', () => {
+  const headers = [
+    'Title', 'Category', 'Project', 'Status', 'Priority', 'Due Date',
+    'Estimated Time (min)', 'AI', 'Labels', 'Subtasks', 'Notes', 'Email Link', 'Completed', 'Created At',
+  ];
+
+  const rows = tasks.map((task) => {
+    const status = task.completed ? 'Completed' : (STATUS_LABELS[task.status] || task.status || '');
+    const subtasks = (task.subtasks || [])
+      .map((s) => `${s.completed ? '[x]' : '[ ]'}${s.ai ? ' [AI]' : ''}${isDelegateTask(task) && s.delegated ? ` [DELEGATED${s.assignee ? ` → ${s.assignee}` : ''}]` : ''} ${s.title}${s.minutes ? ` (${s.minutes}m)` : ''}${s.date ? ` @${s.date}` : ''}`).join('; ');
+
+    return [
+      task.title,
+      task.category,
+      task.project || '',
+      status,
+      task.priority,
+      task.due || '',
+      taskTotalMinutes(task) || '',
+      task.ai ? 'Yes' : 'No',
+      (task.labels || []).join('; '),
+      subtasks,
+      task.notes || '',
+      task.email && task.email.link ? task.email.link : '',
+      task.completed ? 'Yes' : 'No',
+      task.createdAt ? new Date(task.createdAt).toISOString() : '',
+    ].map(toCsvField).join(',');
+  });
+
+  // Leading BOM so Excel detects UTF-8 instead of misreading accented characters.
+  const csv = '﻿' + [headers.map(toCsvField).join(','), ...rows].join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `planner-tasks-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+});
+
+// Not Started / In Progress only (i.e. not completed) — dependency ids are
+// resolved to titles here since a Claude Skill reading this file has no
+// access to the other tasks to look ids up against.
+function buildActiveTasksExport() {
+  const activeTasks = tasks.filter((t) => !t.completed);
+
+  return activeTasks.map((task) => ({
+    title: task.title,
+    status: STATUS_LABELS[task.status] || task.status,
+    category: task.category,
+    project: task.project || null,
+    priority: task.priority,
+    startDate: task.startDate || null,
+    baseDue: task.baseDue || null,
+    due: task.due || null,
+    overdue: isOverdue(task),
+    estimatedMinutes: taskTotalMinutes(task) || null,
+    remainingMinutes: taskRemainingMinutes(task) || null,
+    aiAssisted: !!task.ai,
+    labels: task.labels || [],
+    subtasks: (task.subtasks || []).map((s) => ({
+      title: s.title,
+      completed: s.completed,
+      minutes: s.minutes || null,
+      aiAssisted: !!s.ai,
+      date: s.date || null,
+      delegated: !!s.delegated,
+      assignee: isDelegateTask(task) && s.delegated ? (s.assignee || null) : null,
+    })),
+    dependsOn: (task.dependsOn || [])
+      .map((depId) => { const dep = getTaskById(depId); return dep ? dep.title : null; })
+      .filter(Boolean),
+    notes: task.notes || null,
+    emailLink: (task.email && task.email.link) || null,
+    createdAt: task.createdAt ? new Date(task.createdAt).toISOString() : null,
+  }));
+}
+
+document.getElementById('exportActiveJsonBtn').addEventListener('click', () => {
+  const data = buildActiveTasksExport();
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `planner-active-tasks-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+});
+
+// ---------- Send to GitHub ----------
+// Writes the "Export for AI Skill" JSON straight to planner-active-tasks-latest.json
+// in the repo, so the staff-meeting agenda routine picks it up without a manual
+// download + upload. Needs a fine-grained token (this repo only, Contents: read
+// and write) — kept in this browser's localStorage, never in the repo.
+
+const GITHUB_TOKEN_KEY = 'githubSnapshotToken';
+const GITHUB_SNAPSHOT_API = 'https://api.github.com/repos/franciskadencorbo-lang/to-do-app/contents/planner-active-tasks-latest.json';
+
+function getGithubToken() {
+  let token = localStorage.getItem(GITHUB_TOKEN_KEY);
+  if (token) return token;
+  token = (prompt(
+    'Paste your GitHub token to send tasks to GitHub.\n\n' +
+    'It is saved in this browser only. Use a fine-grained token limited to the ' +
+    'to-do-app repository with Contents: Read and write.'
+  ) || '').trim();
+  if (!token) return null;
+  localStorage.setItem(GITHUB_TOKEN_KEY, token);
+  return token;
+}
+
+// btoa() only handles Latin-1, so encode to UTF-8 bytes first.
+function toBase64Utf8(str) {
+  const bytes = new TextEncoder().encode(str);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  }
+  return btoa(binary);
+}
+
+function snapshotTimestamp() {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+async function sendSnapshotToGithub() {
+  const btn = document.getElementById('sendGithubBtn');
+  const token = getGithubToken();
+  if (!token) return;
+
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+  };
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '☁ Sending…';
+
+  try {
+    // The update needs the current file's sha; a missing file (404) just means create.
+    const current = await fetch(`${GITHUB_SNAPSHOT_API}?ref=main`, { headers, cache: 'no-store' });
+    if (current.status === 401) throw Object.assign(new Error('unauthorized'), { status: 401 });
+    const sha = current.ok ? (await current.json()).sha : undefined;
+
+    const content = JSON.stringify(buildActiveTasksExport(), null, 2);
+    const res = await fetch(GITHUB_SNAPSHOT_API, {
+      method: 'PUT',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: `Task snapshot for staff meeting - ${snapshotTimestamp()}`,
+        content: toBase64Utf8(content),
+        branch: 'main',
+        ...(sha ? { sha } : {}),
+      }),
+    });
+    if (!res.ok) throw Object.assign(new Error(`GitHub returned ${res.status}`), { status: res.status });
+
+    alert(`Sent ${tasks.filter((t) => !t.completed).length} active tasks to GitHub. The next staff-meeting agenda will use them.`);
+  } catch (err) {
+    if (err.status === 401 || err.status === 403 || err.status === 404) {
+      localStorage.removeItem(GITHUB_TOKEN_KEY);
+      alert('GitHub refused the token (expired, or missing Contents: Read and write on to-do-app). It has been cleared — click Send to GitHub again to paste a new one.');
+    } else {
+      alert(`Could not send to GitHub: ${err.message}`);
+    }
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+  }
+}
+
+document.getElementById('sendGithubBtn').addEventListener('click', () => {
+  closeSettingsPopover();
+  sendSnapshotToGithub();
+});
+
+document.getElementById('importFile').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!Array.isArray(data.tasks)) { alert('Invalid backup file — missing tasks array.'); return; }
+      if (!confirm(`This will replace your current ${tasks.length} task(s) with ${data.tasks.length} task(s) from the backup. Continue?`)) return;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data.tasks));
+      if (Array.isArray(data.projects)) localStorage.setItem(PROJECTS_KEY, JSON.stringify(data.projects));
+      if (Array.isArray(data.labels)) localStorage.setItem(LABELS_KEY, JSON.stringify(data.labels));
+      if (Array.isArray(data.assignees)) localStorage.setItem(ASSIGNEES_KEY, JSON.stringify(data.assignees));
+      tasks = loadTasks();
+      if (normalizeTasks(tasks)) saveTasks();
+      projects = loadProjects();
+      labels = loadLabels();
+      assignees = loadAssignees();
+      renderProjectOptions();
+      renderLabelOptions();
+      renderAssigneeOptions();
+      render();
+      alert(`Imported ${data.tasks.length} task(s) successfully.`);
+    } catch {
+      alert('Could not read the backup file — make sure it is a valid Planner JSON export.');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+// Rebuilds full task objects from the flattened "Export for AI Skill" format
+// (dependsOn as titles, status as a label, no ids). Additive only — appended
+// to the existing list, never replaces it, unlike the "Import backup" handler
+// above. dependsOn is re-linked by title match once every task in the batch
+// has an id, since the export has no ids left to match against.
+const importActiveTasksFile = document.getElementById('importActiveTasksFile');
+const VALID_IMPORT_PRIORITIES = ['urgent', 'high', 'medium', 'low'];
+const STATUS_LABEL_TO_KEY = { 'Not started': 'not_started', 'In Progress': 'in_progress', 'Completed': 'completed' };
+
+importActiveTasksFile.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    let data;
+    try {
+      data = JSON.parse(ev.target.result);
+    } catch {
+      alert('Could not read the file — make sure it is valid JSON.');
+      e.target.value = '';
+      return;
+    }
+    if (!Array.isArray(data)) {
+      alert('Invalid file — expected an array of tasks (the "Export for AI Skill" format).');
+      e.target.value = '';
+      return;
+    }
+    if (!confirm(`This will add ${data.length} task(s) to your current ${tasks.length} task(s). Continue?`)) {
+      e.target.value = '';
+      return;
+    }
+
+    const titleToId = {};
+    const newTasks = data.map((entry) => {
+      const task = {
+        id: uid(),
+        title: (entry.title || '').trim(),
+        category: CATEGORIES.includes(entry.category) ? entry.category : 'NOT URGENT',
+        effort: null,
+        impact: null,
+        project: entry.project || null,
+        labels: Array.isArray(entry.labels) ? entry.labels : [],
+        subtasks: (entry.subtasks || []).map((s) => ({
+          id: uid(),
+          title: s.title,
+          completed: !!s.completed,
+          minutes: s.minutes || null,
+          ai: !!s.aiAssisted,
+          date: s.date || null,
+          delegated: !!s.delegated,
+          assignee: typeof s.assignee === 'string' && s.assignee.trim() ? s.assignee.trim() : null,
+        })),
+        estimatedMinutes: Number(entry.estimatedMinutes) || 0,
+        dependsOn: [],
+        email: entry.emailLink ? { link: entry.emailLink } : null,
+        notes: entry.notes || null,
+        startDate: entry.startDate || null,
+        baseDue: entry.baseDue !== undefined ? (entry.baseDue || null) : (entry.due || null),
+        due: entry.due || null,
+        priority: VALID_IMPORT_PRIORITIES.includes(entry.priority) ? entry.priority : 'medium',
+        completed: entry.status === 'Completed',
+        createdAt: entry.createdAt && !isNaN(Date.parse(entry.createdAt)) ? Date.parse(entry.createdAt) : Date.now(),
+        status: STATUS_LABEL_TO_KEY[entry.status] || 'not_started',
+      };
+      applyDueRollup(task);
+      if (task.title) titleToId[task.title] = task.id;
+      return task;
+    });
+
+    data.forEach((entry, i) => {
+      newTasks[i].dependsOn = (entry.dependsOn || [])
+        .map((depTitle) => titleToId[depTitle])
+        .filter(Boolean);
+    });
+
+    tasks.push(...newTasks);
+    saveTasks();
+    render();
+    alert(`Imported ${newTasks.length} task(s) successfully.`);
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+// ---------- Triage Log ----------
+// A staging area, deliberately separate from `tasks`/STORAGE_KEY. Claude for
+// Chrome writes here via the Import Triage Log file input only — never via
+// the "Import backup" control above, which replaces the entire task list.
+// Nothing here becomes a real task until the user checks it and clicks
+// "Promote Selected", so a bad LLM judgment call can, at worst, sit in this
+// list — it can never silently alter DO/PLAN/DELEGATE/NOT URGENT.
+
+function triageRowHtml(entry) {
+  const emailCell = entry.link
+    ? `<a href="${escapeHtml(entry.link)}" target="_blank" rel="noopener" title="Open in Outlook"><span class="email-badge outlook-badge">✉</span></a>`
+    : '—';
+  return `
+    <tr data-id="${entry.id}">
+      <td><input type="checkbox" class="task-checkbox triage-checkbox" data-id="${entry.id}"></td>
+      <td class="week-task-name">${escapeHtml(entry.title)}</td>
+      <td class="email-col">${emailCell}</td>
+      <td class="centered-col"><span class="priority-tag priority-${entry.priority}">${PRIORITY_ICON}</span></td>
+      <td>${entry.notes ? escapeHtml(entry.notes) : '—'}</td>
+      <td class="week-actions">
+        <div class="task-actions">
+          <button type="button" class="delete-btn triage-dismiss-btn" data-id="${entry.id}" title="Dismiss (no task created)">🗑️</button>
+        </div>
+      </td>
+    </tr>
+  `;
+}
+
+function renderTriageView() {
+  const sorted = [...triageLog].sort((a, b) =>
+    priorityRank[a.priority] - priorityRank[b.priority] || b.addedAt - a.addedAt
+  );
+  triageLogTableBody.innerHTML = sorted.map(triageRowHtml).join('');
+  triageEmptyState.style.display = sorted.length === 0 ? 'block' : 'none';
+  triageCount.textContent = sorted.length ? `${sorted.length} item(s)` : '';
+}
+
+// Dismiss a single entry — removes it from the log without creating a task.
+triageLogTableBody.addEventListener('click', (e) => {
+  const btn = e.target.closest('.triage-dismiss-btn');
+  if (!btn) return;
+  triageLog = triageLog.filter((entry) => entry.id !== btn.dataset.id);
+  saveTriageLog();
+  renderTriageView();
+});
+
+// Every link already in use — either still pending in the log, or already
+// promoted to a real task — so a re-run of the same Outlook export never
+// creates a second entry for something already seen.
+function linksAlreadyLogged() {
+  const fromLog = triageLog.map((e) => e.link).filter(Boolean);
+  const fromTasks = tasks.map((t) => t.email && t.email.link).filter(Boolean);
+  return new Set([...fromLog, ...fromTasks]);
+}
+
+const VALID_TRIAGE_PRIORITIES = ['urgent', 'high', 'medium', 'low'];
+
+// Additive only. This handler never reads or writes STORAGE_KEY/tasks —
+// it is intentionally a separate code path from the "Import backup" handler
+// above, which does a full replace.
+importTriageLogFile.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    let data;
+    try {
+      data = JSON.parse(ev.target.result);
+    } catch {
+      alert('Could not read the Triage Log file — make sure it is valid JSON.');
+      e.target.value = '';
+      return;
+    }
+
+    const entries = triageEntriesOf(data);
+    if (!entries) {
+      alert('Invalid Triage Log file — expected an array, or an object with an "entries" array.');
+      e.target.value = '';
+      return;
+    }
+
+    const { added, skipped } = importTriageEntries(entries);
+    saveTriageLog();
+    renderTriageView();
+    alert(`Triage Log updated: ${added} new item(s) added, ${skipped} skipped (already logged, already a task, or missing a title).`);
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+});
+
+function triageEntriesOf(data) {
+  return Array.isArray(data) ? data : data && Array.isArray(data.entries) ? data.entries : null;
+}
+
+// Shared by the file input and the tasks-folder sync, so both apply the same
+// rules: a title is required, links are normalised, and anything whose link is
+// already logged or already a task is skipped. Caller saves and re-renders.
+function importTriageEntries(entries) {
+  const seenLinks = linksAlreadyLogged();
+  let added = 0;
+  let skipped = 0;
+  entries.forEach((raw) => {
+    const title = ((raw && raw.title) || '').trim();
+    if (!title) { skipped++; return; }
+
+    const link = raw.link ? normalizeEmailLink(String(raw.link).trim()) : null;
+    if (link && seenLinks.has(link)) { skipped++; return; }
+
+    const priority = VALID_TRIAGE_PRIORITIES.includes(raw.priority) ? raw.priority : 'medium';
+
+    triageLog.push({
+      id: uid(),
+      title,
+      link,
+      notes: raw.notes ? String(raw.notes).trim() : null,
+      priority,
+      addedAt: Date.now(),
+    });
+    if (link) seenLinks.add(link);
+    added++;
+  });
+  return { added, skipped };
+}
+
+// ---------- Tasks folder sync ----------
+// Creates REAL tasks (no Triage Log staging) from one folder the user picks
+// once: OneDrive "Email Triage\Tasks". Two kinds of file are read:
+//   task_desk_*.json  - tasks the user decided on in the Email Triage Desk
+//   recurring_*.json  - the weekly fixed to-do written by WeeklyTask.bat
+// The agent's own triage_log_* proposals are deliberately ignored: deciding
+// what becomes a task now happens on the Desk. Chrome's File System Access API
+// keeps the folder handle in IndexedDB; read permission must be granted again
+// by a click in each new browser session (a Chrome rule). Each file is read
+// once, keyed by name + last-modified time, so a task deleted here does not
+// come back on the next sync.
+const TASKS_FOLDER_SEEN_KEY = 'todo.tasksFolderSeen.v1';
+const TASKS_FILE_PATTERN = /^(task_desk|recurring)_.*\.json$/i;
+const LEVELS = ['low', 'high'];
+
+function sameText(a, b) { return String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase(); }
+
+// Same task shape as the Add Task form. Skips a task whose Outlook link is
+// already on a task, or (no link) one with the same title and due date.
+// Returns {added, skipped}; caller saves and re-renders.
+function createTasksFromFile(list) {
+  let added = 0, skipped = 0;
+  const links = new Set(tasks.map((t) => t.email && t.email.link).filter(Boolean));
+  list.forEach((raw) => {
+    const title = ((raw && raw.title) || '').trim();
+    if (!title) { skipped++; return; }
+    const link = raw.link ? normalizeEmailLink(String(raw.link).trim()) : null;
+    const due = /^\d{4}-\d{2}-\d{2}$/.test(raw.due || '') ? raw.due : null;
+    if (link ? links.has(link) : tasks.some((t) => sameText(t.title, title) && (t.baseDue || t.due || null) === due)) { skipped++; return; }
+
+    const effort = LEVELS.includes(String(raw.effort).toLowerCase()) ? String(raw.effort).toLowerCase() : 'low';
+    const impact = LEVELS.includes(String(raw.impact).toLowerCase()) ? String(raw.impact).toLowerCase() : 'low';
+    const priority = VALID_TRIAGE_PRIORITIES.includes(String(raw.priority).toLowerCase()) ? String(raw.priority).toLowerCase() : 'medium';
+    const category = computeCategory(effort, impact, priority) || 'NOT URGENT';
+
+    let project = raw.project ? String(raw.project).trim() : null;
+    if (project) {
+      const known = projects.find((p) => sameText(p, project));
+      if (known) project = known;
+      else { projects.push(project); saveProjects(); renderProjectOptions(); renderProjectPillBar(); }
+    }
+
+    const task = {
+      id: uid(),
+      title,
+      category,
+      effort,
+      impact,
+      project,
+      labels: [],
+      subtasks: [],
+      dependsOn: [],
+      estimatedMinutes: category === 'DELEGATE' ? 0 : (Number(raw.estimatedMinutes) || 0),
+      ai: !!raw.ai,
+      email: link ? { link } : null,
+      notes: raw.notes ? String(raw.notes).trim() : null,
+      baseDue: due,
+      startDate: due,
+      due,
+      priority,
+      completed: false,
+      createdAt: Date.now(),
+    };
+    applyDueRollup(task);
+    recalcStatus(task);
+    tasks.push(task);
+    if (link) links.add(link);
+    added++;
+  });
+  return { added, skipped };
+}
+const fsSupported = typeof window.showDirectoryPicker === 'function' && 'indexedDB' in window;
+let tasksFolderHandle = null;
+let tasksFolderSyncing = false;
+
+function fsDb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('todo-fs', 1);
+    req.onupgradeneeded = () => req.result.createObjectStore('handles');
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function fsGet(key) {
+  const db = await fsDb();
+  return new Promise((resolve) => {
+    const r = db.transaction('handles').objectStore('handles').get(key);
+    r.onsuccess = () => resolve(r.result || null);
+    r.onerror = () => resolve(null);
+  });
+}
+async function fsPut(key, value) {
+  const db = await fsDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('handles', 'readwrite');
+    tx.objectStore('handles').put(value, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+function loadSeenFiles() {
+  try { return JSON.parse(localStorage.getItem(TASKS_FOLDER_SEEN_KEY)) || null; } catch { return null; }
+}
+function saveSeenFiles(seen) {
+  localStorage.setItem(TASKS_FOLDER_SEEN_KEY, JSON.stringify(seen));
+}
+
+function setFolderUi(label, status) {
+  tasksFolderBtn.hidden = !fsSupported;
+  tasksFolderBtn.textContent = label;
+  tasksFolderStatus.textContent = status || '';
+}
+
+async function syncTasksFolder({ interactive = false } = {}) {
+  if (!fsSupported || tasksFolderSyncing) return;
+  tasksFolderSyncing = true;
+  try {
+    if (!tasksFolderHandle) tasksFolderHandle = await fsGet('tasksDir');
+    if (!tasksFolderHandle) { setFolderUi('📂 Connect tasks folder', ''); return; }
+
+    let perm = await tasksFolderHandle.queryPermission({ mode: 'read' });
+    if (perm !== 'granted' && interactive) perm = await tasksFolderHandle.requestPermission({ mode: 'read' });
+    if (perm !== 'granted') { setFolderUi('🔄 Allow tasks folder', 'Desk tasks waiting? Click to allow'); return; }
+
+    let seen = loadSeenFiles();
+    const firstSync = !seen;
+    seen = seen || {};
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    let files = 0, added = 0, skipped = 0, bad = 0;
+
+    for await (const entry of tasksFolderHandle.values()) {
+      if (entry.kind !== 'file' || !TASKS_FILE_PATTERN.test(entry.name)) continue;
+      const file = await entry.getFile();
+      const key = `${entry.name}|${file.lastModified}`;
+      if (seen[key]) continue;
+      seen[key] = Date.now();
+      // First connection: older files are history the user has already handled.
+      if (firstSync && file.lastModified < today.getTime()) continue;
+      let data = null;
+      try { data = JSON.parse(await file.text()); } catch { bad++; continue; }
+      const list = Array.isArray(data) ? data : data && (Array.isArray(data.tasks) ? data.tasks : Array.isArray(data.entries) ? data.entries : null);
+      if (!list) { bad++; continue; }
+      const r = createTasksFromFile(list);
+      files++; added += r.added; skipped += r.skipped;
+    }
+    saveSeenFiles(seen);
+    if (added) { saveTasks(); render(); }
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    setFolderUi('🔄 Sync tasks',
+      `synced ${time}` +
+      (added ? ` · ${added} new task(s)` : ' · nothing new') +
+      (skipped ? `, ${skipped} already there` : '') + (bad ? ` · ${bad} unreadable file(s)` : ''));
+  } catch (err) {
+    setFolderUi('🔄 Sync tasks folder', `Folder sync failed: ${err && err.message ? err.message : err}`);
+  } finally {
+    tasksFolderSyncing = false;
+  }
+}
+
+tasksFolderBtn.addEventListener('click', async () => {
+  if (!tasksFolderHandle) tasksFolderHandle = await fsGet('tasksDir');
+  if (!tasksFolderHandle) {
+    try {
+      tasksFolderHandle = await window.showDirectoryPicker({ id: 'tasks-folder', mode: 'read' });
+    } catch { return; }                       // picker cancelled
+    await fsPut('tasksDir', tasksFolderHandle);
+    localStorage.removeItem(TASKS_FOLDER_SEEN_KEY);
+  }
+  syncTasksFolder({ interactive: true });
+});
+
+// Quietly pick up new files whenever the app is opened or brought back to front.
+document.addEventListener('visibilitychange', () => { if (!document.hidden) syncTasksFolder(); });
+window.addEventListener('focus', () => syncTasksFolder());
+syncTasksFolder();
+
+// The only path from the Triage Log into the real task list — explicit,
+// user-triggered, one click. Mirrors Quick Add's task shape, except every
+// promoted task lands as Effort=Low/Impact=Low/Priority=Low (NOT URGENT) —
+// untriaged captures default to "still need to do it, no rush" rather than
+// carrying over the Triage Log's own priority, so category always reflects
+// its stated Effort/Impact/Priority. Re-triage anytime via Edit.
+promoteSelectedBtn.addEventListener('click', () => {
+  const checkedIds = [...triageLogTableBody.querySelectorAll('.triage-checkbox:checked')].map((cb) => cb.dataset.id);
+  if (!checkedIds.length) { alert('Select at least one item to promote.'); return; }
+
+  checkedIds.forEach((id) => {
+    const entry = triageLog.find((e) => e.id === id);
+    if (!entry) return;
+
+    const task = {
+      id: uid(),
+      title: entry.title,
+      category: 'NOT URGENT',
+      effort: 'low',
+      impact: 'low',
+      project: null,
+      labels: [],
+      subtasks: [],
+      dependsOn: [],
+      email: entry.link ? { link: entry.link } : null,
+      notes: entry.notes,
+      startDate: null,
+      baseDue: null,
+      due: null,
+      priority: 'low',
+      completed: false,
+      createdAt: Date.now(),
+    };
+    recalcStatus(task);
+    tasks.push(task);
+  });
+
+  triageLog = triageLog.filter((entry) => !checkedIds.includes(entry.id));
+
+  saveTasks();
+  saveTriageLog();
+  render();
+});
+
+renderLabelOptions();
+renderAssigneeOptions();
+initColumnHeaders();
+renderProjectOptions();
+wireCompletedToggle('list');
+wireCompletedToggle('week');
+render();
