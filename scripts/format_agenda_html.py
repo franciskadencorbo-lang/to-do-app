@@ -51,9 +51,10 @@ def due_cell(d, next_meeting):
     return f"<strong>{text} · overdue</strong>" if d < next_meeting else text
 
 
-def subtask_assignee(sub, is_delegate):
-    """Who holds a sub-task: the assignee on delegated sub-tasks, otherwise me."""
-    if is_delegate and sub.get("delegated"):
+def subtask_assignee(sub):
+    """Who holds a sub-task: the assignee on delegated sub-tasks (in any
+    quadrant), otherwise me."""
+    if sub.get("delegated"):
         return sub.get("assignee") or "Unassigned"
     return MY_NAME
 
@@ -95,7 +96,7 @@ def task_rows(task, next_meeting):
             task_title_cell(task) if i == 0 else "",
             esc(task.get("project") or "—") if i == 0 else "",
             "☐ " + label,
-            esc(subtask_assignee(s, is_delegate)),
+            esc(subtask_assignee(s)),
             due_cell(d, next_meeting),
         ))
     return rows
