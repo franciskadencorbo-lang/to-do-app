@@ -5,7 +5,7 @@
 // mirrors the team's part one way.
 //
 // Sections, in meeting order:
-//   1. To delegate      — your own work (DO, PLAN, NOT URGENT): candidates to hand over
+//   1. Led by you       — DO, PLAN, NOT URGENT: yours to lead, any sub-task can be handed over
 //   2. Needs attention  — DELEGATE tasks with something overdue or due by the next meeting
 //   3. For the team     — the other DELEGATE tasks
 // Private tasks can be hidden from the meeting (e.g. feedback, recruitment);
@@ -76,11 +76,8 @@ function mmCategoryTag(cat) {
 }
 
 function mmSubRow(task, s) {
-  const del = isDelegateTask(task);
   const late = !s.completed && mmIsLate(s.date);
-  const who = del
-    ? `<select class="mm-input" data-mm="assignee" data-task="${task.id}" data-sub="${s.id}" aria-label="Assignee">${mmAssigneeOptions(s)}</select>`
-    : '<span class="mm-me" title="Your sub-task. Use “Delegate” on the task to hand sub-tasks over.">Me</span>';
+  const who = `<select class="mm-input" data-mm="assignee" data-task="${task.id}" data-sub="${s.id}" aria-label="Assignee">${mmAssigneeOptions(s)}</select>`;
   return `<div class="mm-row${s.completed ? ' done' : ''}">
     <input type="checkbox" data-mm="done" data-task="${task.id}" data-sub="${s.id}"${s.completed ? ' checked' : ''} aria-label="Done: ${escapeHtml(s.title)}">
     <input type="text" class="mm-input mm-title" data-mm="title" data-task="${task.id}" data-sub="${s.id}" value="${escapeHtml(s.title)}" aria-label="Sub-task">
@@ -105,17 +102,16 @@ function mmBlock(task, sec) {
       ${task.project ? `<span class="mm-tag mm-tag-project">${escapeHtml(task.project)}</span>` : ''}
       <span class="mm-meta">${open.length} open${doneCount ? ` · ${doneCount} done` : ''}${task.due ? ` · due ${escapeHtml(mmLongDate(task.due))}` : ''}${late ? ` · <span class="mm-late">${late} overdue</span>` : ''}</span>
       <span class="mm-grow"></span>
-      ${isDelegateTask(task) ? '' : `<button type="button" class="mm-link" data-mm-act="delegate" data-task="${task.id}" title="Moves the task to DELEGATE (Low effort, Low impact), so its sub-tasks can be assigned">${armedDelegate ? 'Confirm: move to DELEGATE' : 'Delegate'}</button>`}
+      ${isDelegateTask(task) ? '' : `<button type="button" class="mm-link" data-mm-act="delegate" data-task="${task.id}" title="Hands the whole task over: moves it to DELEGATE (Low effort, Low impact). To hand over a single sub-task, pick its assignee instead">${armedDelegate ? 'Confirm: move to DELEGATE' : 'Move to DELEGATE'}</button>`}
       <button type="button" class="mm-link" data-mm-act="edit" data-task="${task.id}">Edit</button>
       <button type="button" class="mm-link" data-mm-act="hide" data-task="${task.id}" title="Hide this task from Meeting mode (kept in your list)">${armedHide ? 'Confirm: hide' : 'Hide'}</button>
     </div>`;
   if (!shown.length) h += `<div class="mm-empty">${subs.length ? 'All sub-tasks done.' : 'No sub-task yet.'}</div>`;
   shown.forEach((s) => { h += mmSubRow(task, s); });
   if (MM.adding === task.id) {
-    const del = isDelegateTask(task);
     h += `<div class="mm-add">
       <input type="text" class="mm-input" data-mm-new="title" placeholder="New sub-task" aria-label="New sub-task">
-      ${del ? `<select class="mm-input" data-mm-new="assignee" aria-label="Assignee">${mmAssigneeOptions({ delegated: false, assignee: null })}</select>` : '<span class="mm-me">Me</span>'}
+      <select class="mm-input" data-mm-new="assignee" aria-label="Assignee">${mmAssigneeOptions({ delegated: false, assignee: null })}</select>
       <input type="date" class="mm-input" data-mm-new="date" aria-label="Date">
       <button type="button" class="btn btn-primary" data-mm-act="save-sub" data-task="${task.id}">Add</button>
       <button type="button" class="btn btn-secondary" data-mm-act="cancel-sub">Cancel</button>
@@ -159,7 +155,7 @@ function mmRender() {
       (hiddenTasks.length ? hiddenTasks.map((t) => `<div class="mm-hidden-row">${escapeHtml(t.title)} <button type="button" class="mm-link" data-mm-act="unhide" data-task="${t.id}">Show again</button></div>`).join('') : '<div class="mm-meta">Nothing hidden.</div>') + '</div>';
   }
   const SECTIONS = [
-    ['own', 'To delegate', 'your own work: hand over what the team can take'],
+    ['own', 'Led by you', 'DO, PLAN, NOT URGENT: hand over any sub-task the team can take'],
     ['attn', 'Needs attention', `delegated, overdue or due by ${mmLongDate(nextKey)}`],
     ['team', 'For the team', 'other delegated work'],
   ];
@@ -242,7 +238,7 @@ function mmWire() {
     const assignee = aEl ? (aEl.value || null) : null;
     const date = row.querySelector('[data-mm-new="date"]').value || null;
     task.subtasks = task.subtasks || [];
-    task.subtasks.push({ id: uid(), title, completed: false, minutes: 0, ai: false, date, delegated: isDelegateTask(task) && !!assignee, assignee });
+    task.subtasks.push({ id: uid(), title, completed: false, minutes: 0, ai: false, date, delegated: !!assignee, assignee });
     applyDueRollup(task);
     recalcStatus(task);
     MM.adding = null;
