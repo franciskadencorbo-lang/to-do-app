@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Task Hub</title>
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="meeting.css">
 </head>
 <body>
 <div class="app">
@@ -27,6 +28,7 @@
     <div class="topbar-actions">
       <div class="topbar-actions-row">
         <button type="button" id="exportSummaryBtn" class="btn btn-secondary">⬇ Export Summary</button>
+        <button type="button" id="meetingModeBtn" class="btn btn-secondary" title="Run the team meeting from this list">👥 Meeting mode</button>
         <button type="button" id="topbarAddTaskBtn" class="btn btn-primary">+ Add Task</button>
       </div>
       <div class="topbar-actions-row topbar-actions-row-secondary">
@@ -361,7 +363,7 @@
         <input type="number" id="subtaskMinutesInput" class="subtask-minutes-input" placeholder="Min" min="0" step="5">
         <input type="date" id="subtaskDateInput" class="subtask-date-input" title="Optional sub-task Due Date — the task's own Due Date follows the latest one. Leave blank to count it on the task's Due Date">
         <label class="ai-checkbox-label" title="AI-assisted sub-task"><input type="checkbox" id="subtaskAiInput">AI</label>
-        <label class="ai-checkbox-label delegated-checkbox-label hidden" id="subtaskDelegatedWrap" title="This sub-task is done by the delegate, not by you"><input type="checkbox" id="subtaskDelegatedInput">Deleg.</label>
+        <label class="ai-checkbox-label delegated-checkbox-label" id="subtaskDelegatedWrap" title="This sub-task is done by the delegate, not by you"><input type="checkbox" id="subtaskDelegatedInput">Deleg.</label>
         <select id="subtaskAssigneeInput" class="subtask-assignee-select hidden" title="Who this sub-task is delegated to"></select>
       </div>
       <ul id="subtaskDraftList" class="subtask-draft-list"></ul>
@@ -425,7 +427,7 @@
         <input type="number" id="editSubtaskMinutesInput" class="subtask-minutes-input" placeholder="Min" min="0" step="5">
         <input type="date" id="editSubtaskDateInput" class="subtask-date-input" title="Optional sub-task Due Date — the task's own Due Date follows the latest one. Leave blank to count it on the task's Due Date">
         <label class="ai-checkbox-label" title="AI-assisted sub-task"><input type="checkbox" id="editSubtaskAiInput">AI</label>
-        <label class="ai-checkbox-label delegated-checkbox-label hidden" id="editSubtaskDelegatedWrap" title="This sub-task is done by the delegate, not by you"><input type="checkbox" id="editSubtaskDelegatedInput">Deleg.</label>
+        <label class="ai-checkbox-label delegated-checkbox-label" id="editSubtaskDelegatedWrap" title="This sub-task is done by the delegate, not by you"><input type="checkbox" id="editSubtaskDelegatedInput">Deleg.</label>
         <select id="editSubtaskAssigneeInput" class="subtask-assignee-select hidden" title="Who this sub-task is delegated to"></select>
       </div>
       <ul id="editSubtaskDraftList" class="subtask-draft-list"></ul>
@@ -529,8 +531,11 @@
 
 <div class="dropdown-panel subtask-hover-preview hidden" id="subtaskHoverPreview"></div>
 
+<div class="meeting-overlay hidden" id="meetingOverlay"><div class="meeting-box" id="meetingBox" role="dialog" aria-modal="true" aria-label="Meeting mode"></div></div>
+
 <!-- Git-ignored; holds assignee email addresses. Missing it is fine. -->
 <script src="assignees.local.js"></script>
 <script src="app.js"></script>
+<script src="meeting.js"></script>
 </body>
 </html>
