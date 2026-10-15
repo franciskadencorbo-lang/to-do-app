@@ -716,13 +716,15 @@ function formatShortDate(dateKey) {
 }
 
 // ---------- Sub-task delegation ----------
-// A sub-task's `delegated` flag only means anything on a DELEGATE task: it
-// marks the work as the delegate's, not yours, so its minutes drop out of your
-// remaining time. On DO/PLAN/NOT URGENT tasks the flag is ignored (it isn't
-// even shown in the forms) — the whole task is yours by definition there.
+// The quadrant says who leads the task; the sub-task's `delegated` flag says
+// who does that step. Any task can hand sub-tasks over: a DO or PLAN task stays
+// yours to lead while some of its steps sit with the team. DELEGATE (Low
+// Effort + Low Impact) is for tasks that are mostly or fully handed over.
+// A delegated sub-task is the delegate's work, not yours, so its minutes drop
+// out of your remaining time.
 // New sub-tasks on a DELEGATE task default to delegated, matching the old
 // all-or-nothing "DELEGATE tasks cost you 0 minutes" behavior; you uncheck the
-// ones you're personally doing.
+// ones you're personally doing. On every other task they default to yours.
 const DELEGATED_SUBTASK_DEFAULT = true;
 
 function isDelegateTask(task) {
@@ -731,23 +733,23 @@ function isDelegateTask(task) {
 
 // True when a sub-task's minutes count toward *your* workload: it isn't done
 // yet, and it isn't handed off to a delegate.
-function subtaskCountsForMe(subtask, isDelegate) {
+function subtaskCountsForMe(subtask) {
   if (subtask.completed) return false;
-  return !(isDelegate && subtask.delegated);
+  return !subtask.delegated;
 }
 
 // ---------- Assignees (who a delegated sub-task is with) ----------
-// `assignee` only means anything while the sub-task is flagged delegated on a
-// DELEGATE task. It's kept, not cleared, when the flag is unticked — so a
-// mis-click doesn't lose the choice — and every reader here checks the flag.
+// `assignee` only means anything while the sub-task is flagged delegated.
+// It's kept, not cleared, when the flag is unticked — so a mis-click doesn't
+// lose the choice — and every reader here checks the flag.
 
 function getAssignee(name) {
   if (name === AI_ASSIGNEE.name) return AI_ASSIGNEE;
   return assignees.find((a) => a.name === name) || null;
 }
 
-function subtaskShowsAssignee(subtask, isDelegate) {
-  return isDelegate && !!subtask.delegated;
+function subtaskShowsAssignee(subtask) {
+  return !!subtask.delegated;
 }
 
 // "Mhudang" -> "MH", "Van Anh" -> "VA". Departments show their code as-is.
@@ -766,9 +768,8 @@ function assigneeAvatarHtml(name, extraClass = '') {
 }
 
 // ---------- Draft Email (✉ on a sub-task row) ----------
-// Builds a mailto: link from the task, the sub-task and EMAIL_DRAFT_RULES, then
-// hands it to the browser, which opens a new message in the default mail client
-// (Outlook here). Nothing is sent — you edit and send from Outlook.
+// Builds an Outlook-web (or mailto:) link from the task, the sub-task and EMAIL_DRAFT_RULES, then
+// hands it to the browser, which opens a new message (see EMAIL_DRAFT_TARGET). Nothing is sent — you edit and send from Outlook.
 
 // "1 hour", "1.5 hours", "30 minutes" — readable in a sentence, unlike "1h30".
 function formatEffortWords(totalMins) {
@@ -834,8 +835,10 @@ function openSubtaskEmailDraft(taskId, subtaskId) {
   window.location.href = `mailto:${encodeURIComponent(recipients.join(','))}?subject=${encodeURIComponent(subject)}&body=${encodedBody}`;
 }
 
-function subtaskEmailBtnHtml(task, subtask, isDelegate) {
-  if (!isDelegate || subtask.completed) return '';
+// Shown on every open sub-task that is handed over (any quadrant), and on
+// every open sub-task of a DELEGATE task, where the whole task is handed over.
+function subtaskEmailBtnHtml(task, subtask) {
+  if (subtask.completed || !(subtask.delegated || isDelegateTask(task))) return '';
   const assignee = subtask.assignee ? getAssignee(subtask.assignee) : null;
   const tip = !subtask.assignee
     ? 'Draft email — no assignee yet, To will be empty'
@@ -843,10 +846,11 @@ function subtaskEmailBtnHtml(task, subtask, isDelegate) {
   return `<button type="button" class="subtask-email-btn" data-email-subtask-id="${subtask.id}" title="${escapeHtml(tip)}">✉</button>`;
 }
 
+
 // Chip on a sub-task row: avatar + name, or a dashed "Unassigned" so a
 // delegated sub-task with nobody on it stands out before a meeting.
-function subtaskAssigneeChipHtml(subtask, isDelegate) {
-  if (!subtaskShowsAssignee(subtask, isDelegate)) return '';
+function subtaskAssigneeChipHtml(subtask) {
+  if (!subtaskShowsAssignee(subtask)) return '';
   if (!subtask.assignee) return '<span class="subtask-assignee subtask-assignee-unset" title="Delegated, but not assigned to anyone yet — set it in Edit Task">Unassigned</span>';
   // A department's badge already is its name — don't print "FIN FIN".
   const entry = getAssignee(subtask.assignee);
@@ -859,7 +863,6 @@ function subtaskAssigneeChipHtml(subtask, isDelegate) {
 // Distinct assignees across a task's open delegated sub-tasks — the collapsed
 // card's "who has this" signal. Three avatars, then a +N.
 function taskAssigneeAvatarsHtml(task) {
-  if (!isDelegateTask(task)) return '';
   const names = [];
   (task.subtasks || []).forEach((s) => {
     if (s.completed || !s.delegated || !s.assignee || names.includes(s.assignee)) return;
@@ -977,15 +980,12 @@ labelQuickFilterBar.addEventListener('click', (e) => {
 
 // ---------- Sub-task draft list (shared pattern by create + edit forms) ----------
 
-// Each chip carries its own date picker (and, on a DELEGATE task, its own
-// "delegated" toggle) so both fields stay editable after the sub-task has been
-// added — there's no other place to set them on an existing sub-task.
-// `showDelegated` mirrors the parent task's category as currently selected in
-// the form: the toggle is hidden outside DELEGATE rather than disabled, since
-// delegation-tracking is meaningless there and the row is already crowded.
-function buildSubtaskDraftHtml(draft, showDelegated = false, scope = 'add') {
+// Each chip carries its own date picker and "delegated" toggle so both fields
+// stay editable after the sub-task has been added — there's no other place to
+// set them on an existing sub-task.
+function buildSubtaskDraftHtml(draft, scope = 'add') {
   const chip = (s) => `
-    <li class="draft-chip${showDelegated && s.delegated ? ' draft-chip-delegated' : ''}">${s.ai ? aiIconHtml('ai-badge-sm') : ''}<span class="draft-chip-title ${s.completed ? 'subtask-done' : ''}">${escapeHtml(s.title)}</span>${s.minutes ? `<span class="draft-chip-time">${formatMinutes(s.minutes)}</span>` : ''}<input type="date" class="draft-chip-date" data-id="${s.id}" value="${s.date || ''}" title="Sub-task Due Date — the task's own Due Date follows the latest one. Blank counts it on the task's Due Date">${showDelegated ? `<label class="ai-checkbox-label delegated-checkbox-label" title="Done by the delegate, not by you"><input type="checkbox" class="draft-chip-delegated-toggle" data-id="${s.id}" ${s.delegated ? 'checked' : ''}>Deleg.</label>` : ''}${showDelegated && s.delegated ? `<select class="draft-chip-assignee" data-id="${s.id}" title="Who this sub-task is delegated to">${buildAssigneeOptionsHtml(s.assignee, !!s.ai)}</select>` : ''}<button type="button" class="remove-draft-btn" data-id="${s.id}" title="${s.completed ? 'Delete this completed sub-task for good (it is already tucked under Completed)' : 'Delete sub-task'}">×</button></li>
+    <li class="draft-chip${s.delegated ? ' draft-chip-delegated' : ''}">${s.ai ? aiIconHtml('ai-badge-sm') : ''}<span class="draft-chip-title ${s.completed ? 'subtask-done' : ''}">${escapeHtml(s.title)}</span>${s.minutes ? `<span class="draft-chip-time">${formatMinutes(s.minutes)}</span>` : ''}<input type="date" class="draft-chip-date" data-id="${s.id}" value="${s.date || ''}" title="Sub-task Due Date — the task's own Due Date follows the latest one. Blank counts it on the task's Due Date"><label class="ai-checkbox-label delegated-checkbox-label" title="Done by the delegate, not by you"><input type="checkbox" class="draft-chip-delegated-toggle" data-id="${s.id}" ${s.delegated ? 'checked' : ''}>Deleg.</label>${s.delegated ? `<select class="draft-chip-assignee" data-id="${s.id}" title="Who this sub-task is delegated to">${buildAssigneeOptionsHtml(s.assignee, !!s.ai)}</select>` : ''}<button type="button" class="remove-draft-btn" data-id="${s.id}" title="${s.completed ? 'Delete this completed sub-task for good (it is already tucked under Completed)' : 'Delete sub-task'}">×</button></li>
   `;
   const open = draft.filter((s) => !s.completed);
   const done = draft.filter((s) => s.completed);
@@ -1007,7 +1007,7 @@ It is already hidden under "Completed", so you don't need to delete it to save s
 
 // The forms need to know whether the *currently selected* Effort/Impact/
 // Priority resolves to DELEGATE (not what the saved task's category is), since
-// that's what decides whether the delegation toggles are shown.
+// that's what decides whether a new sub-task starts out delegated.
 let addFormIsDelegate = false;
 let editFormIsDelegate = false;
 
@@ -1037,12 +1037,12 @@ function refreshDueRollupUi(scope) {
 // Both renders re-run the roll-up, so every draft mutation that re-renders the
 // chips keeps the Due Date input in sync for free.
 function renderSubtaskDraftList() {
-  subtaskDraftList.innerHTML = buildSubtaskDraftHtml(subtaskDraft, addFormIsDelegate, 'add');
+  subtaskDraftList.innerHTML = buildSubtaskDraftHtml(subtaskDraft, 'add');
   refreshDueRollupUi('add');
 }
 
 function renderEditSubtaskDraftList() {
-  editSubtaskDraftList.innerHTML = buildSubtaskDraftHtml(editSubtaskDraft, editFormIsDelegate, 'edit');
+  editSubtaskDraftList.innerHTML = buildSubtaskDraftHtml(editSubtaskDraft, 'edit');
   refreshDueRollupUi('edit');
 }
 
@@ -1058,15 +1058,15 @@ editDue.addEventListener('change', () => {
   refreshDueRollupUi('edit');
 });
 
-// Shows/hides the delegation controls in one form and re-renders its chips.
-// The new-entry checkbox is reset to the category's default each time, so a
-// DELEGATE task's sub-tasks come in pre-flagged as the delegate's.
+// Resets the new-entry delegation checkbox to the category's default and
+// re-renders the form's chips, so a DELEGATE task's sub-tasks come in
+// pre-flagged as the delegate's and everyone else's come in as yours.
 function refreshSubtaskDelegateUi(scope) {
   const isEdit = scope === 'edit';
   const isDelegate = isEdit ? editFormIsDelegate : addFormIsDelegate;
   const wrap = isEdit ? editSubtaskDelegatedWrap : subtaskDelegatedWrap;
   const checkbox = isEdit ? editSubtaskDelegatedInput : subtaskDelegatedInput;
-  wrap.classList.toggle('hidden', !isDelegate);
+  wrap.classList.remove('hidden');
   checkbox.checked = isDelegate && DELEGATED_SUBTASK_DEFAULT;
   refreshNewSubtaskAssigneeUi(scope);
   if (isEdit) renderEditSubtaskDraftList();
@@ -1077,10 +1077,9 @@ function refreshSubtaskDelegateUi(scope) {
 // only shows while the sub-task about to be added is flagged as the delegate's.
 function refreshNewSubtaskAssigneeUi(scope) {
   const isEdit = scope === 'edit';
-  const isDelegate = isEdit ? editFormIsDelegate : addFormIsDelegate;
   const checkbox = isEdit ? editSubtaskDelegatedInput : subtaskDelegatedInput;
   const select = isEdit ? editSubtaskAssigneeInput : subtaskAssigneeInput;
-  const show = isDelegate && checkbox.checked;
+  const show = checkbox.checked;
   select.classList.toggle('hidden', !show);
   if (!show) select.value = '';
 }
@@ -1123,7 +1122,7 @@ function addSubtaskDraftEntry() {
   const minutes = Number(subtaskMinutesInput.value) || 0;
   const ai = subtaskAiInput.checked;
   const date = subtaskDateInput.value || null;
-  const delegated = addFormIsDelegate && subtaskDelegatedInput.checked;
+  const delegated = subtaskDelegatedInput.checked;
   let assignee = delegated ? (subtaskAssigneeInput.value || null) : null;
   if (assignee === AI_ASSIGNEE.name && !ai) assignee = null;
   subtaskDraft.push({ id: uid(), title, completed: false, minutes, ai, date, delegated, assignee });
@@ -1201,7 +1200,7 @@ function addEditSubtaskDraftEntry() {
   const minutes = Number(editSubtaskMinutesInput.value) || 0;
   const ai = editSubtaskAiInput.checked;
   const date = editSubtaskDateInput.value || null;
-  const delegated = editFormIsDelegate && editSubtaskDelegatedInput.checked;
+  const delegated = editSubtaskDelegatedInput.checked;
   let assignee = delegated ? (editSubtaskAssigneeInput.value || null) : null;
   if (assignee === AI_ASSIGNEE.name && !ai) assignee = null;
   editSubtaskDraft.push({ id: uid(), title, completed: false, minutes, ai, date, delegated, assignee });
@@ -1887,7 +1886,6 @@ function planLoopImport(rows) {
     const parsed = parseSubtaskCell(row.sub);
     if (!parsed || !parsed.title) return; // task-only row — nothing editable here in v1
 
-    const isDelegate = isDelegateTask(task);
     const sub = (task.subtasks || []).find((s) => normTitle(s.title) === normTitle(parsed.title));
     const assigneeText = (row.assignee || '').trim();
     const wantsPerson = !!assigneeText && ![LOOP_ME_NAME, LOOP_UNASSIGNED, '—', '-'].includes(assigneeText);
@@ -1900,8 +1898,7 @@ function planLoopImport(rows) {
         ai: assigneeText === AI_ASSIGNEE.name, date: newDate, delegated: false, assignee: null,
       };
       const notes = [];
-      if (wantsPerson && isDelegate) { entry.delegated = true; entry.assignee = assigneeText; notes.push(`→ ${assigneeText}`); }
-      else if (wantsPerson) notes.push(`(${assigneeText} ignored — task isn't DELEGATE)`);
+      if (wantsPerson) { entry.delegated = true; entry.assignee = assigneeText; notes.push(`→ ${assigneeText}`); }
       if (entry.minutes) notes.push(`${entry.minutes} min`);
       if (newDate) notes.push(formatShortDate(newDate));
       if (parsed.done) notes.push('done');
@@ -1933,9 +1930,7 @@ function planLoopImport(rows) {
     }
     if (assigneeText) {
       if (wantsPerson) {
-        if (!isDelegate) {
-          changes.push({ task, kind: 'warn', disabled: true, label: `${q(sub.title)}: can't assign to ${assigneeText} — the task isn't DELEGATE (change its Effort/Impact first)` });
-        } else if (!(sub.delegated && sub.assignee === assigneeText)) {
+        if (!(sub.delegated && sub.assignee === assigneeText)) {
           const known = !!getAssignee(assigneeText);
           changes.push({
             task, kind: 'assign',
@@ -1948,9 +1943,9 @@ function planLoopImport(rows) {
             },
           });
         }
-      } else if (assigneeText === LOOP_ME_NAME && isDelegate && sub.delegated) {
+      } else if (assigneeText === LOOP_ME_NAME && sub.delegated) {
         changes.push({ task, kind: 'assign', label: `${q(sub.title)}: back to ${LOOP_ME_NAME} (no longer delegated)`, apply: () => { sub.delegated = false; } });
-      } else if (assigneeText === LOOP_UNASSIGNED && isDelegate && sub.delegated && sub.assignee) {
+      } else if (assigneeText === LOOP_UNASSIGNED && sub.delegated && sub.assignee) {
         changes.push({ task, kind: 'assign', label: `${q(sub.title)}: clear assignee (was ${sub.assignee})`, apply: () => { sub.assignee = null; } });
       }
     }
@@ -2082,8 +2077,8 @@ function updateCategoryPreview(effortEl, impactEl, priorityEl, previewEl, estInp
     : 'Estimated Time (minutes)';
   if (isDelegate) estInputEl.value = '0';
 
-  // The per-sub-task delegation toggles follow the same switch — they only
-  // appear once the matrix resolves to Delegate.
+  // New sub-tasks start out delegated once the matrix resolves to Delegate;
+  // the toggles themselves are on every task.
   if (scope === 'edit') editFormIsDelegate = isDelegate;
   else if (scope === 'add') addFormIsDelegate = isDelegate;
   if (scope) refreshSubtaskDelegateUi(scope);
@@ -2464,11 +2459,10 @@ function openSubtaskHoverPreview(taskId, anchorEl) {
   const task = getTaskById(taskId);
   const subtasks = (task && task.subtasks) || [];
   if (!subtasks.length) return;
-  const isDelegate = isDelegateTask(task);
   subtaskHoverPreview.innerHTML = subtasks.map((s) => `
-    <div class="subtask-preview-row ${s.completed ? 'subtask-done' : ''}${isDelegate && s.delegated ? ' subtask-delegated' : ''}" data-subtask-id="${s.id}" title="Click to mark ${s.completed ? 'incomplete' : 'complete'}">
+    <div class="subtask-preview-row ${s.completed ? 'subtask-done' : ''}${s.delegated ? ' subtask-delegated' : ''}" data-subtask-id="${s.id}" title="Click to mark ${s.completed ? 'incomplete' : 'complete'}">
       <span class="subtask-title">${s.completed ? '✓' : '○'} ${s.ai ? aiIconHtml('ai-badge-sm ai-badge-before') : ''}${escapeHtml(s.title)}</span>
-      <span class="subtask-preview-meta">${subtaskAssigneeChipHtml(s, isDelegate)}${subtaskDateBadgeHtml(s)}${s.minutes ? `<span class="time-badge subtask-time-badge">${formatMinutesBadge(s.minutes)}</span>` : ''}</span>
+      <span class="subtask-preview-meta">${subtaskAssigneeChipHtml(s)}${subtaskDateBadgeHtml(s)}${s.minutes ? `<span class="time-badge subtask-time-badge">${formatMinutesBadge(s.minutes)}</span>` : ''}</span>
     </div>
   `).join('');
   subtaskHoverPreview.dataset.taskId = taskId;
@@ -2826,16 +2820,15 @@ function taskTotalMinutes(task) {
 }
 
 // Remaining estimated time *for you*: completed sub-tasks' minutes are deducted
-// from the total, and on a DELEGATE task so are the sub-tasks flagged as the
-// delegate's — only the ones you kept for yourself are time you still owe.
+// from the total, and so are the sub-tasks flagged as the delegate's, in any
+// quadrant — only the ones you kept for yourself are time you still owe.
 // A DELEGATE task with no sub-tasks falls through to estimatedMinutes, which is
 // forced to 0 for that category, so it still reads as 0 as before.
 function taskRemainingMinutes(task) {
   const subtasks = task.subtasks || [];
   if (subtasks.length) {
-    const isDelegate = isDelegateTask(task);
     return subtasks
-      .filter((s) => subtaskCountsForMe(s, isDelegate))
+      .filter((s) => subtaskCountsForMe(s))
       .reduce((sum, s) => sum + (Number(s.minutes) || 0), 0);
   }
   return Number(task.estimatedMinutes) || 0;
@@ -2868,8 +2861,8 @@ function formatMinutesBadge(totalMins) {
 //
 // Zone 3 of the card: arrow + "Sub-tasks", a slim progress bar (share of
 // sub-tasks ticked, by count, not minutes — the remaining-time pill already
-// covers minutes), the done/total count, and on a DELEGATE task the initials
-// of whoever holds the open delegated sub-tasks, so a column can be scanned
+// covers minutes), the done/total count, and the initials of whoever holds
+// the open delegated sub-tasks, so a column can be scanned
 // for "who has what" without opening a single card.
 function subtaskStripHtml(task) {
   const subtasks = task.subtasks || [];
@@ -2899,17 +2892,15 @@ function subtaskRowsHtml(task) {
   if (!subtasks.length) return '';
   const collapsed = collapsedSubtaskIds.has(task.id);
 
-  const isDelegate = isDelegateTask(task);
-
   const row = (s) => `
-    <label class="subtask-row${isDelegate && s.delegated ? ' subtask-delegated' : ''}"${isDelegate && s.delegated ? ' title="Done by the delegate — not counted in your remaining time"' : ''}>
+    <label class="subtask-row${s.delegated ? ' subtask-delegated' : ''}"${s.delegated ? ' title="Done by the delegate — not counted in your remaining time"' : ''}>
       <input type="checkbox" class="subtask-checkbox" data-subtask-id="${s.id}" ${s.completed ? 'checked' : ''}>
       ${s.ai ? aiIconHtml('ai-badge-sm') : ''}
       <span class="subtask-title ${s.completed ? 'subtask-done' : ''}">${escapeHtml(s.title)}</span>
-      ${subtaskAssigneeChipHtml(s, isDelegate)}
+      ${subtaskAssigneeChipHtml(s)}
       ${subtaskDateBadgeHtml(s)}
       ${s.minutes ? `<span class="time-badge subtask-time-badge">${formatMinutesBadge(s.minutes)}</span>` : ''}
-      ${subtaskEmailBtnHtml(task, s, isDelegate)}
+      ${subtaskEmailBtnHtml(task, s)}
     </label>
   `;
 
@@ -3271,14 +3262,13 @@ function computeCalTasksByDay() {
 function calEntryMinutes(entry) {
   const { task, subtasks } = entry;
   if (!subtasks.length) return taskRemainingMinutes(task);
-  const isDelegate = isDelegateTask(task);
   return subtasks
-    .filter((s) => subtaskCountsForMe(s, isDelegate))
+    .filter((s) => subtaskCountsForMe(s))
     .reduce((sum, s) => sum + (Number(s.minutes) || 0), 0);
 }
 
-// DELEGATE tasks render italicized in the category color, and their delegated
-// sub-tasks contribute no time — that time isn't yours to spend, so it's
+// DELEGATE tasks render italicized in the category color, and delegated
+// sub-tasks (in any quadrant) contribute no time — that time isn't yours to spend, so it's
 // excluded from the day's Estimated Time total too (see renderCalendarView
 // below). Completed tasks are struck through and aren't a click target, since
 // there's nothing left to rebalance. Everything else is a link that opens the
@@ -3303,7 +3293,7 @@ function buildCalTasksPopoverHtml(dayEntries) {
     const nameAttr = t.completed ? '' : ` data-cal-edit-task="${t.id}"`;
 
     const subtaskLines = entry.subtasks.map((s) => {
-      const subtaskDelegated = isDelegate && s.delegated;
+      const subtaskDelegated = !!s.delegated;
       const subtaskTimeLabel = (s.completed || subtaskDelegated) ? '0 mins' : (s.minutes ? formatMinutes(s.minutes) : '');
       return `
       <div class="cal-tooltip-subtask${s.completed ? ' cal-tooltip-done' : ''}${subtaskDelegated ? ' subtask-delegated' : ''}">
@@ -3471,7 +3461,7 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
   const rows = tasks.map((task) => {
     const status = task.completed ? 'Completed' : (STATUS_LABELS[task.status] || task.status || '');
     const subtasks = (task.subtasks || [])
-      .map((s) => `${s.completed ? '[x]' : '[ ]'}${s.ai ? ' [AI]' : ''}${isDelegateTask(task) && s.delegated ? ` [DELEGATED${s.assignee ? ` → ${s.assignee}` : ''}]` : ''} ${s.title}${s.minutes ? ` (${s.minutes}m)` : ''}${s.date ? ` @${s.date}` : ''}`).join('; ');
+      .map((s) => `${s.completed ? '[x]' : '[ ]'}${s.ai ? ' [AI]' : ''}${s.delegated ? ` [DELEGATED${s.assignee ? ` → ${s.assignee}` : ''}]` : ''} ${s.title}${s.minutes ? ` (${s.minutes}m)` : ''}${s.date ? ` @${s.date}` : ''}`).join('; ');
 
     return [
       task.title,
@@ -3531,7 +3521,7 @@ function buildActiveTasksExport() {
       aiAssisted: !!s.ai,
       date: s.date || null,
       delegated: !!s.delegated,
-      assignee: isDelegateTask(task) && s.delegated ? (s.assignee || null) : null,
+      assignee: s.delegated ? (s.assignee || null) : null,
     })),
     dependsOn: (task.dependsOn || [])
       .map((depId) => { const dep = getTaskById(depId); return dep ? dep.title : null; })
