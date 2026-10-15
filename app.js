@@ -5,19 +5,87 @@ const LABELS_KEY = 'todo.labels.v1';
 // on purpose: a department (FIN, EXT…) is picked exactly like a person — it's
 // only rendered differently (a code badge instead of initials).
 const ASSIGNEES_KEY = 'todo.assignees.v1';
+// `email` feeds the ✉ Draft Email button. Several addresses can be listed,
+// separated by ";" — a department with a few usual contacts, for instance.
+// The addresses themselves live in assignees.local.js (git-ignored, loaded by
+// index.html just before this file) so they never reach GitHub; without that
+// file every default starts with no email and you fill them in via Manage
+// assignees.
+// "a@x.com, b@x.com ;c@x.com;" -> "a@x.com; b@x.com; c@x.com"
+function normalizeEmailList(value) {
+  const parts = String(value || '').split(/[;,]/).map((s) => s.trim()).filter(Boolean);
+  return parts.length ? parts.join('; ') : null;
+}
+
+const LOCAL_ASSIGNEE_EMAILS = (typeof window !== 'undefined' && window.ASSIGNEE_EMAILS) || {};
 const DEFAULT_ASSIGNEES = [
   { name: 'Mhudang', kind: 'person' },
   { name: 'Nink', kind: 'person' },
   { name: 'Duong', kind: 'person' },
   { name: 'Ha', kind: 'person' },
-  ...['FIN', 'LEG', 'OP', 'CON', 'AM', 'OM', 'HQ', 'PD', 'EXT'].map((name) => ({ name, kind: 'department' })),
-];
+  { name: 'Giang', kind: 'person' },
+  { name: 'Taam', kind: 'person' },
+  ...['FIN-TH', 'FIN-VN', 'LEG-TH', 'LEG-VN', 'OP', 'CON', 'AM', 'OM', 'HQ', 'PD', 'EXT'].map((name) => ({ name, kind: 'department' })),
+].map((a) => ({ ...a, email: normalizeEmailList(LOCAL_ASSIGNEE_EMAILS[a.name]) }));
+// Bumped once when the defaults above gained emails. On the first load after
+// that, the stored list is topped up (missing names added, blank emails
+// filled) and this flag is set so later Manage-assignees edits are respected.
+const ASSIGNEE_EMAIL_SEED_KEY = 'todo.assignees.emailSeed.v1';
+
 // Built-in, not in the editable list: a sub-task that can be fully automated is
 // ticked AI and handed to Claude. Only offered while the sub-task's AI box is
 // ticked, so it never shows up as a choice for human work.
 const AI_ASSIGNEE = { name: 'Claude', kind: 'ai' };
 // Sentinel <option> value in every assignee dropdown that opens the manage popover.
 const MANAGE_ASSIGNEES_OPTION = '__manage__';
+
+// ---------- Draft Email rules ----------
+// The ✉ button on a sub-task row (DELEGATE tasks only) opens a new message in
+// your mail client, addressed to the sub-task's assignee. The wording comes
+// from this table: the FIRST rule whose `match` word appears anywhere in the
+// sub-task title (case doesn't matter) wins; if none matches, FALLBACK is used.
+//
+// To add a rule, copy a block and change the words. Placeholders you can use
+// inside `body`:
+//   {task}     the task title            {subtask}  the sub-task title
+//   {project}  the project name          {effort}   e.g. "1 hour" / "30 minutes"
+//   {due}      the sub-task's date       {name}     the assignee's name
+// Leave [INSERT] where you will type the detail yourself in Outlook.
+const EMAIL_DRAFT_RULES = [
+  {
+    match: ['obtain', 'provide', 'collect', 'get'],
+    body: 'Could you please provide the [INSERT] for the {task}?',
+  },
+  {
+    match: ['schedule', 'meeting', 'call', 'organise', 'organize'],
+    body: 'I would like to schedule a meeting to discuss {task}, [INSERT]. We need {effort}, please send a calendar invite.',
+  },
+  {
+    match: ['review', 'check'],
+    body: 'Could you please review the [INSERT] for {task} and send me your comments by {due}?',
+  },
+  {
+    match: ['draft', 'prepare', 'write'],
+    body: 'Could you please prepare a first draft of the [INSERT] for {task} by {due}? It should take around {effort}.',
+  },
+  {
+    match: ['send', 'share', 'forward'],
+    body: 'Could you please send me the [INSERT] for {task}?',
+  },
+  {
+    match: ['follow', 'chase', 'remind'],
+    body: 'Could you please follow up with [INSERT] on {task} and let me know where we stand?',
+  },
+];
+// Used when no rule above matches the sub-task title.
+const EMAIL_DRAFT_FALLBACK = 'Could you please take care of "{subtask}" for {task}? [INSERT]';
+// Added after the body. Keep it short — Outlook appends your signature itself.
+const EMAIL_DRAFT_CLOSING = 'Thank you,';
+// Where the draft opens:
+//   'outlook-web' — a new tab in Outlook on the web (outlook.office.com), in
+//                   the Microsoft 365 account you are signed in with.
+//   'mailto'      — whatever desktop app Windows has as the default mail client.
+const EMAIL_DRAFT_TARGET = 'outlook-web';
 // Deliberately its own key/array, never merged with STORAGE_KEY. The Triage
 // Log is a staging area Claude writes to and the user reviews — it must
 // never be able to touch or replace the real task list.
@@ -143,6 +211,7 @@ const manageLabelsBtn = document.getElementById('manageLabelsBtn');
 // Assignees (manage-assignees popover, opened from the settings gear or from
 // the "Manage assignees…" entry at the bottom of any assignee dropdown)
 const newAssigneeInput = document.getElementById('newAssigneeInput');
+const newAssigneeEmailInput = document.getElementById('newAssigneeEmailInput');
 const newAssigneeKind = document.getElementById('newAssigneeKind');
 const addAssigneeBtn = document.getElementById('addAssigneeBtn');
 const assigneeListUl = document.getElementById('assigneeListUl');
@@ -446,11 +515,32 @@ function loadAssignees() {
     const raw = localStorage.getItem(ASSIGNEES_KEY);
     const list = raw ? JSON.parse(raw) : null;
     if (!Array.isArray(list)) return DEFAULT_ASSIGNEES.map((a) => ({ ...a }));
-    return list.filter((a) => a && typeof a.name === 'string' && a.name.trim())
-      .map((a) => ({ name: a.name.trim(), kind: a.kind === 'department' ? 'department' : 'person' }));
+    const loaded = list.filter((a) => a && typeof a.name === 'string' && a.name.trim())
+      .map((a) => ({
+        name: a.name.trim(),
+        kind: a.kind === 'department' ? 'department' : 'person',
+        // Optional — the address(es) the Draft Email button sends to.
+        email: normalizeEmailList(a.email),
+      }));
+    return seedAssigneeEmails(loaded);
   } catch {
     return DEFAULT_ASSIGNEES.map((a) => ({ ...a }));
   }
+}
+
+// One-time top-up from DEFAULT_ASSIGNEES: fills blank emails and adds names
+// that aren't there yet. Never overwrites an email you typed, never removes
+// anyone (old codes like LEG stay until you reassign their sub-tasks).
+function seedAssigneeEmails(list) {
+  if (localStorage.getItem(ASSIGNEE_EMAIL_SEED_KEY)) return list;
+  DEFAULT_ASSIGNEES.forEach((d) => {
+    const existing = list.find((a) => a.name === d.name);
+    if (!existing) list.push({ ...d });
+    else if (!existing.email && d.email) existing.email = d.email;
+  });
+  localStorage.setItem(ASSIGNEES_KEY, JSON.stringify(list));
+  localStorage.setItem(ASSIGNEE_EMAIL_SEED_KEY, '1');
+  return list;
 }
 
 function saveAssignees() {
@@ -673,6 +763,84 @@ function assigneeAvatarHtml(name, extraClass = '') {
   const text = kind === 'department' ? name : assigneeInitials(name);
   const kindClass = kind === 'department' ? ' assignee-avatar-dept' : (kind === 'ai' ? ' assignee-avatar-ai' : '');
   return `<span class="assignee-avatar${kindClass} ${extraClass}" title="${escapeHtml(name)}">${escapeHtml(text)}</span>`;
+}
+
+// ---------- Draft Email (✉ on a sub-task row) ----------
+// Builds a mailto: link from the task, the sub-task and EMAIL_DRAFT_RULES, then
+// hands it to the browser, which opens a new message in the default mail client
+// (Outlook here). Nothing is sent — you edit and send from Outlook.
+
+// "1 hour", "1.5 hours", "30 minutes" — readable in a sentence, unlike "1h30".
+function formatEffortWords(totalMins) {
+  if (!totalMins) return 'a short while';
+  if (totalMins < 60) return `${totalMins} minutes`;
+  const hours = Math.round((totalMins / 60) * 10) / 10;
+  return `${hours} hour${hours === 1 ? '' : 's'}`;
+}
+
+// "13 Oct 2026" — full date for an email, where "Oct 13" alone is ambiguous.
+function formatEmailDate(dateKey) {
+  if (!dateKey) return '[DATE]';
+  return fromDateKey(dateKey).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+// A rule word must start a word in the title: "review" matches "Reviewing",
+// "get" matches "Get" but not "Budget" or "Target".
+function pickEmailDraftRule(subtaskTitle) {
+  const title = subtaskTitle || '';
+  const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return EMAIL_DRAFT_RULES.find((rule) => rule.match.some((word) => new RegExp(`\\b${escapeRe(word)}`, 'i').test(title))) || null;
+}
+
+function fillEmailTemplate(template, values) {
+  return template.replace(/\{(\w+)\}/g, (whole, key) => (key in values ? values[key] : whole));
+}
+
+function buildSubtaskEmailDraft(task, subtask) {
+  const assignee = subtask.assignee ? getAssignee(subtask.assignee) : null;
+  const to = assignee && assignee.email ? assignee.email : '';
+  const name = subtask.assignee || '';
+  const subject = [task.project, task.title, subtask.title].filter(Boolean).join(' | ');
+  const values = {
+    task: task.title,
+    subtask: subtask.title,
+    project: task.project || '',
+    effort: formatEffortWords(subtask.minutes),
+    due: formatEmailDate(subtask.date || task.due),
+    name,
+  };
+  const rule = pickEmailDraftRule(subtask.title);
+  const sentence = fillEmailTemplate(rule ? rule.body : EMAIL_DRAFT_FALLBACK, values);
+  const body = [`Hi ${name},`.replace(' ,', ','), '', sentence, '', EMAIL_DRAFT_CLOSING].join('\n');
+  return { to, subject, body };
+}
+
+function openSubtaskEmailDraft(taskId, subtaskId) {
+  const task = getTaskById(taskId);
+  const subtask = task && (task.subtasks || []).find((s) => s.id === subtaskId);
+  if (!subtask) return;
+  const { to, subject, body } = buildSubtaskEmailDraft(task, subtask);
+  // Both targets want CRLF line breaks and every part percent-encoded. Several
+  // recipients are stored as "a; b" — Outlook web separates them with ";",
+  // mailto: with ",".
+  const recipients = to.split(/;\s*/).filter(Boolean);
+  const encodedBody = encodeURIComponent(body.replace(/\n/g, '\r\n'));
+  if (EMAIL_DRAFT_TARGET === 'outlook-web') {
+    // Outlook on the web's compose deep link: opens a new message in a new tab.
+    const params = `to=${encodeURIComponent(recipients.join(';'))}&subject=${encodeURIComponent(subject)}&body=${encodedBody}`;
+    window.open(`https://outlook.office.com/mail/deeplink/compose?${params}`, '_blank', 'noopener');
+    return;
+  }
+  window.location.href = `mailto:${encodeURIComponent(recipients.join(','))}?subject=${encodeURIComponent(subject)}&body=${encodedBody}`;
+}
+
+function subtaskEmailBtnHtml(task, subtask, isDelegate) {
+  if (!isDelegate || subtask.completed) return '';
+  const assignee = subtask.assignee ? getAssignee(subtask.assignee) : null;
+  const tip = !subtask.assignee
+    ? 'Draft email — no assignee yet, To will be empty'
+    : (assignee && assignee.email ? `Draft email to ${assignee.email}` : `Draft email — ${subtask.assignee} has no email yet (set it in Manage assignees)`);
+  return `<button type="button" class="subtask-email-btn" data-email-subtask-id="${subtask.id}" title="${escapeHtml(tip)}">✉</button>`;
 }
 
 // Chip on a sub-task row: avatar + name, or a dashed "Unassigned" so a
@@ -1370,7 +1538,8 @@ function renderAssigneeOptions() {
     ? assignees.map((a) => `<li class="draft-chip" data-assignee="${escapeHtml(a.name)}">
         ${assigneeAvatarHtml(a.name, 'assignee-avatar-sm')}
         <span class="draft-chip-label">${escapeHtml(a.name)}</span>
-        <button type="button" class="edit-draft-btn" data-assignee="${escapeHtml(a.name)}" title="Rename">✎</button>
+        <span class="assignee-email-label${a.email ? '' : ' assignee-email-missing'}" title="${a.email ? escapeHtml(a.email) : 'No email yet — Draft Email will open with an empty To line'}">${a.email ? escapeHtml(a.email) : 'no email'}</span>
+        <button type="button" class="edit-draft-btn" data-assignee="${escapeHtml(a.name)}" title="Edit name / email">✎</button>
         <button type="button" class="remove-draft-btn" data-assignee="${escapeHtml(a.name)}" title="Remove">×</button>
       </li>`).join('')
     : '<li class="hint-text">No assignees yet.</li>';
@@ -1378,9 +1547,11 @@ function renderAssigneeOptions() {
 
 function addAssignee() {
   const name = newAssigneeInput.value.trim();
+  const email = normalizeEmailList(newAssigneeEmailInput.value);
   newAssigneeInput.value = '';
+  newAssigneeEmailInput.value = '';
   if (!name || name === MANAGE_ASSIGNEES_OPTION || getAssignee(name)) return;
-  assignees.push({ name, kind: newAssigneeKind.value === 'department' ? 'department' : 'person' });
+  assignees.push({ name, kind: newAssigneeKind.value === 'department' ? 'department' : 'person', email });
   saveAssignees();
   renderAssigneeOptions();
   render();
@@ -1400,14 +1571,24 @@ function removeAssignee(name) {
   render();
 }
 
-function renameAssignee(oldName, newName) {
+// Edits name and/or email. A name change cascades to every sub-task that
+// points at it; an email change only touches the assignee record.
+function renameAssignee(oldName, newName, newEmail) {
   newName = (newName || '').trim();
-  if (!newName || newName === oldName || newName === MANAGE_ASSIGNEES_OPTION || getAssignee(newName)) {
+  const entry = getAssignee(oldName);
+  if (!entry) return;
+  const nameChanged = newName && newName !== oldName;
+  if (nameChanged && (newName === MANAGE_ASSIGNEES_OPTION || getAssignee(newName))) {
     renderAssigneeOptions();
     return;
   }
-  const entry = getAssignee(oldName);
-  if (!entry) return;
+  if (newEmail !== undefined) entry.email = normalizeEmailList(newEmail);
+  if (!nameChanged) {
+    saveAssignees();
+    renderAssigneeOptions();
+    render();
+    return;
+  }
   entry.name = newName;
   saveAssignees();
   tasks.forEach((t) => {
@@ -1420,17 +1601,22 @@ function renameAssignee(oldName, newName) {
 }
 
 function startEditAssignee(li, name) {
-  li.innerHTML = `<input type="text" class="draft-chip-edit-input" value="${escapeHtml(name)}">
+  const entry = getAssignee(name);
+  const email = (entry && entry.email) || '';
+  li.innerHTML = `<input type="text" class="draft-chip-edit-input" value="${escapeHtml(name)}" placeholder="Name">
+    <input type="email" class="draft-chip-edit-input assignee-email-edit-input" value="${escapeHtml(email)}" placeholder="email@…">
     <button type="button" class="save-edit-btn" title="Save">✓</button>
     <button type="button" class="cancel-edit-btn" title="Cancel">×</button>`;
   const input = li.querySelector('.draft-chip-edit-input');
-  input.focus();
-  input.select();
-  const commit = () => renameAssignee(name, input.value);
-  input.addEventListener('keydown', (e) => {
+  const emailInput = li.querySelector('.assignee-email-edit-input');
+  // Jump straight to the email box when the name already exists and the
+  // address is the thing missing — the usual reason to open this.
+  if (!email) { emailInput.focus(); } else { input.focus(); input.select(); }
+  const commit = () => renameAssignee(name, input.value, emailInput.value);
+  [input, emailInput].forEach((el) => el.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); commit(); }
     if (e.key === 'Escape') { e.preventDefault(); renderAssigneeOptions(); }
-  });
+  }));
   li.querySelector('.save-edit-btn').addEventListener('click', commit);
   li.querySelector('.cancel-edit-btn').addEventListener('click', () => renderAssigneeOptions());
 }
@@ -2141,6 +2327,17 @@ function handleTaskListClick(e) {
   if (!item) return;
   const id = item.dataset.id;
 
+  // ✉ on a sub-task row: open a drafted email to the assignee. The button sits
+  // inside the row's <label>, so stop the click before it reaches the checkbox
+  // or the card's "click anywhere to edit" fallback.
+  const emailBtn = e.target.closest('.subtask-email-btn');
+  if (emailBtn) {
+    e.preventDefault();
+    e.stopPropagation();
+    openSubtaskEmailDraft(id, emailBtn.dataset.emailSubtaskId);
+    return;
+  }
+
   if (e.target.closest('.email-badge')) {
     const task = getTaskById(id);
     if (task && task.email) {
@@ -2712,6 +2909,7 @@ function subtaskRowsHtml(task) {
       ${subtaskAssigneeChipHtml(s, isDelegate)}
       ${subtaskDateBadgeHtml(s)}
       ${s.minutes ? `<span class="time-badge subtask-time-badge">${formatMinutesBadge(s.minutes)}</span>` : ''}
+      ${subtaskEmailBtnHtml(task, s, isDelegate)}
     </label>
   `;
 
