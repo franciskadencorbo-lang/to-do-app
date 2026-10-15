@@ -517,6 +517,7 @@
 <div class="dropdown-panel assignee-manage-popover hidden" id="assigneeManagePopover">
   <div class="project-add-row assignee-add-row">
     <input type="text" id="newAssigneeInput" placeholder="Name or department code" autocomplete="off">
+    <input type="email" id="newAssigneeEmailInput" placeholder="Email (optional)" autocomplete="off" title="Used by the ✉ Draft Email button on sub-tasks">
     <select id="newAssigneeKind" class="assignee-kind-select" title="Person or department">
       <option value="person">Person</option>
       <option value="department">Department</option>
@@ -528,6 +529,8 @@
 
 <div class="dropdown-panel subtask-hover-preview hidden" id="subtaskHoverPreview"></div>
 
+<!-- Git-ignored; holds assignee email addresses. Missing it is fine. -->
+<script src="assignees.local.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
