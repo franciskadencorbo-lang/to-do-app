@@ -1,5 +1,7 @@
-# Staff Meeting Agenda -- Friday 4:00 PM staff meeting
-_Generated from Task Hub export; next meeting: Friday, Oct 16, 2026_
+# Staff Meeting Agenda -- Monday 5:30 PM staff meeting
+_Generated from Task Hub export; next meeting: Monday, Oct 19, 2026_
+
+> ⚠️ This task snapshot was last updated on 2026-10-16 — Francis should re-export from the Task Hub app (https://franciskadencorbo-lang.github.io/to-do-app/) before the meeting.
 
 ## Needs attention -- overdue or due before this meeting
 - YOKO Board [YOKO] - due Oct 13, urgent priority (1 open sub-task) [OVERDUE]
@@ -51,12 +53,12 @@ _Generated from Task Hub export; next meeting: Friday, Oct 16, 2026_
     - Feedback Duong (30 min)
     - Prepare Feedback AFRY (30 min)
     - Feedback AFRY (60 min)
-
-## For the team -- delegated items
 - Loan Monitoring [General] - due Oct 19, medium priority (3 open sub-tasks)
     - Review Template (60 min)
     - Add Thailand (120 min)
     - Create Dashboard (60 min)
+
+## For the team -- delegated items
 - Project Tire [SOLAR D] - due Oct 20, high priority (3 open sub-tasks)
     - Build Financial Model (15 min)
     - Prepare NBO (30 min)
