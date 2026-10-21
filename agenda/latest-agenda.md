@@ -1,5 +1,5 @@
-# Staff Meeting Agenda -- Monday 5:30 PM staff meeting
-_Generated from Task Hub export; next meeting: Monday, Oct 19, 2026_
+# Staff Meeting Agenda -- Wednesday 5:30 PM staff meeting
+_Generated from Task Hub export; next meeting: Wednesday, Oct 21, 2026_
 
 > ⚠️ This task snapshot was last updated on 2026-10-16 — Francis should re-export from the Task Hub app (https://franciskadencorbo-lang.github.io/to-do-app/) before the meeting.
 
@@ -57,12 +57,16 @@ _Generated from Task Hub export; next meeting: Monday, Oct 19, 2026_
     - Review Template (60 min)
     - Add Thailand (120 min)
     - Create Dashboard (60 min)
-
-## For the team -- delegated items
 - Project Tire [SOLAR D] - due Oct 20, high priority (3 open sub-tasks)
     - Build Financial Model (15 min)
     - Prepare NBO (30 min)
     - Review Key Terms PPA
+- Deputy M&A and FIN Director [General] - due Oct 20, medium priority (3 open sub-tasks)
+    - Review Recruitment Pack (30 min)
+    - Organize Meeting with Candidate (15 min)
+    - Meet with Candidate (60 min)
+
+## For the team -- delegated items
 - COOP1 Financing [COOP FINANCING] - due Oct 23, medium priority (2 open sub-tasks)
     - Review Indicative Offer (15 min)
     - Gather Quotation for DD
@@ -100,10 +104,4 @@ _Generated from Task Hub export; next meeting: Monday, Oct 19, 2026_
     - Obtain Advisor Approval YOKO (15 min)
     - Review Engagement Letter (30 min)
     - Execute Engagement Letter (30 min)
-
-## Status updates -- other active work
-- Deputy M&A and FIN Director [General] - due Oct 20, medium priority (3 open sub-tasks)
-    - Review Recruitment Pack (30 min)
-    - Organize Meeting with Candidate (15 min)
-    - Meet with Candidate (60 min)
 
