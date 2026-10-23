@@ -1,5 +1,5 @@
-# Staff Meeting Agenda -- Wednesday 5:30 PM staff meeting
-_Generated from Task Hub export; next meeting: Wednesday, Oct 21, 2026_
+# Staff Meeting Agenda -- Friday 4:00 PM staff meeting
+_Generated from Task Hub export; next meeting: Friday, Oct 23, 2026_
 
 > ⚠️ This task snapshot was last updated on 2026-10-16 — Francis should re-export from the Task Hub app (https://franciskadencorbo-lang.github.io/to-do-app/) before the meeting.
 
@@ -65,11 +65,11 @@ _Generated from Task Hub export; next meeting: Wednesday, Oct 21, 2026_
     - Review Recruitment Pack (30 min)
     - Organize Meeting with Candidate (15 min)
     - Meet with Candidate (60 min)
-
-## For the team -- delegated items
 - COOP1 Financing [COOP FINANCING] - due Oct 23, medium priority (2 open sub-tasks)
     - Review Indicative Offer (15 min)
     - Gather Quotation for DD
+
+## For the team -- delegated items
 - GYS1 Loan Monitoring [General] - due Oct 30, high priority (7 open sub-tasks)
     - Engage Hunton (15 min)
     - Launch the mandate (15 min)
