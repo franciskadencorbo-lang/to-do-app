@@ -1,5 +1,5 @@
-# Staff Meeting Agenda -- Friday 4:00 PM staff meeting
-_Generated from Task Hub export; next meeting: Friday, Oct 23, 2026_
+# Staff Meeting Agenda -- Monday 5:30 PM staff meeting
+_Generated from Task Hub export; next meeting: Monday, Oct 26, 2026_
 
 > ⚠️ This task snapshot was last updated on 2026-10-16 — Francis should re-export from the Task Hub app (https://franciskadencorbo-lang.github.io/to-do-app/) before the meeting.
 
