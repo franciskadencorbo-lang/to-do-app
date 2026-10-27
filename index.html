@@ -32,6 +32,7 @@
         <button type="button" id="topbarAddTaskBtn" class="btn btn-primary">+ Add Task</button>
       </div>
       <div class="topbar-actions-row topbar-actions-row-secondary">
+        <span id="cloudSyncStatus" class="hint-text"></span>
         <span id="tasksFolderStatus" class="hint-text"></span>
         <button type="button" id="tasksFolderBtn" class="btn btn-secondary" title="Create tasks sent from the Email Triage Desk (OneDrive Email Triage\Tasks folder)" hidden>📂 Connect tasks folder</button>
         <button type="button" id="settingsBtn" class="icon-btn" title="Import / Export">⚙</button>
@@ -493,6 +494,7 @@
   <button type="button" id="exportBtn" class="filter-btn">⬇ Export</button>
   <button type="button" id="exportCsvBtn" class="filter-btn">⬇ Export to Excel</button>
   <button type="button" id="exportActiveJsonBtn" class="filter-btn" title="Export Not Started / In Progress tasks as JSON, for a Claude Skill">⬇ Export for AI Skill</button>
+  <button type="button" id="cloudSyncBtn" class="filter-btn" title="Keep this list in step with your other devices through the private to-do-data repo">☁ Connect cloud sync</button>
   <button type="button" id="sendGithubBtn" class="filter-btn" title="Save the 'Export for AI Skill' tasks straight to GitHub for the staff-meeting agenda">☁ Send to GitHub</button>
   <label class="filter-btn" style="cursor:pointer;" title="Import backup">⬆ Import<input type="file" id="importFile" accept=".json" style="display:none;"></label>
   <label class="filter-btn" style="cursor:pointer;" title="Import a file produced by 'Export for AI Skill' — adds these tasks to your current list, does not replace it">⬆ Import AI Skill JSON<input type="file" id="importActiveTasksFile" accept=".json" style="display:none;"></label>
@@ -536,6 +538,7 @@
 <!-- Git-ignored; holds assignee email addresses. Missing it is fine. -->
 <script src="assignees.local.js"></script>
 <script src="app.js"></script>
+<script src="sync.js"></script>
 <script src="meeting.js"></script>
 </body>
 </html>
