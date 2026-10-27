@@ -100,6 +100,11 @@ function applyRemotePayload(payload) {
   if (Array.isArray(payload.projects)) localStorage.setItem(PROJECTS_KEY, JSON.stringify(payload.projects));
   if (Array.isArray(payload.labels)) localStorage.setItem(LABELS_KEY, JSON.stringify(payload.labels));
   if (Array.isArray(payload.assignees)) localStorage.setItem(ASSIGNEES_KEY, JSON.stringify(payload.assignees));
+  reloadFromStorage();
+}
+
+// Re-reads the lists from localStorage into memory and redraws.
+function reloadFromStorage() {
   tasks = loadTasks();
   projects = loadProjects();
   labels = loadLabels();
@@ -229,6 +234,13 @@ syncBtn.addEventListener('click', () => {
   if (!token) return;
   localStorage.setItem(GITHUB_TOKEN_KEY, token);
   syncNow({ force: true });
+});
+
+// Another tab of this browser saved (or synced) the lists: show them here too,
+// so a later save in this tab does not write back the older copy.
+window.addEventListener('storage', (e) => {
+  if (e.key === SYNC_STATE_KEY) syncState = loadSyncState();
+  if ([STORAGE_KEY, PROJECTS_KEY, LABELS_KEY, ASSIGNEES_KEY].includes(e.key)) reloadFromStorage();
 });
 
 document.addEventListener('visibilitychange', () => { if (!document.hidden) syncNow(); });
