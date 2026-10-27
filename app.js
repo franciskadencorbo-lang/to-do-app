@@ -3547,12 +3547,13 @@ document.getElementById('exportActiveJsonBtn').addEventListener('click', () => {
 
 // ---------- Send to GitHub ----------
 // Writes the "Export for AI Skill" JSON straight to planner-active-tasks-latest.json
-// in the repo, so the staff-meeting agenda routine picks it up without a manual
-// download + upload. Needs a fine-grained token (this repo only, Contents: read
-// and write) — kept in this browser's localStorage, never in the repo.
+// in the PRIVATE data repo (to-do-data), so the staff-meeting agenda routine picks
+// it up without a manual download + upload. Needs a fine-grained token (to-do-data
+// only, Contents: read and write) — kept in this browser's localStorage, never in
+// a repo. sync.js uses the same token for cloud sync.
 
 const GITHUB_TOKEN_KEY = 'githubSnapshotToken';
-const GITHUB_SNAPSHOT_API = 'https://api.github.com/repos/franciskadencorbo-lang/to-do-app/contents/planner-active-tasks-latest.json';
+const GITHUB_SNAPSHOT_API = 'https://api.github.com/repos/franciskadencorbo-lang/to-do-data/contents/planner-active-tasks-latest.json';
 
 function getGithubToken() {
   let token = localStorage.getItem(GITHUB_TOKEN_KEY);
@@ -3560,7 +3561,7 @@ function getGithubToken() {
   token = (prompt(
     'Paste your GitHub token to send tasks to GitHub.\n\n' +
     'It is saved in this browser only. Use a fine-grained token limited to the ' +
-    'to-do-app repository with Contents: Read and write.'
+    'to-do-data repository with Contents: Read and write.'
   ) || '').trim();
   if (!token) return null;
   localStorage.setItem(GITHUB_TOKEN_KEY, token);
@@ -3620,7 +3621,7 @@ async function sendSnapshotToGithub() {
   } catch (err) {
     if (err.status === 401 || err.status === 403 || err.status === 404) {
       localStorage.removeItem(GITHUB_TOKEN_KEY);
-      alert('GitHub refused the token (expired, or missing Contents: Read and write on to-do-app). It has been cleared — click Send to GitHub again to paste a new one.');
+      alert('GitHub refused the token (expired, or missing Contents: Read and write on to-do-data). It has been cleared — click Send to GitHub again to paste a new one.');
     } else {
       alert(`Could not send to GitHub: ${err.message}`);
     }

@@ -2,3 +2,8 @@ triage_log_test20.json
 Triage/
 assignees.local.js
 scripts/__pycache__/
+
+# Task data and agendas live in the private to-do-data repo, never here (this repo is public).
+planner-active-tasks*.json
+taskhub-data.json
+agenda/
