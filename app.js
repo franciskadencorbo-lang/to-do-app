@@ -847,6 +847,14 @@ function subtaskEmailBtnHtml(task, subtask) {
 }
 
 
+// 🔗 on a sub-task that came from an email (Email Triage Desk): opens the
+// source email; the note from the Desk shows as the tooltip.
+function subtaskSourceBtnHtml(subtask) {
+  if (!subtask.email || !subtask.email.link) return '';
+  const tip = 'Open the source email' + (subtask.notes ? `\n\n${subtask.notes.slice(0, 400)}` : '');
+  return `<button type="button" class="subtask-email-btn subtask-source-btn" data-source-subtask-id="${subtask.id}" title="${escapeHtml(tip)}">🔗</button>`;
+}
+
 // Chip on a sub-task row: avatar + name, or a dashed "Unassigned" so a
 // delegated sub-task with nobody on it stands out before a meeting.
 function subtaskAssigneeChipHtml(subtask) {
@@ -2325,6 +2333,16 @@ function handleTaskListClick(e) {
   // ✉ on a sub-task row: open a drafted email to the assignee. The button sits
   // inside the row's <label>, so stop the click before it reaches the checkbox
   // or the card's "click anywhere to edit" fallback.
+  const sourceBtn = e.target.closest('.subtask-source-btn');
+  if (sourceBtn) {
+    e.preventDefault();
+    e.stopPropagation();
+    const task = getTaskById(id);
+    const sub = task && (task.subtasks || []).find((s) => s.id === sourceBtn.dataset.sourceSubtaskId);
+    if (sub && sub.email && sub.email.link) window.open(sub.email.link, '_blank', 'noopener');
+    return;
+  }
+
   const emailBtn = e.target.closest('.subtask-email-btn');
   if (emailBtn) {
     e.preventDefault();
@@ -2900,6 +2918,7 @@ function subtaskRowsHtml(task) {
       ${subtaskAssigneeChipHtml(s)}
       ${subtaskDateBadgeHtml(s)}
       ${s.minutes ? `<span class="time-badge subtask-time-badge">${formatMinutesBadge(s.minutes)}</span>` : ''}
+      ${subtaskSourceBtnHtml(s)}
       ${subtaskEmailBtnHtml(task, s)}
     </label>
   `;
@@ -3892,17 +3911,73 @@ const LEVELS = ['low', 'high'];
 
 function sameText(a, b) { return String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase(); }
 
+// The work-PC watcher passes only the fields it knows, so the Desk carries the
+// sub-task details as a last note line: [taskhub] {"kind":"subtask",...}.
+// Read it into the entry and strip it from the note. Explicit fields win.
+const DESK_TAG = /\s*\[taskhub\]\s*(\{[^\n]*\})\s*$/;
+const DESK_TAG_KEYS = ['kind', 'parentId', 'parentTitle', 'date', 'minutes', 'ai'];
+function unpackDeskTag(raw) {
+  const m = raw && typeof raw.notes === 'string' && raw.notes.match(DESK_TAG);
+  if (!m) return raw;
+  let tag;
+  try { tag = JSON.parse(m[1]); } catch { return raw; }
+  const picked = {};
+  DESK_TAG_KEYS.forEach((k) => { if (tag && tag[k] !== undefined) picked[k] = tag[k]; });
+  return Object.assign(picked, raw, { notes: raw.notes.slice(0, m.index).trim() || null });
+}
+
+// An entry with kind "subtask" goes under its parent: by parentId, else by a
+// parentTitle that matches exactly one open task. If the parent is gone it
+// becomes a main task, with the intended parent named in its notes.
+function findImportParent(raw) {
+  const open = tasks.filter((t) => !t.completed);
+  const byId = raw.parentId && open.find((t) => t.id === raw.parentId);
+  if (byId) return byId;
+  const byTitle = raw.parentTitle ? open.filter((t) => sameText(t.title, raw.parentTitle)) : [];
+  return byTitle.length === 1 ? byTitle[0] : null;
+}
+
 // Same task shape as the Add Task form. Skips a task whose Outlook link is
-// already on a task, or (no link) one with the same title and due date.
-// Returns {added, skipped}; caller saves and re-renders.
+// already on a task or sub-task, or (no link) one with the same title and due
+// date. Returns {added, skipped}; caller saves and re-renders.
 function createTasksFromFile(list) {
   let added = 0, skipped = 0;
-  const links = new Set(tasks.map((t) => t.email && t.email.link).filter(Boolean));
-  list.forEach((raw) => {
+  const links = new Set(tasks.flatMap((t) => [t.email && t.email.link]
+    .concat((t.subtasks || []).map((s) => s.email && s.email.link))).filter(Boolean));
+  list.forEach((entry) => {
+    let raw = unpackDeskTag(entry);
     const title = ((raw && raw.title) || '').trim();
     if (!title) { skipped++; return; }
     const link = raw.link ? normalizeEmailLink(String(raw.link).trim()) : null;
-    const due = /^\d{4}-\d{2}-\d{2}$/.test(raw.due || '') ? raw.due : null;
+    const isSub = String(raw.kind || '').toLowerCase() === 'subtask';
+    const dateIn = isSub ? (raw.date || raw.due) : raw.due;
+    const due = /^\d{4}-\d{2}-\d{2}$/.test(dateIn || '') ? dateIn : null;
+    const notesIn = raw.notes ? String(raw.notes).trim() : null;
+
+    if (isSub) {
+      const parent = findImportParent(raw);
+      if (parent) {
+        const subs = parent.subtasks || [];
+        if (link ? links.has(link) : subs.some((s) => sameText(s.title, title) && (s.date || null) === due)) { skipped++; return; }
+        parent.subtasks = subs.concat({
+          id: uid(), title, completed: false, minutes: Math.max(0, Number(raw.minutes) || 0),
+          ai: !!raw.ai, date: due, delegated: false, assignee: null,
+          email: link ? { link } : null, notes: notesIn,
+        });
+        applyDueRollup(parent);
+        recalcStatus(parent);
+        if (link) links.add(link);
+        added++;
+        return;
+      }
+      // Parked in NOT URGENT, like any other Desk capture, until allocated.
+      raw = Object.assign({ effort: 'low', impact: 'low', priority: 'low' }, raw, {
+        due,
+        estimatedMinutes: raw.estimatedMinutes || raw.minutes || 0,
+        notes: `Intended parent: ${raw.parentTitle || raw.parentId || 'unknown'} (not open when imported)` + (notesIn ? `\n\n${notesIn}` : ''),
+      });
+    }
+
     if (link ? links.has(link) : tasks.some((t) => sameText(t.title, title) && (t.baseDue || t.due || null) === due)) { skipped++; return; }
 
     const effort = LEVELS.includes(String(raw.effort).toLowerCase()) ? String(raw.effort).toLowerCase() : 'low';
