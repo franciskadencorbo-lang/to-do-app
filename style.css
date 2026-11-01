@@ -2502,3 +2502,5 @@ input[type="date"].due-derived {
 .ask-state-failed { color: #b42318; background: #fdf0ef; }
 @keyframes ask-pulse { 50% { opacity: 0.45; } }
 @media (prefers-reduced-motion: reduce) { .ask-state-running { animation: none; } }
+.ask-claude-emails { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.ask-claude-outlook { font-size: 0.8rem; text-align: left; }

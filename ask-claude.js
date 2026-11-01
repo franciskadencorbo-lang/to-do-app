@@ -56,8 +56,21 @@ function saveAskPending(list) {
 }
 
 function subtaskContext(s) {
+  const assignee = s.assignee ? getAssignee(s.assignee) : null;
   return { id: s.id, title: s.title, date: s.date || null, minutes: s.minutes || 0,
-    delegated: !!s.delegated, assignee: s.assignee || null, ai: !!s.ai };
+    delegated: !!s.delegated, assignee: s.assignee || null,
+    assigneeEmail: (assignee && assignee.email) || null, ai: !!s.ai };
+}
+
+// Outlook on the web's compose deep link, as the ✉ button on sub-tasks uses:
+// opens a new message, which Outlook keeps in Drafts. Nothing is sent.
+function askOutlookUrl(email) {
+  const list = (v) => (Array.isArray(v) ? v : String(v || '').split(/[;,]\s*/)).filter(Boolean).join(';');
+  const params = [
+    ['to', list(email.to)], ['cc', list(email.cc)], ['subject', email.subject || ''],
+    ['body', String(email.body || '').replace(/\r?\n/g, '\r\n')],
+  ].filter(([, v]) => v).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
+  return `https://outlook.office.com/mail/deeplink/compose?${params}`;
 }
 
 // What Claude gets to know about the task. Notes and other sub-tasks only
@@ -165,8 +178,12 @@ function askHistoryItemHtml({ stage, jobId, job }) {
     <details class="ask-claude-file"><summary>📄 ${escapeHtml(f.name)}</summary>
       ${f.content != null ? `<pre class="diag-pre">${escapeHtml(f.content)}</pre>` : `<p class="hint-text">On your PC: ${escapeHtml(f.path || '')}</p>`}
     </details>`).join('');
+  const emails = (job.emails || []).map((m, i) => `
+    <button type="button" class="filter-btn ask-claude-outlook" data-ask-outlook="${jobId}" data-ask-email-index="${i}"
+      title="Open this draft in Outlook on the web (To: ${escapeHtml([].concat(m.to || []).join('; ') || 'empty')})">✉ Open in Outlook: ${escapeHtml(m.subject || '(no subject)')}</button>`).join('');
   const body = status === 'done' ? `
       <pre class="diag-pre ask-claude-result">${escapeHtml(job.result || '(no summary)')}</pre>
+      ${emails ? `<div class="ask-claude-emails">${emails}</div>` : ''}
       ${files}
       <div class="ask-claude-actions">
         <button type="button" class="link-btn" data-ask-copy="${jobId}">Copy result</button>
@@ -227,6 +244,25 @@ async function findAskJob(jobId) {
 }
 
 askHistoryEl.addEventListener('click', async (e) => {
+  const outlookBtn = e.target.closest('[data-ask-outlook]');
+  if (outlookBtn) {
+    // Open the tab inside the click itself (browsers block a later window.open),
+    // then point it at the draft once the job file is read.
+    const win = window.open('', '_blank');
+    const job = await findAskJob(outlookBtn.dataset.askOutlook);
+    let email = job && (job.emails || [])[Number(outlookBtn.dataset.askEmailIndex)];
+    // No address found by Claude: use the delegated sub-task's assignee email from Task Hub.
+    if (email && ![].concat(email.to || []).length && job.subtask && job.subtask.assignee) {
+      const assignee = getAssignee(job.subtask.assignee);
+      if (assignee && assignee.email) email = { ...email, to: assignee.email };
+    }
+    if (win && email) {
+      win.opener = null;
+      win.location.href = askOutlookUrl(email);
+    }
+    else if (win) win.close();
+    return;
+  }
   const copyBtn = e.target.closest('[data-ask-copy]');
   const noteBtn = e.target.closest('[data-ask-note]');
   if (!copyBtn && !noteBtn) return;
