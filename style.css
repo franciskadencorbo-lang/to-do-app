@@ -2484,3 +2484,21 @@ input[type="date"].due-derived {
   cursor: pointer;
   max-width: min(360px, calc(100vw - 32px));
 }
+
+/* Request state: the sub-task ✦ becomes the state icon; the card shows a chip. */
+.subtask-email-btn.ask-state { opacity: 1; font-weight: 700; border-color: currentColor; }
+.ask-claude-state-chip {
+  font-size: 0.72rem;
+  font-weight: 600;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-pill);
+  padding: 1px 8px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ask-state-inbox { color: var(--text-muted); background: #f3f4f6; }
+.ask-state-running { color: var(--ai-color); background: rgba(217, 119, 87, 0.12); animation: ask-pulse 1.4s ease-in-out infinite; }
+.ask-state-done { color: #1a7f4b; background: #eaf7f0; }
+.ask-state-failed { color: #b42318; background: #fdf0ef; }
+@keyframes ask-pulse { 50% { opacity: 0.45; } }
+@media (prefers-reduced-motion: reduce) { .ask-state-running { animation: none; } }

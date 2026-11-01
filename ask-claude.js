@@ -3,16 +3,20 @@
 // browser only writes a job file to the PRIVATE to-do-data repo (same token
 // as cloud sync); the PC watcher (C:\Claude\Task Hub Jobs\watcher.py) picks
 // it up, runs Claude, and writes the result back. Job files move through:
-//   jobs/inbox/<taskId>__<jobId>.json    queued
-//   jobs/running/<taskId>__<jobId>.json  Claude is working
-//   jobs/done/<taskId>__<jobId>.json     finished (status: done | failed)
-// File names start with the task id so one directory listing shows every
-// request for a task, from any device. Claude only drafts: it never sends
-// anything and never changes a task.
+//   jobs/inbox/<taskId>__<jobId>[__<subtaskId>].json    queued
+//   jobs/running/<taskId>__<jobId>[__<subtaskId>].json  Claude is working
+//   jobs/done/<taskId>__<jobId>[__<subtaskId>].json     finished (status: done | failed)
+// File names carry the task (and sub-task) id so three directory listings
+// give the state of every request, from any device, without reading files.
+// Claude only drafts: it never sends anything and never changes a task.
 
 const ASK_JOBS_API = `https://api.github.com/repos/${SYNC_REPO}/contents/jobs`;
 const ASK_PENDING_KEY = 'todo.askClaude.pending.v1';
+const ASK_SEEN_KEY = 'todo.askClaude.seen.v1';
 const ASK_POLL_MS = 60000;
+const ASK_STATE_ICON = { inbox: '⏳', running: '✦', done: '✓', failed: '⚠' };
+// When a task has several requests, the card chip shows the most pressing one.
+const ASK_STATE_RANK = { running: 4, inbox: 3, failed: 2, done: 1 };
 const ASK_STAGES = ['inbox', 'running', 'done'];
 const ASK_STAGE_LABEL = { inbox: 'Queued', running: 'Running', done: 'Done', failed: 'Failed' };
 
@@ -29,6 +33,11 @@ const askNoticeEl = document.getElementById('askClaudeNotice');
 
 let askTarget = null; // { taskId, subtaskId }
 let askPreset = 'do';
+
+function parseAskName(name) {
+  const [taskId, jobId, subtaskId] = name.replace(/\.json$/, '').split('__');
+  return { taskId, jobId, subtaskId: subtaskId || null };
+}
 
 function askJobId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -112,6 +121,7 @@ function openAskClaudeModal(taskId, subtaskId) {
   askOverlay.classList.remove('hidden');
   askPromptEl.focus();
   renderAskHistory();
+  markAskSeen(taskId);
 }
 
 function closeAskClaudeModal() {
@@ -132,7 +142,8 @@ async function renderAskHistory() {
     const rows = [];
     for (const stage of ASK_STAGES) {
       for (const f of await askListStage(stage)) {
-        if (f.name.startsWith(`${taskId}__`)) rows.push({ stage, path: f.path, jobId: f.name.slice(taskId.length + 2, -5) });
+        const p = parseAskName(f.name);
+        if (p.taskId === taskId) rows.push({ stage, path: f.path, jobId: p.jobId });
       }
     }
     if (!askTarget || askTarget.taskId !== taskId) return;
@@ -181,7 +192,7 @@ async function sendAskClaude(e) {
   if (!task || !prompt) return;
   const subtask = askTarget.subtaskId ? (task.subtasks || []).find((s) => s.id === askTarget.subtaskId) : null;
   const jobId = askJobId();
-  const name = `${task.id}__${jobId}.json`;
+  const name = `${task.id}__${jobId}${subtask ? `__${subtask.id}` : ''}.json`;
   const job = {
     id: jobId, createdAt: new Date().toISOString(), device: syncDeviceName(),
     preset: askPreset, prompt, ...buildAskTaskContext(task, subtask, askContextEl.checked),
@@ -191,6 +202,8 @@ async function sendAskClaude(e) {
   try {
     await askWriteJob(name, job);
     saveAskPending([...loadAskPending(), { name, taskId: task.id, title: subtask ? subtask.title : task.title }]);
+    askJobStates.set(name, 'inbox');
+    decorateAskStates();
     askPromptEl.value = '';
     askStatusEl.textContent = 'Sent. The watcher on your PC picks it up within 2 minutes.';
     renderAskHistory();
@@ -206,7 +219,10 @@ async function sendAskClaude(e) {
 async function findAskJob(jobId) {
   if (!askTarget) return null;
   const done = await askListStage('done');
-  const f = done.find((x) => x.name === `${askTarget.taskId}__${jobId}.json`);
+  const f = done.find((x) => {
+    const p = parseAskName(x.name);
+    return p.taskId === askTarget.taskId && p.jobId === jobId;
+  });
   return f ? askReadFile(f.path) : null;
 }
 
@@ -252,7 +268,7 @@ document.addEventListener('keydown', (e) => {
 // own click handlers would open the editor or tick the checkbox — catch the
 // click first, in the capture phase.
 document.addEventListener('click', (e) => {
-  const btn = e.target.closest('.ask-claude-btn, .ask-claude-sub-btn');
+  const btn = e.target.closest('.ask-claude-btn, .ask-claude-sub-btn, .ask-claude-state-chip');
   if (!btn) return;
   const item = btn.closest('li.task-item');
   if (!item) return;
@@ -261,9 +277,131 @@ document.addEventListener('click', (e) => {
   openAskClaudeModal(item.dataset.id, btn.dataset.askSubtaskId || null);
 }, true);
 
+// ---------- Request state on cards and sub-task rows ----------
+// Every minute the three job folders are listed. A sub-task's ✦ turns into
+// its request's state (⏳ queued, pulsing ✦ running, ✓ done, ⚠ failed) and
+// the card shows a chip with the most pressing state of all its requests.
+// Done and failed show until the task's ✦ modal is opened once in this
+// browser ("seen"), then the plain ✦ comes back.
+
+const askJobStates = new Map();  // file name -> inbox | running | done | failed
+const askDoneStatus = new Map(); // finished file name -> done | failed, read once
+
+function loadAskSeen() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(ASK_SEEN_KEY)) || []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveAskSeen(seen) {
+  localStorage.setItem(ASK_SEEN_KEY, JSON.stringify([...seen]));
+}
+
+function isAskFinished(state) {
+  return state === 'done' || state === 'failed';
+}
+
+function markAskSeen(taskId) {
+  const seen = loadAskSeen();
+  let changed = false;
+  for (const [name, state] of askJobStates) {
+    if (isAskFinished(state) && parseAskName(name).taskId === taskId && !seen.has(name)) {
+      seen.add(name);
+      changed = true;
+    }
+  }
+  if (changed) {
+    saveAskSeen(seen);
+    decorateAskStates();
+  }
+}
+
+// The state each task and sub-task shows: live requests and unseen results.
+function visibleAskStates() {
+  const seen = loadAskSeen();
+  const byTask = new Map();
+  const bySubtask = new Map();
+  const pick = (a, b) => (!a || ASK_STATE_RANK[b] > ASK_STATE_RANK[a] ? b : a);
+  for (const [name, state] of askJobStates) {
+    if (isAskFinished(state) && seen.has(name)) continue;
+    const p = parseAskName(name);
+    byTask.set(p.taskId, pick(byTask.get(p.taskId), state));
+    if (p.subtaskId) bySubtask.set(p.subtaskId, pick(bySubtask.get(p.subtaskId), state));
+  }
+  return { byTask, bySubtask };
+}
+
+function decorateAskStates() {
+  const { byTask, bySubtask } = visibleAskStates();
+  document.querySelectorAll('.ask-claude-state-chip').forEach((el) => el.remove());
+  document.querySelectorAll('.ask-claude-sub-btn').forEach((btn) => {
+    const state = bySubtask.get(btn.dataset.askSubtaskId);
+    btn.className = `subtask-email-btn ask-claude-sub-btn${state ? ` ask-state ask-state-${state}` : ''}`;
+    btn.textContent = state ? ASK_STATE_ICON[state] : '✦';
+    btn.title = state ? `Claude: ${ASK_STAGE_LABEL[state]} — click to see the request` : 'Ask Claude to work on this sub-task';
+  });
+  document.querySelectorAll('li.task-item').forEach((item) => {
+    const state = byTask.get(item.dataset.id);
+    const meta = item.querySelector('.card-title-meta');
+    if (!state || !meta) return;
+    const chip = document.createElement('span');
+    chip.className = `ask-claude-state-chip ask-state-${state}`;
+    chip.textContent = `${ASK_STATE_ICON[state]} ${ASK_STAGE_LABEL[state]}`;
+    chip.title = `Claude: ${ASK_STAGE_LABEL[state]} — click to see the requests`;
+    meta.prepend(chip);
+  });
+}
+
+// app.js redraws the board with render(); redraw the states after it.
+// Calls inside app.js resolve to this wrapped version (as in sync.js).
+const askOriginalRender = window.render;
+window.render = function (...args) {
+  const result = askOriginalRender.apply(this, args);
+  decorateAskStates();
+  return result;
+};
+
+async function refreshAskStates() {
+  if (!syncToken() || document.hidden) return;
+  try {
+    const next = new Map();
+    for (const stage of ASK_STAGES) {
+      for (const f of await askListStage(stage)) next.set(f.name, stage);
+    }
+    // Only the finished file says whether Claude succeeded: read each unseen one once.
+    const seen = loadAskSeen();
+    for (const [name, stage] of next) {
+      if (stage !== 'done') continue;
+      if (!askDoneStatus.has(name) && !seen.has(name)) {
+        const job = await askReadFile(`jobs/done/${name}`);
+        askDoneStatus.set(name, job && job.status === 'failed' ? 'failed' : 'done');
+      }
+      next.set(name, askDoneStatus.get(name) || 'done');
+    }
+    askJobStates.clear();
+    next.forEach((state, name) => askJobStates.set(name, state));
+    decorateAskStates();
+    notifyAskFinished();
+  } catch {
+    // Offline or token refused: try again at the next poll.
+  }
+}
+
 // ---------- Finished-job notice ----------
-// Requests sent from this browser are checked every minute; when one is done
-// a notice appears, and clicking it opens the task's results.
+// Requests sent from this browser raise a notice when they finish; clicking
+// it opens the task's results.
+
+function notifyAskFinished() {
+  const pending = loadAskPending();
+  const finished = pending.filter((p) => isAskFinished(askJobStates.get(p.name)));
+  if (!finished.length) return;
+  saveAskPending(pending.filter((p) => !finished.includes(p)));
+  const last = finished[finished.length - 1];
+  showAskNotice(`✦ Claude finished: ${last.title}${finished.length > 1 ? ` (+${finished.length - 1} more)` : ''}`, last.taskId);
+  if (askTarget) renderAskHistory();
+}
 
 function showAskNotice(text, taskId) {
   askNoticeEl.textContent = text;
@@ -276,22 +414,6 @@ askNoticeEl.addEventListener('click', () => {
   if (getTaskById(askNoticeEl.dataset.taskId)) openAskClaudeModal(askNoticeEl.dataset.taskId, null);
 });
 
-async function pollAskPending() {
-  const pending = loadAskPending();
-  if (!pending.length || !syncToken() || document.hidden) return;
-  try {
-    const done = new Set((await askListStage('done')).map((f) => f.name));
-    const finished = pending.filter((p) => done.has(p.name));
-    if (!finished.length) return;
-    saveAskPending(pending.filter((p) => !done.has(p.name)));
-    const last = finished[finished.length - 1];
-    showAskNotice(`✦ Claude finished: ${last.title}${finished.length > 1 ? ` (+${finished.length - 1} more)` : ''}`, last.taskId);
-    if (askTarget) renderAskHistory();
-  } catch {
-    // Offline or token refused: try again at the next poll.
-  }
-}
-
-setInterval(pollAskPending, ASK_POLL_MS);
-document.addEventListener('visibilitychange', () => { if (!document.hidden) pollAskPending(); });
-pollAskPending();
+setInterval(refreshAskStates, ASK_POLL_MS);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshAskStates(); });
+refreshAskStates();
