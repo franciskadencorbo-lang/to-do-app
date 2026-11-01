@@ -2443,3 +2443,44 @@ input[type="date"].due-derived {
 }
 .assignee-email-edit-input { flex: 1.4; }
 .assignee-add-row #newAssigneeEmailInput { flex: 1 1 100%; }
+
+/* ---------- Ask Claude (✦ on cards and sub-task rows) ---------- */
+.card-hover-actions button.ask-claude-btn { color: var(--ai-color); }
+.card-hover-actions button.ask-claude-btn:hover { background: rgba(217, 119, 87, 0.12); }
+.ask-claude-sub-btn { color: var(--ai-color); }
+.subtask-email-btn.ask-claude-sub-btn:hover {
+  color: var(--ai-color);
+  background: rgba(217, 119, 87, 0.12);
+  border-color: rgba(217, 119, 87, 0.35);
+}
+.ask-claude-target { margin-bottom: 12px; }
+.ask-claude-task { font-weight: 600; }
+.ask-claude-arrow { color: var(--text-muted); }
+.ask-claude-presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.ask-claude-option { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; margin: 8px 0 4px; }
+.ask-claude-status { margin-right: auto; }
+.ask-claude-history { display: flex; flex-direction: column; gap: 10px; max-height: 45vh; overflow-y: auto; }
+.ask-claude-job { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
+.ask-claude-job-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ask-claude-prompt { margin: 6px 0; font-size: 0.88rem; white-space: pre-wrap; }
+.ask-claude-result { white-space: pre-wrap; max-height: 260px; overflow-y: auto; }
+.ask-claude-file summary { cursor: pointer; font-size: 0.85rem; margin: 4px 0; }
+.ask-claude-actions { display: flex; gap: 14px; margin-top: 6px; }
+.ask-claude-chip { font-size: 0.72rem; font-weight: 600; border-radius: var(--radius-pill); padding: 1px 8px; border: 1px solid var(--border); }
+.ask-claude-inbox { color: var(--text-muted); }
+.ask-claude-running { color: var(--ai-color); border-color: var(--ai-color); }
+.ask-claude-done { color: #1a7f4b; border-color: #9fd8b9; background: #eaf7f0; }
+.ask-claude-failed { color: #b42318; border-color: #f3c7c2; background: #fdf0ef; }
+.ask-claude-notice {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 1000;
+  background: var(--surface);
+  border: 1px solid var(--ai-color);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  padding: 10px 14px;
+  cursor: pointer;
+  max-width: min(360px, calc(100vw - 32px));
+}

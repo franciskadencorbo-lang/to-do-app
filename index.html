@@ -479,6 +479,36 @@
   </div>
 </div>
 
+<div class="modal-overlay hidden" id="askClaudeModalOverlay">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h2>✦ Ask Claude</h2>
+      <button type="button" class="icon-btn" id="askClaudeModalClose" aria-label="Close">✕</button>
+    </div>
+    <div id="askClaudeTarget" class="ask-claude-target"></div>
+    <form id="askClaudeForm">
+      <div class="ask-claude-presets" id="askClaudePresets">
+        <button type="button" class="filter-btn active" data-preset="do">Do the task</button>
+        <button type="button" class="filter-btn" data-preset="email">Draft email</button>
+        <button type="button" class="filter-btn" data-preset="research">Research</button>
+        <button type="button" class="filter-btn" data-preset="note">Prepare note</button>
+      </div>
+      <textarea id="askClaudePrompt" class="notes-input" rows="4" placeholder="What should Claude do? e.g. Draft the email to Giang asking for the quotation, based on the last exchange" required></textarea>
+      <label class="ask-claude-option"><input type="checkbox" id="askClaudeIncludeContext" checked> Include the task's notes and open sub-tasks</label>
+      <p class="hint-text">Claude runs on your PC through the job watcher and saves drafts only: it never sends an email or changes a task. The result appears below and on every device.</p>
+      <div class="modal-actions">
+        <span id="askClaudeStatus" class="hint-text ask-claude-status"></span>
+        <button type="button" class="link-btn" id="askClaudeCancelBtn">Close</button>
+        <button type="submit" class="add-btn" id="askClaudeSendBtn">Send to Claude</button>
+      </div>
+    </form>
+    <div class="form-section-label">Requests for this task</div>
+    <div id="askClaudeHistory" class="ask-claude-history"><p class="hint-text">None yet.</p></div>
+  </div>
+</div>
+
+<div class="ask-claude-notice hidden" id="askClaudeNotice" role="status"></div>
+
 <div class="date-edit-popover hidden" id="dateEditPopover">
   <label class="date-edit-field">Due<input type="date" id="dateEditDue"></label>
   <span class="due-derived-hint hidden" id="dateEditHint">⤴ from latest sub-task</span>
@@ -539,6 +569,7 @@
 <script src="assignees.local.js"></script>
 <script src="app.js"></script>
 <script src="sync.js"></script>
+<script src="ask-claude.js"></script>
 <script src="meeting.js"></script>
 </body>
 </html>

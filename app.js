@@ -2920,6 +2920,7 @@ function subtaskRowsHtml(task) {
       ${s.minutes ? `<span class="time-badge subtask-time-badge">${formatMinutesBadge(s.minutes)}</span>` : ''}
       ${subtaskSourceBtnHtml(s)}
       ${subtaskEmailBtnHtml(task, s)}
+      ${s.completed ? '' : `<button type="button" class="subtask-email-btn ask-claude-sub-btn" data-ask-subtask-id="${s.id}" title="Ask Claude to work on this sub-task">✦</button>`}
     </label>
   `;
 
@@ -3007,6 +3008,7 @@ function taskItemHtml(task) {
     <li class="task-item ${task.completed ? 'completed' : ''} ${overdue ? 'overdue' : ''}" data-id="${task.id}" data-priority="${task.priority}" title="Click to edit">
       <div class="card-hover-actions">
         <button class="mark-complete-btn" title="${task.completed ? 'Mark incomplete' : 'Mark complete'}">${task.completed ? '↺' : '✓'}</button>
+        <button class="ask-claude-btn" title="Ask Claude to work on this task">✦</button>
         <button class="edit-btn" title="Edit">✏️</button>
         <button class="delete-btn" title="Delete">✕</button>
       </div>
