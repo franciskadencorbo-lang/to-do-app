@@ -1,0 +1,89 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Find a time tests</title>
+<pre id="out"></pre>
+<script src="../slots.js"></script>
+<script src="../invite-core.js"></script>
+<script>
+// Open in a browser. All people below are invented: this repo is public.
+const lines = [];
+function check(name, actual, expected) {
+  const a = JSON.stringify(actual), e = JSON.stringify(expected);
+  lines.push(`${a === e ? 'PASS' : 'FAIL'}  ${name}${a === e ? '' : `\n      got      ${a}\n      expected ${e}`}`);
+}
+const C = InviteCore;
+const bkk = (iso) => Date.parse(`${iso}+07:00`);
+const utc = (iso) => `${new Date(bkk(iso)).toISOString().slice(0, 19)}.0000000`;
+const clock = (ms) => { const p = SlotEngine.localParts(ms, 'Asia/Bangkok'); return `${p.dateKey} ${String(Math.floor(p.minutes / 60)).padStart(2, '0')}:${String(p.minutes % 60).padStart(2, '0')}`; };
+const item = (status, from, to, extra) => ({ status, start: { dateTime: utc(from), timeZone: 'UTC' }, end: { dateTime: utc(to), timeZone: 'UTC' }, ...extra });
+const hours = (name, startTime, endTime) => ({ daysOfWeek: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'], startTime: `${startTime}:00.0000000`, endTime: `${endTime}:00.0000000`, timeZone: { name } });
+const BKK = 'SE Asia Standard Time', PAR = 'Romance Standard Time';
+const person = (email, scheduleItems, workingHours) => ({ scheduleId: email, scheduleItems, workingHours });
+const run = (value, extra) => {
+  const people = C.parseSchedule({ value });
+  return C.proposeSlots({
+    engine: SlotEngine, people, myEmail: 'me@gy.example', me: { tz: 'Asia/Bangkok', start: '09:00', end: '18:00' },
+    lunch: { start: '12:00', end: '13:00' }, durationMin: 30, startMs: bkk('2030-03-04T00:00'), endMs: bkk('2030-03-05T23:59'),
+    bufferMin: 15, tentativeIsBusy: true, count: 5, ...extra,
+  });
+};
+const me = (items) => person('me@gy.example', items || [], hours(BKK, '08:00', '23:00'));
+
+// Reading the reply
+const parsed = C.parseSchedule({ value: [
+  person('a@gy.example', [item('busy', '2030-03-04T15:00', '2030-03-04T15:30', { subject: 'SECRET SUBJECT', location: 'SECRET ROOM' })], hours(PAR, '09:00', '19:00')),
+  { scheduleId: 'bad@gy.example', error: { message: 'not valid', responseCode: '5035' } },
+] });
+check('reply: times read as UTC', parsed[0].items[0].startMs, bkk('2030-03-04T15:00'));
+check('reply: subject and location dropped', JSON.stringify(parsed).includes('SECRET'), false);
+check('reply: Outlook zone name converted', parsed[0].hours, { tz: 'Europe/Paris', start: '09:00', end: '19:00', workDays: [1, 2, 3, 4, 5] });
+check('reply: unreadable person kept as not ok', [parsed[1].ok, parsed[1].message], [false, 'not valid']);
+check('reply: unknown zone gives no hours', C.parseSchedule({ value: [person('x@gy.example', [], hours('Customized Time Zone', '09:00', '17:00'))] })[0].hours, null);
+check('reply: a flow error is reported', (() => { try { C.parseSchedule({ error: 'The calendar request failed.' }); return 'no error'; } catch (e) { return e.message; } })(), 'The calendar request failed.');
+check('reply: rubbish is reported', (() => { try { C.parseSchedule({}); return 'no error'; } catch { return 'error'; } })(), 'error');
+
+// Slots
+const all = run([me(), person('p@gy.example', [], hours(PAR, '09:00', '19:00'))]);
+check('Bangkok and Paris: only the shared hours, within everyone\'s day', all.slots.every((s) => !s.outside.length && SlotEngine.localParts(s.startMs, 'Asia/Bangkok').minutes >= 15 * 60), true);
+check('free calendars give clear slots', all.clear > 0, true);
+check('at most 5 slots', run([me()], { endMs: bkk('2030-03-20T23:59') }).slots.length, 5);
+
+// Tiers, on the real shape of the dry run: one 30-minute gap inside the shared hours
+const gap = [
+  item('busy', '2030-03-04T15:00', '2030-03-04T15:30'), item('tentative', '2030-03-04T16:00', '2030-03-04T17:00'),
+  item('busy', '2030-03-04T17:00', '2030-03-04T17:30'),
+];
+const tight = run([me(gap), person('p@gy.example', [], hours(PAR, '09:00', '19:00')), person('q@gy.example', [], hours(BKK, '08:00', '17:00'))], { endMs: bkk('2030-03-04T23:59') });
+check('back-to-back gap offered first when the buffer leaves nothing', clock(tight.slots[0].startMs), '2030-03-04 15:30');
+check('back-to-back is labelled', tight.slots[0].backToBack, true);
+check('then slots outside hours, labelled with who', tight.slots.slice(1).every((s) => s.outside.length > 0), true);
+check('outside slot shows the person\'s own clock', (() => { const o = tight.slots.find((s) => s.outside.some((x) => x.email === 'p@gy.example')); const x = o.outside.find((y) => y.email === 'p@gy.example'); return x.startMinutes === SlotEngine.localParts(o.startMs, 'Europe/Paris').minutes; })(), true);
+check('clear count excludes labelled slots', tight.clear, 0);
+
+// Statuses
+const busyAll = (status) => [item(status, '2030-03-04T09:00', '2030-03-04T18:00')];
+const oneDay = { endMs: bkk('2030-03-04T23:59') };
+check('busy blocks', run([me(), person('p@gy.example', busyAll('busy'), hours(BKK, '09:00', '18:00'))], oneDay).slots.length, 0);
+check('out of office blocks', run([me(), person('p@gy.example', busyAll('oof'), hours(BKK, '09:00', '18:00'))], oneDay).slots.length, 0);
+check('tentative blocks by default', run([me(), person('p@gy.example', busyAll('tentative'), hours(BKK, '09:00', '18:00'))], oneDay).slots.length, 0);
+check('tentative can be switched off', run([me(), person('p@gy.example', busyAll('tentative'), hours(BKK, '09:00', '18:00'))], { ...oneDay, tentativeIsBusy: false }).slots.length > 0, true);
+check('free entries do not block', run([me(busyAll('free'))], oneDay).slots.length > 0, true);
+const elsewhere = run([me(), person('p@gy.example', busyAll('workingElsewhere'), hours(BKK, '09:00', '18:00'))], oneDay);
+check('working elsewhere is free and labelled', [elsewhere.slots.length > 0, elsewhere.slots[0].elsewhere], [true, ['p@gy.example']]);
+
+// Who is not covered
+const mixed = C.parseSchedule({ value: [me(), { scheduleId: 'bad@gy.example', error: { message: 'x' } }] });
+check('unreadable calendar does not block but stays not ok', [mixed[1].ok, C.proposeSlots({ engine: SlotEngine, people: mixed, myEmail: 'me@gy.example', me: { tz: 'Asia/Bangkok', start: '09:00', end: '18:00' }, durationMin: 30, startMs: bkk('2030-03-04T00:00'), endMs: bkk('2030-03-04T23:59'), bufferMin: 15, count: 1 }).slots.length], [false, 1]);
+check('unknown working hours are reported', run([me(), person('u@gy.example', [], hours('Customized Time Zone', '09:00', '17:00'))], oneDay).hoursUnknown, ['u@gy.example']);
+
+// Nothing available
+const blocked = run([me(), person('p@gy.example', busyAll('busy'), hours(BKK, '09:00', '18:00')), person('r@gy.example', [item('busy', '2030-03-04T09:00', '2030-03-04T10:00')], hours(BKK, '09:00', '18:00'))], oneDay);
+check('blockers named, busiest first', blocked.blockers.map((b) => b.email), ['p@gy.example', 'r@gy.example']);
+check('no shared hours is recognised', run([me(), person('n@gy.example', [], hours('Tokyo Standard Time', '21:00', '22:00'))], oneDay).noSharedHours, true);
+check('organiser hours respected', run([me()], { me: { tz: 'Asia/Bangkok', start: '10:00', end: '11:00' }, ...oneDay }).slots.map((s) => clock(s.startMs)).sort(), ['2030-03-04 10:00', '2030-03-04 10:30']);
+check('lunch avoided', run([me()], { me: { tz: 'Asia/Bangkok', start: '12:00', end: '13:00' }, ...oneDay }).slots.length, 0);
+check('weekend avoided', run([me()], { startMs: bkk('2030-03-09T00:00'), endMs: bkk('2030-03-10T23:59') }).slots.length, 0);
+
+const failed = lines.filter((l) => l.startsWith('FAIL')).length;
+document.getElementById('out').textContent = `${lines.length - failed} passed, ${failed} failed\n\n${lines.join('\n')}`;
+</script>

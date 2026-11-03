@@ -9,6 +9,11 @@
 // again each time: never localStorage, never the synced task data, never GitHub.
 // A task keeps only the time and attendee names (task.meeting), no addresses.
 //
+// Find a time: writes the request to Task Hub Meetings\Requests, the "Free Busy"
+// flow reads the calendars with the user's own sign-in and writes the reply to
+// Responses, and this page ranks the slots with slots.js. The reply holds the
+// user's own meeting subjects, so it is deleted as soon as it has been read.
+//
 // Loaded after app.js and uses its functions and data (tasks, saveTasks, render,
 // getTaskById, assignees, escapeHtml, fsGet, fsPut, fsSupported, toDateKey…).
 
@@ -17,6 +22,16 @@ const INVITE_DIRECTORY_FILE = 'contacts-gy.json';
 const INVITE_NICKNAMES_FILE = 'nicknames.json';
 const INVITE_FOLDER_KEY = 'invite-folder';
 const INVITE_STALE_DAYS = 14;
+const INVITE_MY_EMAIL_KEY = 'todo.invite.myEmail.v1'; // this browser only, not in the sync payload
+const INVITE_REQUESTS_DIR = 'Requests';
+const INVITE_RESPONSES_DIR = 'Responses';
+const INVITE_POLL_MS = 10000;
+const INVITE_TIMEOUT_MS = 5 * 60000;
+const INVITE_MAX_LOOKUPS = 20;
+const INVITE_NOTICE_HOURS = 12;
+const INVITE_WORKING_DAYS = 10;
+const INVITE_BUFFER_MIN = 15;
+const INVITE_LUNCH = { start: '12:00', end: '13:00' };
 
 const inviteOverlay = document.getElementById('inviteModalOverlay');
 const inviteForm = document.getElementById('inviteForm');
@@ -32,6 +47,15 @@ const inviteChosenEl = document.getElementById('inviteChosen');
 const inviteSuggestedEl = document.getElementById('inviteSuggested');
 const inviteDirectoryEl = document.getElementById('inviteDirectoryStatus');
 const inviteStatusEl = document.getElementById('inviteStatus');
+const inviteFindBtn = document.getElementById('inviteFindBtn');
+const inviteFromEl = document.getElementById('inviteFrom');
+const inviteToEl = document.getElementById('inviteTo');
+const inviteTentativeEl = document.getElementById('inviteTentative');
+const inviteMyEmailEl = document.getElementById('inviteMyEmail');
+const inviteMyEmailRow = document.getElementById('inviteMyEmailRow');
+const inviteFindStatusEl = document.getElementById('inviteFindStatus');
+const inviteSlotsEl = document.getElementById('inviteSlots');
+const inviteCoverageEl = document.getElementById('inviteCoverage');
 
 let inviteTarget = null;     // { taskId, subtaskId }
 let inviteAttendees = [];    // { name, email, kind: staff | external }
@@ -40,6 +64,7 @@ let inviteNicknames = {};
 let inviteFolder = null;
 let inviteDirectoryDate = null;
 let inviteRestoreRun = 0;
+let inviteFindRun = 0;       // a newer search or a closed window makes older results stale
 
 function inviteNextWorkingDay() {
   const d = new Date(); d.setHours(0, 0, 0, 0);
@@ -72,6 +97,7 @@ function inviteSearchPool() {
 function inviteAddAttendee(person) {
   if (inviteAttendees.some((a) => a.email.toLowerCase() === person.email.toLowerCase())) return;
   inviteAttendees.push({ name: person.name, email: person.email, kind: person.kind });
+  inviteClearFind();
   renderInvitePeople();
 }
 
@@ -216,6 +242,196 @@ async function inviteConnectFolder() {
   }
 }
 
+// ---------- Find a time ----------
+
+function inviteClearFind() {
+  inviteFindRun++;
+  inviteFindStatusEl.textContent = '';
+  inviteSlotsEl.innerHTML = '';
+  inviteCoverageEl.innerHTML = '';
+  inviteFindBtn.disabled = false;
+}
+
+function inviteNameOf(email) {
+  if (email.toLowerCase() === inviteMyEmail().toLowerCase()) return 'You';
+  const known = inviteAttendees.find((a) => a.email.toLowerCase() === email.toLowerCase());
+  return (known && known.name) || email;
+}
+
+function inviteClock(minutes) {
+  return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+}
+
+function inviteMyEmail() {
+  try { return localStorage.getItem(INVITE_MY_EMAIL_KEY) || ''; } catch { return ''; }
+}
+
+function inviteShowMyEmail() {
+  const saved = inviteMyEmail();
+  inviteMyEmailEl.value = saved;
+  inviteMyEmailRow.classList.toggle('hidden', !!saved);
+}
+
+// From the notice period to the 10th working day, or the due date if that comes first.
+function inviteSearchWindow() {
+  const win = SlotEngine.searchWindow(Date.now(), INVITE_NOTICE_HOURS, INVITE_WORKING_DAYS, INVITE_TIME_ZONE);
+  const task = inviteTarget && getTaskById(inviteTarget.taskId);
+  const subtask = task && inviteTarget.subtaskId ? (task.subtasks || []).find((s) => s.id === inviteTarget.subtaskId) : null;
+  const due = (subtask && subtask.date) || (task && task.due);
+  if (!due) return win;
+  const dueEnd = InviteCore.meetingTimes(due, '23:30', 29, INVITE_TIME_ZONE).startMs + 29 * 60000;
+  // A due date already past or too close cannot limit the search.
+  return dueEnd > win.startMs ? { startMs: win.startMs, endMs: Math.min(win.endMs, dueEnd) } : win;
+}
+
+async function inviteWriteRequest(id, request) {
+  const dir = await inviteFolder.getDirectoryHandle(INVITE_REQUESTS_DIR);
+  const handle = await dir.getFileHandle(`${id}.json`, { create: true });
+  const out = await handle.createWritable();
+  await out.write(JSON.stringify(request));
+  await out.close();
+}
+
+// A reply that was never read, because the page closed, must not stay in OneDrive.
+async function inviteDeleteOldReplies() {
+  try {
+    const dir = await inviteFolder.getDirectoryHandle(INVITE_RESPONSES_DIR);
+    for await (const [name, handle] of dir.entries()) {
+      if (handle.kind !== 'file') continue;
+      if (Date.now() - (await handle.getFile()).lastModified > INVITE_TIMEOUT_MS) await dir.removeEntry(name);
+    }
+  } catch { /* tidying only: a search must not fail because of it */ }
+}
+
+// Polls until the flow's reply has synced down. A half-synced file reads as bad
+// JSON, so that also just means "try again".
+async function inviteAwaitReply(id, onWait) {
+  const dir = await inviteFolder.getDirectoryHandle(INVITE_RESPONSES_DIR);
+  const started = Date.now();
+  for (;;) {
+    try {
+      const handle = await dir.getFileHandle(`${id}.json`);
+      const reply = JSON.parse((await (await handle.getFile()).text()).replace(/^\uFEFF/, ''));
+      try { await dir.removeEntry(`${id}.json`); } catch { /* tidied by the next search */ }
+      return reply;
+    } catch (err) {
+      if (err.name !== 'NotFoundError' && err.name !== 'SyntaxError') throw err;
+    }
+    if (Date.now() - started > INVITE_TIMEOUT_MS) {
+      throw new Error('No answer after 5 minutes. Check the Task Hub - Free Busy flow in Power Automate. Nothing was booked.');
+    }
+    onWait(Math.round((Date.now() - started) / 60000));
+    await new Promise((resolve) => setTimeout(resolve, INVITE_POLL_MS));
+  }
+}
+
+function inviteSlotHtml(slot) {
+  const format = new Intl.DateTimeFormat('en-GB', { timeZone: INVITE_TIME_ZONE, weekday: 'short', day: 'numeric', month: 'short' });
+  const start = SlotEngine.localParts(slot.startMs, INVITE_TIME_ZONE);
+  const end = SlotEngine.localParts(slot.endMs, INVITE_TIME_ZONE);
+  const notes = [];
+  if (slot.outside.length) {
+    notes.push(`<span class="invite-warning">Outside working hours: ${slot.outside.map((o) => `${escapeHtml(inviteNameOf(o.email))} (${inviteClock(o.startMinutes)} their time)`).join(', ')}</span>`);
+  }
+  if (slot.backToBack) notes.push('<span class="invite-warning">Back-to-back with another meeting</span>');
+  if (slot.elsewhere.length) notes.push(`<span class="hint-text">Working elsewhere: ${slot.elsewhere.map((e) => escapeHtml(inviteNameOf(e))).join(', ')}</span>`);
+  return `<button type="button" class="invite-result invite-slot" data-invite-date="${start.dateKey}" data-invite-time="${inviteClock(start.minutes)}">
+    <span><strong>${format.format(new Date(slot.startMs))}, ${inviteClock(start.minutes)}-${inviteClock(end.minutes)}</strong></span>
+    ${notes.join('')}
+  </button>`;
+}
+
+function renderInviteFindResult(people, result, skipped) {
+  const notChecked = inviteAttendees.filter((a) => a.kind !== 'staff').map((a) => a.name || a.email);
+  const failed = people.filter((p) => !p.ok);
+  const lines = [`Checked: ${people.filter((p) => p.ok).map((p) => escapeHtml(inviteNameOf(p.email))).join(', ') || 'nobody'}.`];
+  if (notChecked.length) lines.push(`Not checked (external): ${notChecked.map(escapeHtml).join(', ')}.`);
+  if (skipped.length) lines.push(`Not checked (limit of ${INVITE_MAX_LOOKUPS} people): ${skipped.map((a) => escapeHtml(a.name || a.email)).join(', ')}.`);
+  if (failed.length) lines.push(`<span class="invite-warning">Calendar could not be read, so treat as not checked: ${failed.map((p) => escapeHtml(inviteNameOf(p.email))).join(', ')}.</span>`);
+  if (result.hoursUnknown.length) lines.push(`Working hours unknown: ${result.hoursUnknown.map((e) => escapeHtml(inviteNameOf(e))).join(', ')}.`);
+  inviteCoverageEl.innerHTML = lines.map((l) => `<div class="hint-text">${l}</div>`).join('');
+  inviteSlotsEl.innerHTML = result.slots.map(inviteSlotHtml).join('');
+
+  if (!result.slots.length) {
+    inviteFindStatusEl.textContent = 'No free time found in this period. Try a shorter meeting, wider hours or fewer people.';
+  } else if (!result.withinHours) {
+    inviteFindStatusEl.textContent = result.noSharedHours
+      ? 'These people share no working hours in this period, so every slot is outside someone\'s hours.'
+      : 'No slot fits everyone\'s working hours and calendars. These are outside someone\'s hours.';
+  } else {
+    inviteFindStatusEl.textContent = 'Pick a time, then check it in Scheduling Assistant before sending: nothing holds the slot.';
+  }
+  if (!result.withinHours && result.blockers.length) {
+    inviteCoverageEl.innerHTML += `<div class="hint-text">Most often busy in shared hours: ${result.blockers.slice(0, 5).map((b) => escapeHtml(inviteNameOf(b.email))).join(', ')}.</div>`;
+  }
+}
+
+async function inviteFindTime() {
+  const myEmail = inviteMyEmailEl.value.trim();
+  if (!InviteCore.isEmail(myEmail)) {
+    inviteMyEmailRow.classList.remove('hidden');
+    inviteFindStatusEl.textContent = 'Enter your own GreenYellow address first.';
+    inviteMyEmailEl.focus();
+    return;
+  }
+  if (!inviteAttendees.length) { inviteFindStatusEl.textContent = 'Add at least one person first.'; return; }
+  if (!inviteFromEl.value || !inviteToEl.value || inviteFromEl.value >= inviteToEl.value) {
+    inviteFindStatusEl.textContent = 'Check the hours: the start must be before the end.';
+    return;
+  }
+  if (!inviteFolder) { inviteFindStatusEl.textContent = 'Connect the Task Hub Meetings folder first.'; return; }
+  inviteClearFind();
+  const run = inviteFindRun;
+  inviteFindBtn.disabled = true;
+  try {
+    // Asked inside the click: browsers refuse to ask later.
+    if (await inviteFolder.requestPermission({ mode: 'readwrite' }) !== 'granted') {
+      throw new Error('Task Hub needs permission to write to the Task Hub Meetings folder.');
+    }
+    try { localStorage.setItem(INVITE_MY_EMAIL_KEY, myEmail); } catch { /* private window */ }
+    inviteMyEmailRow.classList.add('hidden');
+    await inviteDeleteOldReplies();
+
+    const staff = inviteAttendees.filter((a) => a.kind === 'staff' && a.email.toLowerCase() !== myEmail.toLowerCase());
+    const lookups = staff.slice(0, INVITE_MAX_LOOKUPS - 1);
+    const skipped = staff.slice(INVITE_MAX_LOOKUPS - 1);
+    const win = inviteSearchWindow();
+    const iso = (ms) => ({ dateTime: new Date(ms).toISOString().slice(0, 19), timeZone: 'UTC' });
+    const id = `fb-${Date.now()}-${uid()}`;
+    await inviteWriteRequest(id, {
+      schedules: [myEmail, ...lookups.map((a) => a.email)],
+      startTime: iso(win.startMs),
+      endTime: iso(win.endMs),
+      availabilityViewInterval: 30,
+    });
+    const say = (text) => { if (run === inviteFindRun) inviteFindStatusEl.textContent = text; };
+    say('Reading calendars. This usually takes 1-3 minutes, and you can keep working here.');
+    const reply = await inviteAwaitReply(id, (mins) => {
+      say(`Reading calendars${mins ? ` (${mins} min so far)` : ''}. This usually takes 1-3 minutes.`);
+    });
+    if (run !== inviteFindRun) return;
+    const people = InviteCore.parseSchedule(reply);
+    const result = InviteCore.proposeSlots({
+      engine: SlotEngine,
+      people,
+      myEmail,
+      me: { tz: INVITE_TIME_ZONE, label: 'Bangkok', start: inviteFromEl.value, end: inviteToEl.value },
+      lunch: INVITE_LUNCH,
+      durationMin: Number(inviteDurationEl.value),
+      startMs: win.startMs,
+      endMs: win.endMs,
+      bufferMin: INVITE_BUFFER_MIN,
+      tentativeIsBusy: inviteTentativeEl.checked,
+      count: 5,
+    });
+    renderInviteFindResult(people, result, skipped);
+  } catch (err) {
+    if (run === inviteFindRun) inviteFindStatusEl.textContent = err.message;
+  } finally {
+    if (run === inviteFindRun) inviteFindBtn.disabled = false;
+  }
+}
+
 // ---------- The window ----------
 
 function openInviteModal(taskId, subtaskId) {
@@ -234,6 +450,11 @@ function openInviteModal(taskId, subtaskId) {
   inviteSearchEl.value = '';
   inviteResultsEl.innerHTML = '';
   inviteStatusEl.textContent = '';
+  inviteFromEl.value = '09:00';
+  inviteToEl.value = '18:00';
+  inviteTentativeEl.checked = true;
+  inviteClearFind();
+  inviteShowMyEmail();
   renderInvitePeople();
   inviteOverlay.classList.remove('hidden');
   inviteSearchEl.focus();
@@ -241,6 +462,7 @@ function openInviteModal(taskId, subtaskId) {
 }
 
 function closeInviteModal() {
+  inviteClearFind();
   inviteOverlay.classList.add('hidden');
   inviteTarget = null;
   inviteAttendees = [];
@@ -296,7 +518,15 @@ inviteOverlay.addEventListener('click', (e) => {
   const suggest = e.target.closest('[data-invite-suggest]');
   if (suggest) { inviteAddFromResult(suggest.dataset.inviteSuggest); return; }
   const remove = e.target.closest('[data-invite-remove]');
-  if (remove) { inviteAttendees.splice(Number(remove.dataset.inviteRemove), 1); renderInvitePeople(); return; }
+  if (remove) { inviteAttendees.splice(Number(remove.dataset.inviteRemove), 1); inviteClearFind(); renderInvitePeople(); return; }
+  const slot = e.target.closest('[data-invite-time]');
+  if (slot) {
+    inviteDateEl.value = slot.dataset.inviteDate;
+    inviteTimeEl.value = slot.dataset.inviteTime;
+    inviteSlotsEl.querySelectorAll('.invite-slot').forEach((b) => b.classList.toggle('invite-slot-picked', b === slot));
+    return;
+  }
+  if (e.target.closest('#inviteFindBtn')) { inviteFindTime(); return; }
   if (e.target.closest('#inviteConnectBtn')) inviteConnectFolder();
 });
 document.getElementById('inviteModalClose').addEventListener('click', closeInviteModal);

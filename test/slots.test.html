@@ -1,0 +1,25 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Slot engine tests</title>
+<pre id="out">running</pre>
+<script src="../slots.js"></script>
+<script>
+// Runs slots.test.js, copied unchanged from Slot Proposer, in a browser: it is
+// written for Node's test runner, so this gives it the three things it asks for.
+(async () => {
+  const lines = [];
+  const assert = {
+    ok: (v, m) => { if (!v) throw new Error(m || 'expected a true value'); },
+    strictEqual: (a, b, m) => { if (a !== b) throw new Error(m || `got ${a}, expected ${b}`); },
+    notStrictEqual: (a, b, m) => { if (a === b) throw new Error(m || `did not expect ${a}`); },
+  };
+  const test = (name, fn) => {
+    try { fn(); lines.push(`PASS  ${name}`); } catch (e) { lines.push(`FAIL  ${name}\n      ${e.message}`); }
+  };
+  const require = (name) => ({ 'node:test': test, 'node:assert': assert, '../web/slots.js': SlotEngine })[name];
+  const source = await (await fetch('slots.test.js')).text();
+  new Function('require', source)(require);
+  const failed = lines.filter((l) => l.startsWith('FAIL')).length;
+  document.getElementById('out').textContent = `${lines.length - failed} passed, ${failed} failed\n\n${lines.join('\n')}`;
+})();
+</script>

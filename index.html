@@ -535,8 +535,20 @@
           <option value="120">2 hours</option>
         </select>
       </div>
+      <div class="invite-find-row">
+        <button type="button" class="filter-btn" id="inviteFindBtn">Find a time</button>
+        <label>between <input type="time" id="inviteFrom" step="1800" title="Earliest start, Bangkok time"></label>
+        <label>and <input type="time" id="inviteTo" step="1800" title="Latest end, Bangkok time"></label>
+        <label class="ask-claude-option"><input type="checkbox" id="inviteTentative" checked> Tentative counts as busy</label>
+      </div>
+      <div id="inviteMyEmailRow" class="invite-find-row hidden">
+        <label>Your GreenYellow address, asked once and kept in this browser: <input type="email" id="inviteMyEmail" autocomplete="off"></label>
+      </div>
+      <div id="inviteFindStatus" class="hint-text invite-find-status" role="status"></div>
+      <div id="inviteCoverage"></div>
+      <div id="inviteSlots" class="invite-results"></div>
       <label class="ask-claude-option"><input type="checkbox" id="inviteTeams" checked> Teams meeting</label>
-      <p class="hint-text">This opens a prefilled meeting in Outlook on the web. Nothing is sent until you press Send there. Use Scheduling Assistant in Outlook to check availability. Task notes are not copied into the invite.</p>
+      <p class="hint-text">This opens a prefilled meeting in Outlook on the web. Nothing is sent until you press Send there. Task notes are not copied into the invite.</p>
       <div class="modal-actions">
         <span id="inviteStatus" class="hint-text ask-claude-status"></span>
         <button type="button" class="link-btn" id="inviteCancelBtn">Close</button>
@@ -609,6 +621,7 @@
 <script src="app.js"></script>
 <script src="sync.js"></script>
 <script src="ask-claude.js"></script>
+<script src="slots.js"></script>
 <script src="invite-core.js"></script>
 <script src="invite.js"></script>
 <script src="meeting.js"></script>

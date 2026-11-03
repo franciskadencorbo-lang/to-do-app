@@ -93,6 +93,67 @@ frame.onload = async () => {
     await type(search, 'gary');
     check('guest labelled External', /External/.test((d.querySelector('[data-invite-add="gary@acme.example"]') || {}).textContent || ''));
     check('directory not copied to browser storage', !JSON.stringify({ ...localStorage }).includes('JSMITH'));
+
+    // Find a time, round trip: the request file goes out and the flow's reply comes back.
+    const written = {}, removed = [];
+    let polls = 0;
+    w.inviteTestRequests = {
+      getFileHandle: async (n) => ({ createWritable: async () => ({ write: async (t) => { written[n] = t; }, close: async () => {} }) }),
+    };
+    const notFound = () => { const e = new Error('none'); e.name = 'NotFoundError'; return e; };
+    const later = new Date(Date.now() + 3 * 86400000);
+    later.setUTCHours(1, 0, 0, 0);
+    const utc = (ms) => new Date(ms).toISOString().slice(0, 19) + '.0000000';
+    const reply = () => JSON.stringify({ value: Object.keys(written).length ? JSON.parse(Object.values(written)[0]).schedules.map((email, i) => (i === 1
+      ? { scheduleId: email, error: { message: 'cannot read' } }
+      : { scheduleId: email, workingHours: { daysOfWeek: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'], startTime: '09:00:00.0000000', endTime: '18:00:00.0000000', timeZone: { name: 'SE Asia Standard Time' } },
+          scheduleItems: [{ status: 'busy', subject: 'SECRET SUBJECT', location: 'SECRET ROOM', start: { dateTime: utc(later.getTime()), timeZone: 'UTC' }, end: { dateTime: utc(later.getTime() + 1800000), timeZone: 'UTC' } }] })) : [] });
+    w.inviteTestResponses = {
+      getFileHandle: async (n) => {
+        if (++polls < 2 || !Object.keys(written).length) throw notFound();
+        return { getFile: async () => ({ text: async () => reply() }) };
+      },
+      entries: async function* () {},
+      removeEntry: async (n) => { removed.push(n); },
+    };
+    w.eval(`inviteFolder.requestPermission = async () => 'granted';
+      inviteFolder.getDirectoryHandle = async (n) => (n === 'Requests' ? window.inviteTestRequests : window.inviteTestResponses);`);
+    await type(search, 'jane smith');
+    d.querySelector('[data-invite-add="JSMITH@greenyellow.example"]').click();
+    await type(search, 'second.staff@greenyellow.example');
+    await type(search, 'gary');
+    d.querySelector('[data-invite-add="gary@acme.example"]').click();
+    await wait(50);
+    const findBtn = d.getElementById('inviteFindBtn');
+    localStorage.removeItem('todo.invite.myEmail.v1');
+    w.inviteShowMyEmail();
+    findBtn.click();
+    await wait(50);
+    check('own address asked for before searching', /own GreenYellow address/.test(d.getElementById('inviteFindStatus').textContent) && !Object.keys(written).length);
+    d.getElementById('inviteMyEmail').value = 'me@greenyellow.example';
+    findBtn.click();
+    await wait(300);
+    check('button waits while searching', findBtn.disabled && /Reading calendars/.test(d.getElementById('inviteFindStatus').textContent), d.getElementById('inviteFindStatus').textContent);
+    const name = Object.keys(written)[0];
+    const req = name ? JSON.parse(written[name]) : {};
+    check('request has you and staff, not the external guest', JSON.stringify(req.schedules) === JSON.stringify(['me@greenyellow.example', 'JSMITH@greenyellow.example']), req.schedules);
+    check('request holds no subject or task text', !/Test|subject/i.test(written[name] || ''), written[name]);
+    await wait(11000);
+    const slots = d.querySelectorAll('#inviteSlots .invite-slot');
+    const coverage = d.getElementById('inviteCoverage').textContent;
+    check('slots offered', slots.length > 0 && slots.length <= 5, slots.length);
+    check('the unreadable calendar is named, not assumed free', /could not be read[^]*Jane Smith/.test(coverage), coverage);
+    check('external shown as not checked', /Not checked \(external\): Gary Guest/.test(coverage), coverage);
+    check('reply deleted after reading', removed.includes(name), removed);
+    check('meeting subjects never reach the page', !d.body.innerHTML.includes('SECRET'));
+    check('slots avoid the busy time', ![...slots].some((b) => Date.parse(`${b.dataset.inviteDate}T${b.dataset.inviteTime}:00+07:00`) === later.getTime()));
+    slots[0].click();
+    await wait(50);
+    check('picking a slot fills date and time', d.getElementById('inviteDate').value === slots[0].dataset.inviteDate && d.getElementById('inviteTime').value === slots[0].dataset.inviteTime);
+    check('your address stays out of the synced data', !JSON.stringify(w.buildSyncPayload()).includes('me@greenyellow.example'));
+    d.querySelector('[data-invite-remove]').click();
+    await wait(50);
+    check('changing people clears old results', !d.querySelectorAll('#inviteSlots .invite-slot').length);
     d.getElementById('inviteCancelBtn').click();
   } catch (err) { check('test ran to the end', false, String(err && err.stack || err)); }
   const failed = lines.filter((l) => l.startsWith('FAIL')).length;

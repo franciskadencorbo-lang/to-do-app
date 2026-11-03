@@ -2562,3 +2562,20 @@ input[type="date"].due-derived {
 .invite-suggested:empty { display: none; }
 .invite-directory { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
 .invite-warning { color: var(--medium); font-size: var(--text-sm); }
+.invite-find-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 8px; font-size: var(--text-sm); }
+.invite-find-row.hidden { display: none; }
+.invite-find-row input[type="time"],
+.invite-find-row input[type="email"] {
+  padding: 4px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-alt);
+  color: var(--text);
+  font: inherit;
+}
+.invite-find-row input[type="email"] { display: block; width: 100%; margin-top: 4px; }
+.invite-find-row label:has(input[type="email"]) { flex: 1; }
+.invite-find-status { margin-top: 8px; }
+.invite-find-status:empty { display: none; }
+#inviteSlots { margin-top: 8px; }
+.invite-slot-picked { background: var(--accent-soft); border-color: var(--accent); }

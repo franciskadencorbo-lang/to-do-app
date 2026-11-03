@@ -124,7 +124,121 @@
     return `${OUTLOOK_COMPOSE_URL}?${params.filter(([, v]) => v).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&')}`;
   }
 
-  const api = { isEmail, fold, displayName, isStaff, normalizeDirectory, searchPeople, meetingTimes, outlookInviteUrl };
+  // ---------- Finding a time ----------
+
+  // Outlook gives each person's zone as a Windows name; the slot engine needs IANA.
+  const WINDOWS_ZONES = {
+    'SE Asia Standard Time': 'Asia/Bangkok', 'Singapore Standard Time': 'Asia/Singapore',
+    'China Standard Time': 'Asia/Shanghai', 'Tokyo Standard Time': 'Asia/Tokyo', 'Korea Standard Time': 'Asia/Seoul',
+    'India Standard Time': 'Asia/Kolkata', 'Arabian Standard Time': 'Asia/Dubai', 'Arab Standard Time': 'Asia/Riyadh',
+    'Romance Standard Time': 'Europe/Paris', 'W. Europe Standard Time': 'Europe/Berlin',
+    'Central Europe Standard Time': 'Europe/Budapest', 'Central European Standard Time': 'Europe/Warsaw',
+    'GMT Standard Time': 'Europe/London', 'Greenwich Standard Time': 'Africa/Abidjan',
+    'South Africa Standard Time': 'Africa/Johannesburg', 'W. Central Africa Standard Time': 'Africa/Lagos',
+    'E. Africa Standard Time': 'Africa/Nairobi', 'Mauritius Standard Time': 'Indian/Mauritius',
+    'E. South America Standard Time': 'America/Sao_Paulo', 'SA Pacific Standard Time': 'America/Bogota',
+    'Eastern Standard Time': 'America/New_York', 'Central Standard Time': 'America/Chicago',
+    'Pacific Standard Time': 'America/Los_Angeles', 'UTC': 'UTC',
+  };
+  const WEEKDAYS = { monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6, sunday: 7 };
+
+  function personHours(hours) {
+    const tz = hours && hours.timeZone && WINDOWS_ZONES[hours.timeZone.name];
+    if (!tz || !hours.startTime || !hours.endTime) return null;
+    const workDays = (hours.daysOfWeek || []).map((d) => WEEKDAYS[String(d).toLowerCase()]).filter(Boolean);
+    return { tz, start: hours.startTime.slice(0, 5), end: hours.endTime.slice(0, 5), workDays: workDays.length ? workDays : [1, 2, 3, 4, 5] };
+  }
+
+  // Reads the flow's reply. Only status and times are kept, so the organiser's
+  // meeting subjects and locations go no further than this function.
+  function parseSchedule(reply) {
+    if (!reply || reply.error || !Array.isArray(reply.value)) {
+      throw new Error((reply && reply.error && (reply.error.message || reply.error)) || 'The calendar reply could not be read.');
+    }
+    return reply.value.map((s) => {
+      if (s.error) return { email: s.scheduleId, ok: false, message: s.error.message || 'not available', items: [], hours: null };
+      return {
+        email: s.scheduleId,
+        ok: true,
+        items: (s.scheduleItems || []).map((it) => ({
+          status: it.status,
+          // Date.parse would read a time without a zone as local; these are UTC.
+          startMs: Date.parse(`${String(it.start.dateTime).slice(0, 19)}Z`),
+          endMs: Date.parse(`${String(it.end.dateTime).slice(0, 19)}Z`),
+        })),
+        hours: personHours(s.workingHours),
+      };
+    });
+  }
+
+  function personBusy(person, tentativeIsBusy) {
+    const blocking = { busy: true, oof: true, tentative: !!tentativeIsBusy };
+    return person.items.filter((it) => blocking[it.status]).map(({ startMs, endMs }) => ({ startMs, endMs }));
+  }
+
+  // Up to `count` slots, best first: clear of everyone within their hours, then
+  // back-to-back, then outside someone's hours. Lower tiers are labelled, not hidden.
+  // o: { engine, people, myEmail, me: {tz,start,end}, lunch, durationMin, startMs, endMs, bufferMin, tentativeIsBusy, count }
+  function proposeSlots(o) {
+    const E = o.engine;
+    const count = o.count || 5;
+    const readable = o.people.filter((p) => p.ok);
+    const isMe = (p) => p.email.toLowerCase() === o.myEmail.toLowerCase();
+    const others = readable.filter((p) => !isMe(p));
+    const withHours = others.filter((p) => p.hours);
+    const busyByPerson = readable.map((p) => ({ person: p, busy: personBusy(p, o.tentativeIsBusy) }));
+    const busy = busyByPerson.flatMap((b) => b.busy);
+    const meZone = { ...o.me, workDays: [1, 2, 3, 4, 5] };
+    const allZones = [meZone, ...withHours.map((p) => p.hours)];
+    const base = { busy, startMs: o.startMs, endMs: o.endMs, durationMin: o.durationMin, stepMin: 30, lunch: o.lunch };
+
+    const outsideFor = (slot) => withHours.filter((p) => {
+      const s = E.localParts(slot.startMs, p.hours.tz);
+      const e = E.localParts(slot.endMs - 1, p.hours.tz);
+      return s.dateKey !== e.dateKey || !p.hours.workDays.includes(s.weekday)
+        || s.minutes < E.toMinutes(p.hours.start) || s.minutes + o.durationMin > E.toMinutes(p.hours.end);
+    });
+    const within = (slot, gap) => busy.some((b) => b.startMs < slot.endMs + gap && b.endMs > slot.startMs - gap);
+
+    const picked = [];
+    const attempts = [
+      { zones: allZones, bufferMin: o.bufferMin }, { zones: allZones, bufferMin: 0 },
+      { zones: [meZone], bufferMin: o.bufferMin }, { zones: [meZone], bufferMin: 0 },
+    ];
+    attempts.forEach((attempt) => {
+      [1, 3].forEach((maxPerDay) => {
+        if (picked.length >= count) return;
+        E.findSlots({ ...base, ...attempt, count, maxPerDay }).slots.forEach((slot) => {
+          if (picked.length >= count || picked.some((p) => slot.startMs < p.endMs && slot.endMs > p.startMs)) return;
+          const outside = outsideFor(slot);
+          picked.push({
+            startMs: slot.startMs,
+            endMs: slot.endMs,
+            outside: outside.map((p) => ({ email: p.email, startMinutes: E.localParts(slot.startMs, p.hours.tz).minutes, tz: p.hours.tz })),
+            backToBack: within(slot, o.bufferMin * 60000),
+            elsewhere: readable.filter((p) => p.items.some((it) => it.status === 'workingElsewhere' && it.startMs < slot.endMs && it.endMs > slot.startMs)).map((p) => p.email),
+          });
+        });
+      });
+    });
+
+    // Who stands in the way, for when nothing clean is left.
+    const blockers = busyByPerson.map(({ person, busy: own }) => {
+      const r = E.findSlots({ ...base, busy: own, zones: allZones, bufferMin: 0, count: 1 });
+      return { email: person.email, blocked: r.candidatesIgnoringBusy - r.candidates };
+    }).filter((b) => b.blocked > 0).sort((a, b) => b.blocked - a.blocked);
+    const shared = E.findSlots({ ...base, busy: [], zones: allZones, bufferMin: 0, count: 1 }).candidatesIgnoringBusy;
+    return {
+      slots: picked,
+      clear: picked.filter((s) => !s.outside.length && !s.backToBack).length,
+      withinHours: picked.filter((s) => !s.outside.length).length,
+      blockers,
+      noSharedHours: shared === 0,
+      hoursUnknown: others.filter((p) => !p.hours).map((p) => p.email),
+    };
+  }
+
+  const api = { isEmail, fold, displayName, isStaff, normalizeDirectory, searchPeople, meetingTimes, outlookInviteUrl, parseSchedule, proposeSlots };
   root.InviteCore = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
