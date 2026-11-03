@@ -2905,6 +2905,16 @@ function subtaskDateBadgeHtml(subtask) {
   return `<span class="subtask-date-badge" title="Sub-task due ${subtask.date}">${formatShortDate(subtask.date)}</span>`;
 }
 
+// Set by invite.js. "Opened", not "sent": the sending happens in Outlook.
+function meetingBadgeHtml(item, subtaskId) {
+  const meeting = item.meeting;
+  if (!meeting || !meeting.start) return '';
+  const [date, time] = meeting.start.split('T');
+  const names = (meeting.attendeeNames || []).join(', ');
+  const tip = `Invite opened in Outlook for ${date} ${time.slice(0, 5)}${names ? ` with ${names}` : ''}. Task Hub cannot tell whether it was sent.`;
+  return `<button type="button" class="invite-badge"${subtaskId ? ` data-invite-subtask-id="${subtaskId}"` : ''} title="${escapeHtml(tip)}">📅 Invite opened ${formatShortDate(date)} ${time.slice(0, 5)}</button>`;
+}
+
 function subtaskRowsHtml(task) {
   const subtasks = task.subtasks || [];
   if (!subtasks.length) return '';
@@ -2921,6 +2931,8 @@ function subtaskRowsHtml(task) {
       ${subtaskSourceBtnHtml(s)}
       ${subtaskEmailBtnHtml(task, s)}
       ${s.completed ? '' : `<button type="button" class="subtask-email-btn ask-claude-sub-btn" data-ask-subtask-id="${s.id}" title="Ask Claude to work on this sub-task">✦</button>`}
+      ${s.completed ? '' : `<button type="button" class="subtask-email-btn invite-sub-btn" data-invite-subtask-id="${s.id}" title="Create a calendar invite for this sub-task">📅</button>`}
+      ${meetingBadgeHtml(s, s.id)}
     </label>
   `;
 
@@ -3009,6 +3021,7 @@ function taskItemHtml(task) {
       <div class="card-hover-actions">
         <button class="mark-complete-btn" title="${task.completed ? 'Mark incomplete' : 'Mark complete'}">${task.completed ? '↺' : '✓'}</button>
         <button class="ask-claude-btn" title="Ask Claude to work on this task">✦</button>
+        <button class="invite-btn" title="Create a calendar invite for this task">📅</button>
         <button class="edit-btn" title="Edit">✏️</button>
         <button class="delete-btn" title="Delete">✕</button>
       </div>
@@ -3028,6 +3041,7 @@ function taskItemHtml(task) {
           <div class="card-context">${projectTagHtml(task)}${hasLabels ? labelBadges(task) : ''}</div>
           ${icons ? `<span class="card-icons">${icons}</span>` : ''}
         </div>` : ''}
+        ${meetingBadgeHtml(task)}
         ${subtaskStripHtml(task)}
         ${subtaskRowsHtml(task)}
       </div>

@@ -507,6 +507,45 @@
   </div>
 </div>
 
+<div class="modal-overlay hidden" id="inviteModalOverlay">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h2>📅 Create invite</h2>
+      <button type="button" class="icon-btn" id="inviteModalClose" aria-label="Close">✕</button>
+    </div>
+    <div id="inviteTarget" class="ask-claude-target"></div>
+    <form id="inviteForm">
+      <input type="text" id="inviteSubject" class="title-input" placeholder="Meeting subject" required autocomplete="off">
+      <div class="form-section-label">People</div>
+      <input type="text" id="inviteSearch" class="title-input invite-search" placeholder="Search by name, nickname or email, or type an address" autocomplete="off">
+      <div id="inviteResults" class="invite-results"></div>
+      <div id="inviteChosen" class="invite-chosen"></div>
+      <div id="inviteSuggested" class="invite-suggested"></div>
+      <div id="inviteDirectoryStatus" class="invite-directory"></div>
+      <div class="form-section-label">When (Bangkok time)</div>
+      <div class="task-form-row">
+        <input type="date" id="inviteDate" title="Date" required>
+        <input type="time" id="inviteTime" title="Start time" step="300" required>
+        <select id="inviteDuration" title="Duration">
+          <option value="15">15 min</option>
+          <option value="30">30 min</option>
+          <option value="45">45 min</option>
+          <option value="60">1 hour</option>
+          <option value="90">1 h 30</option>
+          <option value="120">2 hours</option>
+        </select>
+      </div>
+      <label class="ask-claude-option"><input type="checkbox" id="inviteTeams" checked> Teams meeting</label>
+      <p class="hint-text">This opens a prefilled meeting in Outlook on the web. Nothing is sent until you press Send there. Use Scheduling Assistant in Outlook to check availability. Task notes are not copied into the invite.</p>
+      <div class="modal-actions">
+        <span id="inviteStatus" class="hint-text ask-claude-status"></span>
+        <button type="button" class="link-btn" id="inviteCancelBtn">Close</button>
+        <button type="submit" class="add-btn" id="inviteOpenBtn">Open in Outlook</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <div class="ask-claude-notice hidden" id="askClaudeNotice" role="status"></div>
 
 <div class="date-edit-popover hidden" id="dateEditPopover">
@@ -570,6 +609,8 @@
 <script src="app.js"></script>
 <script src="sync.js"></script>
 <script src="ask-claude.js"></script>
+<script src="invite-core.js"></script>
+<script src="invite.js"></script>
 <script src="meeting.js"></script>
 </body>
 </html>

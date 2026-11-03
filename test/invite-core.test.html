@@ -1,0 +1,62 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>invite-core tests</title>
+<pre id="out"></pre>
+<script src="../invite-core.js"></script>
+<script>
+// Open in a browser. All names below are invented: this repo is public.
+const lines = [];
+function check(name, actual, expected) {
+  const a = JSON.stringify(actual), e = JSON.stringify(expected);
+  lines.push(`${a === e ? 'PASS' : 'FAIL'}  ${name}${a === e ? '' : `\n      got      ${a}\n      expected ${e}`}`);
+}
+const C = InviteCore;
+const raw = [
+  { name: 'THIRAWAT, Sample', email: 'sample.t@greenyellow.com', nickname: 'Mhu', title: 'Analyst', department: 'Finance', company: 'TH00001 GREENYELLOW THAILAND', city: 'TH Bangkok', upn: 'sample.t@greenyellow.com' },
+  { name: 'DUPONT,MARIE', email: 'MDUPONT@greenyellow.com', nickname: 'MDUPONT', company: 'FR00001 GREENYELLOW SAS', upn: 'MDUPONT@greenyellow.com', phone: '00 00 00 00 00' },
+  { name: 'Nguyen Van Le', email: 'le.nguyen@greenyellow.com', nickname: 'lenguyen', company: 'VN00001 GREENYELLOW VIETNAM' },
+  { name: 'GUEST, Gina (ACME)', email: 'gina@acme.example', nickname: 'gina_acme.example#EXT#', upn: 'gina_acme.example#EXT#@tenant.onmicrosoft.com' },
+  { name: 'Company but guest', email: 'x@other.example', company: 'Other', upn: 'x_other.example#EXT#@tenant.onmicrosoft.com' },
+  { name: 'No company member', email: 'noco@greenyellow.com', upn: 'noco@greenyellow.com' },
+  { name: 'Personal member', email: 'someone@hotmail.example', upn: 'someone@hotmail.example' },
+  { name: 'Disabled', email: 'old@greenyellow.com', company: 'GY', enabled: false },
+  { name: 'No address' },
+  { name: 'DUPONT,MARIE again', email: 'mdupont@greenyellow.com', company: 'GY' },
+];
+const people = C.normalizeDirectory(raw);
+const byEmail = (e) => people.find((p) => p.email.toLowerCase() === e);
+const found = (q, nick) => C.searchPeople(q, people, nick).map((p) => p.email.toLowerCase());
+
+check('name: surname first', C.displayName('THIRAWAT, Sample'), 'Sample Thirawat');
+check('name: capitals, no space', C.displayName('DOE,JANE'), 'Jane Doe');
+check('name: bracket kept last', C.displayName('ROE, Sam (ACME)'), 'Sam Roe (Acme)');
+check('name: already fine', C.displayName('Alex Sam Roe'), 'Alex Sam Roe');
+check('directory: drops no address, disabled, duplicate', people.length, 7);
+check('directory: phone not kept', 'phone' in byEmail('mdupont@greenyellow.com'), false);
+check('directory: not a list is an error', (() => { try { C.normalizeDirectory({}); return 'no error'; } catch { return 'error'; } })(), 'error');
+check('kind: member with company is staff', byEmail('sample.t@greenyellow.com').kind, 'staff');
+check('kind: guest is external', byEmail('gina@acme.example').kind, 'external');
+check('kind: guest with a company is still external', byEmail('x@other.example').kind, 'external');
+check('kind: member with a GreenYellow address and no company is staff', byEmail('noco@greenyellow.com').kind, 'staff');
+check('kind: member with neither is external', byEmail('someone@hotmail.example').kind, 'external');
+check('guest nickname hidden', byEmail('gina@acme.example').nickname, '');
+check('search: first name', found('sample'), ['sample.t@greenyellow.com']);
+check('search: capitals ignored', found('MARIE'), ['mdupont@greenyellow.com']);
+check('search: either name order', [found('nguyen le'), found('le van nguyen')], [['le.nguyen@greenyellow.com'], ['le.nguyen@greenyellow.com']]);
+check('search: start of address', found('mdup'), ['mdupont@greenyellow.com']);
+check('search: nickname field', found('mhu'), ['sample.t@greenyellow.com']);
+check('search: nickname list', found('Nono', { Nono: 'le.nguyen@greenyellow.com' }), ['le.nguyen@greenyellow.com']);
+check('search: accents ignored', found('marié'), ['mdupont@greenyellow.com']);
+check('search: every word must match', found('marie nguyen'), []);
+check('search: nothing typed', found('   '), []);
+check('email: valid and invalid', [C.isEmail('a@b.co'), C.isEmail('a@b'), C.isEmail('a b@c.co'), C.isEmail('a@b.co;c@d.co')], [true, false, false, false]);
+check('time: Bangkok offset', C.meetingTimes('2026-11-05', '10:00', 30, 'Asia/Bangkok'),
+  { start: '2026-11-05T10:00:00+07:00', end: '2026-11-05T10:30:00+07:00', startMs: Date.UTC(2026, 10, 5, 3, 0) });
+check('time: across midnight', C.meetingTimes('2026-11-05', '23:45', 30, 'Asia/Bangkok').end, '2026-11-06T00:15:00+07:00');
+check('link: same shape as the tested link', C.outlookInviteUrl({ subject: 'TEST - do not send', start: '2026-11-05T10:00:00+07:00', end: '2026-11-05T10:30:00+07:00', emails: ['test.one@example.com', 'test.two@example.com'], teams: true }),
+  'https://outlook.office.com/calendar/deeplink/compose?subject=TEST%20-%20do%20not%20send&startdt=2026-11-05T10%3A00%3A00%2B07%3A00&enddt=2026-11-05T10%3A30%3A00%2B07%3A00&to=test.one%40example.com%3Btest.two%40example.com&online=true');
+check('link: no Teams setting when off', C.outlookInviteUrl({ subject: 'A & B', start: 's', end: 'e', emails: ['a@b.co'], teams: false }),
+  'https://outlook.office.com/calendar/deeplink/compose?subject=A%20%26%20B&startdt=s&enddt=e&to=a%40b.co');
+const failed = lines.filter((l) => l.startsWith('FAIL')).length;
+document.getElementById('out').textContent = `${lines.length - failed} passed, ${failed} failed\n\n${lines.join('\n')}`;
+</script>

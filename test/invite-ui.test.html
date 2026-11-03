@@ -1,0 +1,102 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Create invite: page test</title>
+<pre id="out">running</pre>
+<iframe id="app" style="width:1300px;height:900px"></iframe>
+<script>
+// Drives the real page in a frame, with invented data. Serve this folder from
+// localhost and open this file: that origin has no sync token, so no real task
+// is read or changed. It overwrites that origin's task list, so never host it.
+const lines = [];
+function check(name, ok, detail) { lines.push(`${ok ? 'PASS' : 'FAIL'}  ${name}${ok || detail === undefined ? '' : `\n      got ${JSON.stringify(detail)}`}`); }
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+if (!/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) throw new Error('Run on localhost only.');
+localStorage.setItem('todo.tasks.v1', JSON.stringify([{
+  id: 't1', title: 'Test task', category: 'DO', effort: 'high', impact: 'high', priority: 'high', status: 'Not Started',
+  labels: [], notes: 'PRIVATE NOTE', createdAt: '2026-11-01T00:00:00Z', due: '2030-11-20',
+  subtasks: [{ id: 's1', title: 'Test sub-task', completed: false, delegated: true, assignee: 'Test Person' }],
+}]));
+localStorage.setItem('todo.assignees.v1', JSON.stringify([{ name: 'Test Person', kind: 'person', email: 'test.person@example.com' }]));
+const frame = document.getElementById('app');
+frame.src = '../index.html';
+frame.onload = async () => {
+  try {
+    await wait(800);
+    const w = frame.contentWindow, d = w.document;
+    const opened = [];
+    w.open = (url) => { opened.push(url); return null; };
+    const type = async (el, text) => { el.value = text; el.dispatchEvent(new w.Event('input', { bubbles: true })); await wait(50); };
+    check('card has the invite button', !!d.querySelector('li.task-item .invite-btn'));
+    check('sub-task row has the invite button', !!d.querySelector('.invite-sub-btn'));
+    d.querySelector('.invite-sub-btn').click();
+    await wait(200);
+    const overlay = d.getElementById('inviteModalOverlay');
+    check('sub-task button opens the window', !overlay.classList.contains('hidden'));
+    check('checkbox not ticked by the click', !d.querySelector('.subtask-checkbox').checked);
+    check('subject is the sub-task title', d.getElementById('inviteSubject').value === 'Test sub-task', d.getElementById('inviteSubject').value);
+    check('assignee is suggested, not added', !!d.querySelector('[data-invite-suggest="test.person@example.com"]') && !d.querySelector('.invite-chip'));
+    d.getElementById('inviteOpenBtn').click();
+    await wait(100);
+    check('cannot open with nobody', opened.length === 0 && /at least one/.test(d.getElementById('inviteStatus').textContent));
+    d.querySelector('[data-invite-suggest]').click();
+    await wait(50);
+    check('suggestion becomes an attendee', d.querySelectorAll('.invite-chip').length === 1);
+    const search = d.getElementById('inviteSearch');
+    await type(search, 'Test Per');
+    check('search finds an assignee', !!d.querySelector('[data-invite-add="test.person@example.com"]'));
+    await type(search, 'typed.guest@example.org');
+    search.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+    await wait(50);
+    check('Enter adds a typed address without submitting', d.querySelectorAll('.invite-chip').length === 2 && opened.length === 0);
+    d.getElementById('inviteDate').value = '2030-03-05';
+    d.getElementById('inviteTime').value = '15:30';
+    d.getElementById('inviteDuration').value = '45';
+    d.getElementById('inviteOpenBtn').click();
+    await wait(200);
+    check('Outlook link opened once', opened.length === 1, opened);
+    const u = new URL(opened[0] || 'http://x/');
+    check('link has subject, times, attendees, Teams',
+      u.searchParams.get('subject') === 'Test sub-task' && u.searchParams.get('startdt') === '2030-03-05T15:30:00+07:00'
+      && u.searchParams.get('enddt') === '2030-03-05T16:15:00+07:00' && u.searchParams.get('to') === 'test.person@example.com;typed.guest@example.org'
+      && u.searchParams.get('online') === 'true', opened[0]);
+    check('task notes not in the link', !String(opened[0]).includes('PRIVATE'));
+    check('window closed', overlay.classList.contains('hidden'));
+    const stored = JSON.parse(localStorage.getItem('todo.tasks.v1'))[0];
+    const meeting = stored.subtasks[0].meeting;
+    check('sub-task keeps the meeting', !!meeting && meeting.start === '2030-03-05T15:30:00+07:00', stored.subtasks[0]);
+    check('names kept: named person and placeholder', !!meeting && JSON.stringify(meeting.attendeeNames) === JSON.stringify(['Test Person', 'External attendee']), meeting);
+    check('no address anywhere in the meeting record', !!meeting && !JSON.stringify(meeting).includes('@'), meeting);
+    check('task list holds no invite-only address', !localStorage.getItem('todo.tasks.v1').includes('typed.guest'));
+    check('sub-task shows "Invite opened"', /Invite opened/.test((d.querySelector('.subtask-row .invite-badge') || {}).textContent || ''));
+    d.querySelector('li.task-item .invite-btn').click();
+    await wait(200);
+    check('card button opens the window with the task title', !overlay.classList.contains('hidden') && d.getElementById('inviteSubject').value === 'Test task');
+    w.closeInviteModal();
+    await wait(50);
+    // The directory path, with the page's own reader and a folder held in memory.
+    const dir = JSON.stringify([
+      { name: 'SMITH,JANE', email: 'JSMITH@greenyellow.example', nickname: 'Janey', title: 'Director', department: 'Finance', company: 'XX GREENYELLOW', city: 'Paris', upn: 'JSMITH@greenyellow.example', phone: '123' },
+      { name: 'Guest, Gary', email: 'gary@acme.example', nickname: 'gary_acme.example#EXT#', upn: 'gary_acme.example#EXT#@t.onmicrosoft.com' },
+    ]);
+    w.inviteTestDir = dir;
+    w.eval(`inviteFolder = { queryPermission: async () => 'granted', getFileHandle: async (n) => {
+      if (n === 'contacts-gy.json') return { getFile: async () => ({ text: async () => window.inviteTestDir, lastModified: Date.now() }) };
+      const e = new Error('none'); e.name = 'NotFoundError'; throw e; } };`);
+    d.querySelector('.invite-sub-btn').click();
+    await wait(200);
+    check('directory status shows the count', /Directory: 2 people/.test(d.getElementById('inviteDirectoryStatus').textContent), d.getElementById('inviteDirectoryStatus').textContent);
+    await type(search, 'jane smith');
+    const result = d.querySelector('[data-invite-add="JSMITH@greenyellow.example"]');
+    check('directory search finds staff, tidied, labelled', !!result && /Jane Smith/.test(result.textContent) && /GreenYellow/.test(result.textContent), result && result.textContent);
+    await type(search, 'janey');
+    check('directory search finds a nickname', !!d.querySelector('[data-invite-add="JSMITH@greenyellow.example"]'));
+    await type(search, 'gary');
+    check('guest labelled External', /External/.test((d.querySelector('[data-invite-add="gary@acme.example"]') || {}).textContent || ''));
+    check('directory not copied to browser storage', !JSON.stringify({ ...localStorage }).includes('JSMITH'));
+    d.getElementById('inviteCancelBtn').click();
+  } catch (err) { check('test ran to the end', false, String(err && err.stack || err)); }
+  const failed = lines.filter((l) => l.startsWith('FAIL')).length;
+  document.getElementById('out').textContent = `${lines.length - failed} passed, ${failed} failed\n\n${lines.join('\n')}`;
+  frame.remove();
+};
+</script>

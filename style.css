@@ -2504,3 +2504,60 @@ input[type="date"].due-derived {
 @media (prefers-reduced-motion: reduce) { .ask-state-running { animation: none; } }
 .ask-claude-emails { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
 .ask-claude-outlook { font-size: 0.8rem; text-align: left; }
+
+/* ---------- Create invite ---------- */
+.card-hover-actions button.invite-btn:hover { background: var(--accent-soft); }
+.subtask-email-btn.invite-sub-btn:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--border-strong);
+}
+.invite-badge {
+  flex-shrink: 0;
+  padding: 1px 7px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.task-body > .invite-badge { display: inline-block; margin-top: 6px; }
+.invite-search { margin-bottom: 6px; }
+.invite-results { display: flex; flex-direction: column; gap: 2px; margin-bottom: 8px; max-height: 240px; overflow-y: auto; }
+.invite-result {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.invite-result:hover { background: var(--accent-soft); border-color: var(--border-strong); }
+.invite-kind-staff { color: var(--delegate-color); font-weight: var(--weight-semibold); }
+.invite-kind-external { color: var(--medium); font-weight: var(--weight-semibold); }
+.invite-chosen { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.invite-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-alt);
+  border: 1px solid var(--border-strong);
+  font-size: var(--text-sm);
+}
+.invite-chip small { color: var(--text-muted); }
+.invite-chip-external small { color: var(--medium); }
+.invite-chip button { padding: 0; border: none; background: none; color: var(--text-muted); font-size: var(--text-xs); cursor: pointer; }
+.invite-chip button:hover { color: var(--danger); }
+.invite-suggested { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 8px; }
+.invite-suggested:empty { display: none; }
+.invite-directory { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
+.invite-warning { color: var(--medium); font-size: var(--text-sm); }
