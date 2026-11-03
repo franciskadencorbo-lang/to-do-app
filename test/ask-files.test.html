@@ -1,0 +1,79 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Ask Claude output links: page test</title>
+<pre id="out">running</pre>
+<iframe id="app" style="width:1300px;height:900px"></iframe>
+<script>
+// Drives the real page in a frame, with invented data. Serve this folder from
+// localhost and open this file: that origin has no sync token, so no real task
+// is read or changed. It overwrites that origin's task list, so never host it.
+const lines = [];
+function check(name, ok, detail) { lines.push(`${ok ? 'PASS' : 'FAIL'}  ${name}${ok || detail === undefined ? '' : `\n      got ${JSON.stringify(detail)}`}`); }
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+if (!/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) throw new Error('Run on localhost only.');
+localStorage.setItem('todo.tasks.v1', '[]');
+const BASE = 'https://example-my.sharepoint.com/personal/test_person/Documents/Jobs/run1/output';
+const job = (extra) => ({ createdAt: '2026-11-01T00:00:00Z', prompt: 'Test prompt', result: 'Test result', status: 'done', ...extra });
+const frame = document.getElementById('app');
+frame.src = '../index.html';
+frame.onload = async () => {
+  try {
+    await wait(800);
+    const w = frame.contentWindow, d = w.document;
+    const history = d.getElementById('askClaudeHistory');
+    const show = (j) => { history.innerHTML = w.askHistoryItemHtml({ stage: 'done', jobId: 'j1', job: j }); };
+    const text = (el) => el.textContent.trim();
+    const items = (sel) => [...history.querySelectorAll(sel)];
+
+    show(job({ host: 'TEST-PC', outputFolderUrl: BASE, files: [
+      { name: 'Deck & notes #1.pptx', path: 'C:\\runs\\run1\\output\\Deck & notes #1.pptx', webUrl: `${BASE}/Deck%20%26%20notes%20%231.pptx` },
+      { name: 'Model.xlsx', path: 'C:\\runs\\run1\\output\\Model.xlsx', webUrl: `${BASE}/Model.xlsx` },
+      { name: 'Report.docx', path: 'C:\\runs\\run1\\output\\Report.docx', webUrl: `${BASE}/Report.docx` },
+      { name: 'build.py', path: 'C:\\runs\\run1\\output\\build.py', webUrl: `${BASE}/build.py` },
+    ] }));
+    const rows = items('.ask-claude-file-links');
+    check('every file has a link row', rows.length === 4, rows.length);
+    check('link row shows without opening the file details', rows.every((r) => r.parentElement.closest('details') === null));
+    const a = [...rows[0].querySelectorAll('a')];
+    check('PowerPoint link label', text(a[0]) === 'Open in PowerPoint', text(a[0]));
+    check('PowerPoint link opens the desktop app', a[0].getAttribute('href') === `ms-powerpoint:ofe|u|${BASE}/Deck%20%26%20notes%20%231.pptx`, a[0].getAttribute('href'));
+    check('browser link opens a new tab', a[1].target === '_blank' && a[1].rel === 'noopener');
+    check('browser link asks for the web view', a[1].getAttribute('href') === `${BASE}/Deck%20%26%20notes%20%231.pptx?web=1`, a[1].getAttribute('href'));
+    check('Excel link uses Excel', rows[1].querySelector('a').getAttribute('href').startsWith('ms-excel:ofe|u|'));
+    check('Word link uses Word', rows[2].querySelector('a').getAttribute('href').startsWith('ms-word:ofe|u|'));
+    check('other file types only open in the browser', [...rows[3].querySelectorAll('a')].map(text).join() === 'Open in browser');
+    const folder = items('.ask-claude-actions a')[0];
+    check('folder link', folder && folder.getAttribute('href') === `${BASE}?web=1`, folder && folder.getAttribute('href'));
+    check('local path names the PC that ran it', history.querySelector('details .hint-text').textContent.startsWith('On TEST-PC:'));
+
+    let copied = null;
+    Object.defineProperty(w.navigator, 'clipboard', { configurable: true, value: { writeText: async (t) => { copied = t; } } });
+    const copyBtn = rows[0].querySelector('[data-ask-copy-path]');
+    copyBtn.click();
+    await wait(50);
+    check('Copy path copies the full path', copied === 'C:\\runs\\run1\\output\\Deck & notes #1.pptx', copied);
+    check('Copy path confirms', text(copyBtn) === 'Copied', text(copyBtn));
+
+    show(job({ files: [{ name: 'Old.pptx', path: 'C:\\runs\\old\\output\\Old.pptx' }] }));
+    check('job without links offers only Copy path', items('.ask-claude-file-links a').length === 0 && items('[data-ask-copy-path]').length === 1);
+    check('job without links has no folder link', items('.ask-claude-actions a').length === 0);
+    check('job without a PC name still reads well', history.querySelector('details .hint-text').textContent.startsWith('On the PC that ran this request:'));
+
+    show(job({ outputFolderUrl: 'javascript:alert(1)', files: [
+      { name: 'Bad.pptx', path: 'C:\\x\\Bad.pptx', webUrl: 'javascript:alert(1)' },
+      { name: 'Other.pptx', path: 'C:\\x\\Other.pptx', webUrl: 'https://example.com/Other.pptx' },
+    ] }));
+    check('non-SharePoint addresses make no link', items('a').length === 0, items('a').map((x) => x.getAttribute('href')));
+
+    show(job({ files: [{ name: 'q.pptx', path: 'C:\\dir\\" onmouseover="alert(1).pptx', webUrl: `${BASE}/" onmouseover="alert(1).pptx` }] }));
+    check('quotes cannot break out of a link', items('[onmouseover]').length === 0, items('[onmouseover]').length);
+    check('a path with quotes survives intact', items('[data-ask-copy-path]')[0].dataset.askCopyPath === 'C:\\dir\\" onmouseover="alert(1).pptx', items('[data-ask-copy-path]')[0].dataset.askCopyPath);
+    check('prior actions still work: Copy result button present', items('[data-ask-copy]').length === 1);
+  } catch (err) {
+    check('no script error', false, String(err));
+  }
+  const fails = lines.filter((l) => l.startsWith('FAIL')).length;
+  document.getElementById('out').textContent = `${lines.join('\n')}\n\n${lines.length - fails} passed, ${fails} failed`;
+  document.title = fails ? 'FAILED' : 'PASSED';
+};
+</script>

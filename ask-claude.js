@@ -73,6 +73,40 @@ function askOutlookUrl(email) {
   return `https://outlook.office.com/mail/deeplink/compose?${params}`;
 }
 
+// The watcher copies each job's output to OneDrive and records its web address
+// (webUrl on a file, outputFolderUrl on the job). Browsers refuse file:// links
+// from this page, so these are the only links that can open the output.
+const ASK_OFFICE_APPS = {
+  doc: ['ms-word', 'Word'], docx: ['ms-word', 'Word'],
+  xls: ['ms-excel', 'Excel'], xlsx: ['ms-excel', 'Excel'], xlsm: ['ms-excel', 'Excel'],
+  ppt: ['ms-powerpoint', 'PowerPoint'], pptx: ['ms-powerpoint', 'PowerPoint'],
+};
+const ASK_UPLOAD_HINT = 'If it does not open yet, OneDrive may still be uploading it: try again in a minute.';
+
+// Job files are written by the watcher, but a link is only ever a SharePoint one.
+function askWebUrl(url) {
+  return /^https:\/\/[a-z0-9-]+\.sharepoint\.com\//i.test(url || '') ? url : '';
+}
+
+// escapeHtml leaves double quotes alone, which an attribute value cannot.
+function askAttr(value) {
+  return escapeHtml(value).replace(/"/g, '&quot;');
+}
+
+function askBrowserUrl(url) {
+  return `${url}${url.includes('?') ? '&' : '?'}web=1`;
+}
+
+function askFileLinksHtml(f) {
+  const url = askWebUrl(f.webUrl);
+  const app = ASK_OFFICE_APPS[String(f.name || '').split('.').pop().toLowerCase()];
+  const links = [];
+  if (url && app) links.push(`<a class="link-btn" href="${askAttr(`${app[0]}:ofe|u|${url}`)}" title="${ASK_UPLOAD_HINT}">Open in ${app[1]}</a>`);
+  if (url) links.push(`<a class="link-btn" href="${askAttr(askBrowserUrl(url))}" target="_blank" rel="noopener" title="${ASK_UPLOAD_HINT}">Open in browser</a>`);
+  if (f.path) links.push(`<button type="button" class="link-btn" data-ask-copy-path="${askAttr(f.path)}">Copy path</button>`);
+  return links.length ? `<div class="ask-claude-file-links">${links.join('')}</div>` : '';
+}
+
 // What Claude gets to know about the task. Notes and other sub-tasks only
 // when the box is ticked; the task title, project and dates always.
 function buildAskTaskContext(task, subtask, includeContext) {
@@ -176,8 +210,10 @@ function askHistoryItemHtml({ stage, jobId, job }) {
   const target = job.subtask ? ` · ${escapeHtml(job.subtask.title)}` : '';
   const files = (job.files || []).map((f) => `
     <details class="ask-claude-file"><summary>📄 ${escapeHtml(f.name)}</summary>
-      ${f.content != null ? `<pre class="diag-pre">${escapeHtml(f.content)}</pre>` : `<p class="hint-text">On your PC: ${escapeHtml(f.path || '')}</p>`}
-    </details>`).join('');
+      ${f.content != null ? `<pre class="diag-pre">${escapeHtml(f.content)}</pre>` : `<p class="hint-text">On ${escapeHtml(job.host || 'the PC that ran this request')}: ${escapeHtml(f.path || '')}</p>`}
+    </details>
+    ${askFileLinksHtml(f)}`).join('');
+  const folderUrl = askWebUrl(job.outputFolderUrl);
   const emails = (job.emails || []).map((m, i) => `
     <button type="button" class="filter-btn ask-claude-outlook" data-ask-outlook="${jobId}" data-ask-email-index="${i}"
       title="Open this draft in Outlook on the web (To: ${escapeHtml([].concat(m.to || []).join('; ') || 'empty')})">✉ Open in Outlook: ${escapeHtml(m.subject || '(no subject)')}</button>`).join('');
@@ -186,6 +222,7 @@ function askHistoryItemHtml({ stage, jobId, job }) {
       ${emails ? `<div class="ask-claude-emails">${emails}</div>` : ''}
       ${files}
       <div class="ask-claude-actions">
+        ${folderUrl ? `<a class="link-btn" href="${askAttr(askBrowserUrl(folderUrl))}" target="_blank" rel="noopener" title="${ASK_UPLOAD_HINT}">Open output folder</a>` : ''}
         <button type="button" class="link-btn" data-ask-copy="${jobId}">Copy result</button>
         <button type="button" class="link-btn" data-ask-note="${jobId}">Add result to task notes</button>
       </div>`
@@ -261,6 +298,16 @@ askHistoryEl.addEventListener('click', async (e) => {
       win.location.href = askOutlookUrl(email);
     }
     else if (win) win.close();
+    return;
+  }
+  const pathBtn = e.target.closest('[data-ask-copy-path]');
+  if (pathBtn) {
+    try {
+      await navigator.clipboard.writeText(pathBtn.dataset.askCopyPath);
+      pathBtn.textContent = 'Copied';
+    } catch {
+      pathBtn.textContent = 'Copy failed';
+    }
     return;
   }
   const copyBtn = e.target.closest('[data-ask-copy]');
