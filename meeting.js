@@ -220,7 +220,7 @@ function mmWire() {
     if (!kind) return;
     const { task, sub } = mmFindSub(el);
     if (!task || !sub) return;
-    if (kind === 'done') { sub.completed = el.checked; recalcStatus(task); }
+    if (kind === 'done') { sub.completed = el.checked; applyDueRollup(task); recalcStatus(task); }
     if (kind === 'title') { const v = el.value.trim(); if (!v) { el.value = sub.title; return; } sub.title = v; }
     if (kind === 'date') { sub.date = el.value || null; applyDueRollup(task); }
     if (kind === 'assignee') { sub.assignee = el.value || null; sub.delegated = !!el.value; }

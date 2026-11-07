@@ -326,14 +326,22 @@ const CATEGORY_MIGRATION = { Do: 'DO', Decide: 'PLAN', Delegate: 'DELEGATE', 'To
 // A task can't be finished before its last sub-task, so its Due Date is always
 // the latest of its own date and its sub-tasks' dates. Dates are YYYY-MM-DD
 // strings throughout, so a plain string comparison is a date comparison.
-// Sub-tasks without a date are ignored; completed ones still count, since the
-// work landing on that day is what set the deadline in the first place.
+// Sub-tasks without a date are ignored; completed ones still count while any
+// sub-task is open, since the work landing on that day is what set the deadline.
 function latestSubtaskDue(subtasks) {
   return (subtasks || []).reduce((max, s) => (s.date && s.date > max ? s.date : max), '') || null;
 }
 
+// True when a task has sub-tasks and every one of them is completed. Such a task
+// carries no Due Date, so it can't show as overdue; `baseDue` is kept, so
+// reopening a sub-task puts the date straight back.
+function allSubtasksDone(subtasks) {
+  return !!(subtasks && subtasks.length) && subtasks.every((s) => s.completed);
+}
+
 // Resolves the pair (task's own date, sub-task dates) into the effective Due Date.
 function rollupDue(baseDue, subtasks) {
+  if (allSubtasksDone(subtasks)) return null;
   const latest = latestSubtaskDue(subtasks);
   if (!latest) return baseDue || null;
   if (!baseDue || latest > baseDue) return latest;
@@ -355,7 +363,7 @@ function applyDueRollup(task) {
 // True when the displayed Due Date comes from a sub-task rather than the task
 // itself — i.e. when the task-level date field should be locked.
 function hasDerivedDue(task) {
-  return !!task && task.due !== (task.baseDue || null);
+  return !!task && (allSubtasksDone(task.subtasks) || task.due !== (task.baseDue || null));
 }
 
 // Runs on every load (cheap, idempotent) so category always reflects the
@@ -1032,14 +1040,25 @@ function refreshDueRollupUi(scope) {
   const draft = isEdit ? editSubtaskDraft : subtaskDraft;
 
   const effective = rollupDue(base, draft);
-  const derived = effective !== (base || null);
+  const allDone = allSubtasksDone(draft);
+  const derived = allDone || effective !== (base || null);
   input.value = effective || '';
   input.disabled = derived;
   input.classList.toggle('due-derived', derived);
-  input.title = derived
-    ? "Due date — follows the latest sub-task Due Date, so it can't be edited here"
-    : 'Due date';
+  input.title = !derived ? 'Due date'
+    : allDone ? "No Due Date — all sub-tasks are completed. Reopen a sub-task to restore it"
+    : "Due date — follows the latest sub-task Due Date, so it can't be edited here";
+  setDueHint(hint, derived, allDone);
+}
+
+// Shared by the Add/Edit forms and the date popover: explains why the Due Date
+// input is locked — a later sub-task, or every sub-task being completed.
+function setDueHint(hint, derived, allDone) {
   hint.classList.toggle('hidden', !derived);
+  hint.textContent = allDone ? '✓ all sub-tasks done' : '⤴ from sub-task';
+  hint.title = allDone
+    ? 'All sub-tasks are completed, so the task has no Due Date and cannot be overdue'
+    : "A sub-task is due later than this task, so the task's Due Date follows it";
 }
 
 // Both renders re-run the roll-up, so every draft mutation that re-renders the
@@ -2408,6 +2427,7 @@ function handleTaskListClick(e) {
     const subtask = task && (task.subtasks || []).find((s) => s.id === e.target.dataset.subtaskId);
     if (subtask) {
       subtask.completed = e.target.checked;
+      applyDueRollup(task);
       recalcStatus(task);
       saveTasks();
       render();
@@ -2509,6 +2529,7 @@ subtaskHoverPreview.addEventListener('click', (e) => {
   if (!subtask) return;
 
   subtask.completed = !subtask.completed;
+  applyDueRollup(task);
   recalcStatus(task);
   saveTasks();
   render();
@@ -2684,7 +2705,7 @@ function openDateEditPopover(taskId, anchorEl) {
   dateEditDue.value = task.due || '';
   dateEditDue.disabled = derived;
   dateEditDue.classList.toggle('due-derived', derived);
-  dateEditHint.classList.toggle('hidden', !derived);
+  setDueHint(dateEditHint, derived, allSubtasksDone(task.subtasks));
 
   const rect = anchorEl.getBoundingClientRect();
   dateEditPopover.style.top = `${rect.bottom + 6}px`;
