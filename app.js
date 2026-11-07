@@ -218,10 +218,19 @@ const assigneeListUl = document.getElementById('assigneeListUl');
 const assigneeManagePopover = document.getElementById('assigneeManagePopover');
 const manageAssigneesBtn = document.getElementById('manageAssigneesBtn');
 
-// Pill bars (project + label quick-filters)
-const labelPillBar = document.getElementById('labelPillBar');
-const labelQuickFilterBar = document.getElementById('labelQuickFilterBar');
+// Header: search, project multi-select, "Filters" popover (category + time)
 const resultsCount = document.getElementById('resultsCount');
+const taskSearch = document.getElementById('taskSearch');
+const projectMultiBtn = document.getElementById('projectMultiBtn');
+const projectMultiPanel = document.getElementById('projectMultiPanel');
+const projectMultiText = document.getElementById('projectMultiText');
+const projectMultiCount = document.getElementById('projectMultiCount');
+const projectChips = document.getElementById('projectChips');
+const clearProjectFilterBtn = document.getElementById('clearProjectFilterBtn');
+const moreFiltersBtn = document.getElementById('moreFiltersBtn');
+const moreFiltersPanel = document.getElementById('moreFiltersPanel');
+const moreFiltersCount = document.getElementById('moreFiltersCount');
+const moreFiltersReset = document.getElementById('moreFiltersReset');
 
 // Settings popover (Export/Import)
 const settingsBtn = document.getElementById('settingsBtn');
@@ -259,7 +268,6 @@ const editModalClose = document.getElementById('editModalClose');
 
 // Filter / board elements
 const categoryFilter = document.getElementById('categoryFilter');
-const projectFilter = document.getElementById('projectFilter');
 const labelFilter = document.getElementById('labelFilter');
 const timeFilter = document.getElementById('timeFilter');
 const sortBy = document.getElementById('sortBy');
@@ -448,6 +456,10 @@ let triageLog = loadTriageLog();
 let currentStatus = 'all';
 let currentView = 'board';
 let calendarViewDate = new Date();
+// Header project filter: empty set = all projects. Several can be picked at once.
+let selectedProjects = new Set();
+// Header search box (lower-cased, trimmed); '' = no search.
+let searchQuery = '';
 
 let selectedLabels = new Set();
 let subtaskDraft = [];
@@ -933,66 +945,206 @@ function wireLabelPicker(container, selectedSet) {
 wireLabelPicker(labelPicker, selectedLabels);
 wireLabelPicker(editLabelPicker, editSelectedLabels);
 
+// ---------- Header label filter ----------
+// Lists every label in the managed list plus any label that is on a task but
+// missing from this device's list (e.g. added elsewhere), each with how many
+// tasks carry it, so a label that matches nothing is visible as "(0)" rather
+// than looking like a broken filter. Rebuilding the options keeps the current
+// choice — it used to snap back to "All labels" whenever the label list was
+// refreshed (e.g. after a cloud sync pulled changes).
 function initLabelFilter() {
-  labelFilter.innerHTML = '<option value="all">All labels</option>'
-    + labels.map((l) => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join('');
+  const prev = labelFilter.value || 'all';
+  const counts = new Map();
+  tasks.forEach((t) => (t.labels || []).forEach((l) => counts.set(l, (counts.get(l) || 0) + 1)));
+  const names = [...labels, ...[...counts.keys()].filter((l) => !labels.includes(l)).sort()];
+  if (prev !== 'all' && !names.includes(prev)) names.push(prev);
+  const html = '<option value="all">All Labels</option>'
+    + names.map((l) => `<option value="${escapeHtml(l)}">${escapeHtml(l)} (${counts.get(l) || 0})</option>`).join('');
+  if (labelFilter.innerHTML !== html) labelFilter.innerHTML = html;
+  labelFilter.value = prev;
+  labelFilter.classList.toggle('is-active', prev !== 'all');
 }
 
-// ---------- Project quick-filter pill bar ----------
-// A faster, always-visible alternative to the "All projects" dropdown —
-// clicking a pill sets the same projectFilter value, so both stay in sync.
-// Driven by the live `projects` list, so it's re-rendered whenever projects
-// are added/removed (see renderProjectOptions), not just once at init.
+// ---------- Header project filter (multi-select + removable chips) ----------
+// Empty selection = all projects. Colours follow each project's position in the
+// list (same COLOR_CYCLE the old pill bar used).
 
-function renderProjectPillBar() {
-  labelPillBar.innerHTML = `<button type="button" class="pill-btn" data-project="all">All Projects</button>`
-    + projects.map((p, i) => `
-      <button type="button" class="pill-btn" data-project="${escapeHtml(p)}" style="--pill-color: ${COLOR_CYCLE[i % COLOR_CYCLE.length]};">
-        <span class="pill-dot"></span>${escapeHtml(p)}
-      </button>
-    `).join('');
-  updateProjectPillBarActive();
+function projectColor(name) {
+  const idx = projects.indexOf(name);
+  return COLOR_CYCLE[(idx < 0 ? 0 : idx) % COLOR_CYCLE.length];
 }
 
-function updateProjectPillBarActive() {
-  const active = projectFilter.value || 'all';
-  [...labelPillBar.children].forEach((btn) => btn.classList.toggle('active', btn.dataset.project === active));
+function matchesProjectFilter(task) {
+  return selectedProjects.size === 0 || selectedProjects.has(task.project);
 }
 
-labelPillBar.addEventListener('click', (e) => {
-  const btn = e.target.closest('.pill-btn');
-  if (!btn) return;
-  projectFilter.value = btn.dataset.project;
-  updateProjectPillBarActive();
+// Free-text search across the task title, notes, project, labels and sub-task titles.
+function matchesSearch(task) {
+  if (!searchQuery) return true;
+  const hay = [
+    task.title, task.notes, task.project,
+    ...(task.labels || []),
+    ...(task.subtasks || []).map((s) => s.title),
+  ].filter(Boolean).join(' \n ').toLowerCase();
+  return searchQuery.split(/\s+/).every((word) => hay.includes(word));
+}
+
+function renderProjectFilter() {
+  // Drop selections for projects that no longer exist (renamed / deleted).
+  [...selectedProjects].forEach((p) => { if (!projects.includes(p)) selectedProjects.delete(p); });
+  const n = selectedProjects.size;
+
+  projectMultiText.textContent = n === 0 ? 'All projects' : `${n} Project${n === 1 ? '' : 's'} Selected`;
+  projectMultiCount.hidden = n === 0;
+  projectMultiCount.textContent = String(n);
+  projectMultiBtn.classList.toggle('is-active', n > 0);
+  clearProjectFilterBtn.hidden = n === 0;
+
+  projectChips.innerHTML = projects.filter((p) => selectedProjects.has(p)).map((p) => {
+    const c = projectColor(p);
+    return `<span class="hub-chip" style="--chip-color: ${c}; --chip-bg: ${hexToRgba(c, 0.08)}; --chip-border: ${hexToRgba(c, 0.35)};">
+        <span class="hub-chip-dot"></span>${escapeHtml(p)}
+        <button type="button" class="hub-chip-x" data-project="${escapeHtml(p)}" title="Remove ${escapeHtml(p)} from the filter" aria-label="Remove ${escapeHtml(p)}">×</button>
+      </span>`;
+  }).join('');
+
+  const counts = new Map();
+  tasks.forEach((t) => { if (t.project) counts.set(t.project, (counts.get(t.project) || 0) + 1); });
+  projectMultiPanel.innerHTML = projects.length
+    ? `<div class="hub-panel-actions">
+         <button type="button" class="hub-link-btn" data-project-action="all">Select all</button>
+         <button type="button" class="hub-link-btn" data-project-action="none">Clear</button>
+       </div>`
+      + projects.map((p) => `
+        <label class="hub-check-row">
+          <input type="checkbox" data-project="${escapeHtml(p)}" ${selectedProjects.has(p) ? 'checked' : ''}>
+          <span class="hub-chip-dot" style="--chip-color: ${projectColor(p)};"></span>
+          <span class="hub-check-name">${escapeHtml(p)}</span>
+          <span class="hub-check-count">${counts.get(p) || 0}</span>
+        </label>`).join('')
+    : '<div class="hint-text" style="padding: 6px 8px;">No projects yet — add them from Settings ⚙ → Manage Projects.</div>';
+}
+
+function setProjectSelection(next) {
+  selectedProjects = new Set(next);
+  renderProjectFilter();
+  render();
+}
+
+function closeProjectMultiPanel() {
+  projectMultiPanel.classList.add('hidden');
+  projectMultiBtn.setAttribute('aria-expanded', 'false');
+}
+
+projectMultiBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const open = projectMultiPanel.classList.contains('hidden');
+  closeMoreFiltersPanel();
+  projectMultiPanel.classList.toggle('hidden', !open);
+  projectMultiBtn.setAttribute('aria-expanded', String(open));
+});
+
+projectMultiPanel.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const action = e.target.closest('[data-project-action]');
+  if (action) setProjectSelection(action.dataset.projectAction === 'all' ? projects : []);
+});
+
+projectMultiPanel.addEventListener('change', (e) => {
+  const cb = e.target.closest('input[type="checkbox"][data-project]');
+  if (!cb) return;
+  const next = new Set(selectedProjects);
+  if (cb.checked) next.add(cb.dataset.project); else next.delete(cb.dataset.project);
+  setProjectSelection(next);
+});
+
+projectChips.addEventListener('click', (e) => {
+  const x = e.target.closest('.hub-chip-x');
+  if (!x) return;
+  const next = new Set(selectedProjects);
+  next.delete(x.dataset.project);
+  setProjectSelection(next);
+});
+
+clearProjectFilterBtn.addEventListener('click', () => setProjectSelection([]));
+
+// ---------- Header "Filters" popover (category + time) ----------
+
+function updateMoreFiltersCount() {
+  const n = (categoryFilter.value !== 'all' ? 1 : 0) + (timeFilter.value !== 'all' ? 1 : 0);
+  moreFiltersCount.hidden = n === 0;
+  moreFiltersCount.textContent = String(n);
+  moreFiltersBtn.classList.toggle('is-active', n > 0);
+}
+
+function closeMoreFiltersPanel() {
+  moreFiltersPanel.classList.add('hidden');
+  moreFiltersBtn.setAttribute('aria-expanded', 'false');
+}
+
+moreFiltersBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const open = moreFiltersPanel.classList.contains('hidden');
+  closeProjectMultiPanel();
+  moreFiltersPanel.classList.toggle('hidden', !open);
+  moreFiltersBtn.setAttribute('aria-expanded', String(open));
+});
+moreFiltersPanel.addEventListener('click', (e) => e.stopPropagation());
+moreFiltersReset.addEventListener('click', () => {
+  categoryFilter.value = 'all';
+  timeFilter.value = 'all';
+  updateMoreFiltersCount();
   render();
 });
 
-// ---------- Label quick-filter pill bar ----------
-// Same pattern as the project pill bar above, driven by the user-editable
-// `labels` array (see renderLabelOptions).
-
-function renderLabelPillBar() {
-  labelQuickFilterBar.innerHTML = `<button type="button" class="pill-btn" data-label-filter="all">All Labels</button>`
-    + labels.map((l) => `
-      <button type="button" class="pill-btn" data-label-filter="${escapeHtml(l)}" style="--pill-color: ${labelColor(l)};">
-        <span class="pill-dot"></span>${escapeHtml(l)}
-      </button>
-    `).join('');
-  updateLabelPillBarActive();
-}
-
-function updateLabelPillBarActive() {
-  const active = labelFilter.value || 'all';
-  [...labelQuickFilterBar.children].forEach((btn) => btn.classList.toggle('active', btn.dataset.labelFilter === active));
-}
-
-labelQuickFilterBar.addEventListener('click', (e) => {
-  const btn = e.target.closest('.pill-btn');
-  if (!btn) return;
-  labelFilter.value = btn.dataset.labelFilter;
-  updateLabelPillBarActive();
-  render();
+document.addEventListener('click', () => { closeProjectMultiPanel(); closeMoreFiltersPanel(); });
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { closeProjectMultiPanel(); closeMoreFiltersPanel(); }
 });
+
+// ---------- Header search ----------
+
+let searchTimer = null;
+taskSearch.addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    searchQuery = taskSearch.value.trim().toLowerCase();
+    render();
+  }, 120);
+});
+taskSearch.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && taskSearch.value) {
+    e.stopPropagation();
+    taskSearch.value = '';
+    searchQuery = '';
+    render();
+  }
+});
+
+// ---------- Header sync badge ----------
+// sync.js writes plain status text into the hidden #cloudSyncStatus; this
+// mirrors it into the pill badge and colours it by state. Display only —
+// sync.js itself is untouched.
+(function wireSyncBadge() {
+  const source = document.getElementById('cloudSyncStatus');
+  const badge = document.getElementById('syncBadge');
+  const badgeText = document.getElementById('syncBadgeText');
+  if (!source || !badge) return;
+  const update = () => {
+    const raw = (source.textContent || '').replace(/^☁\s*/, '').trim();
+    badge.hidden = !raw;
+    badgeText.textContent = raw;
+    badge.title = source.title || '';
+    let state = 'warn';
+    if (/^Synced/i.test(raw)) state = 'ok';
+    else if (/^Syncing/i.test(raw)) state = 'busy';
+    else if (/failed|refused/i.test(raw)) state = 'error';
+    else if (/off/i.test(raw)) state = 'off';
+    badge.dataset.state = state;
+  };
+  new MutationObserver(update).observe(source, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ['title'] });
+  update();
+}());
 
 // ---------- Sub-task draft list (shared pattern by create + edit forms) ----------
 
@@ -1311,7 +1463,6 @@ editEmailLinkInput.addEventListener('blur', () => {
 function renderProjectOptions() {
   const prevTaskVal = taskProject.value;
   const prevEditVal = editProject.value;
-  const prevFilterVal = projectFilter.value;
 
   const optionsHtml = '<option value="">No project</option>'
     + projects.map((p) => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
@@ -1321,10 +1472,6 @@ function renderProjectOptions() {
   if (projects.includes(prevTaskVal)) taskProject.value = prevTaskVal;
   if (projects.includes(prevEditVal)) editProject.value = prevEditVal;
 
-  projectFilter.innerHTML = '<option value="all">All projects</option>'
-    + projects.map((p) => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
-  if (prevFilterVal === 'all' || projects.includes(prevFilterVal)) projectFilter.value = prevFilterVal;
-
   projectListUl.innerHTML = projects.length
     ? projects.map((p) => `<li class="draft-chip" data-project="${escapeHtml(p)}">
         <span class="draft-chip-label">${escapeHtml(p)}</span>
@@ -1333,7 +1480,7 @@ function renderProjectOptions() {
       </li>`).join('')
     : '<li class="hint-text">No projects yet.</li>';
 
-  renderProjectPillBar();
+  renderProjectFilter();
 }
 
 function addProject() {
@@ -1366,6 +1513,7 @@ function renameProject(oldName, newName) {
   if (idx === -1) return;
   projects[idx] = newName;
   saveProjects();
+  if (selectedProjects.delete(oldName)) selectedProjects.add(newName);
   tasks.forEach((t) => {
     if (t.project === oldName) t.project = newName;
   });
@@ -1443,7 +1591,6 @@ document.addEventListener('keydown', (e) => {
 
 function renderLabelOptions() {
   initLabelFilter();
-  renderLabelPillBar();
   labelPicker.innerHTML = buildLabelPickerHtml(selectedLabels);
   editLabelPicker.innerHTML = buildLabelPickerHtml(editSelectedLabels);
 
@@ -2330,10 +2477,9 @@ statusFilters.addEventListener('click', (e) => {
   render();
 });
 
-categoryFilter.addEventListener('change', render);
-projectFilter.addEventListener('change', () => { updateProjectPillBarActive(); render(); });
-labelFilter.addEventListener('change', () => { updateLabelPillBarActive(); render(); });
-timeFilter.addEventListener('change', render);
+categoryFilter.addEventListener('change', () => { updateMoreFiltersCount(); render(); });
+labelFilter.addEventListener('change', render);
+timeFilter.addEventListener('change', () => { updateMoreFiltersCount(); render(); });
 sortBy.addEventListener('change', render);
 
 clearCompletedBtn.addEventListener('click', () => {
@@ -2796,8 +2942,8 @@ function getFilteredSortedTasks() {
   const cat = categoryFilter.value;
   if (cat && cat !== 'all') list = list.filter((t) => t.category === cat);
 
-  const proj = projectFilter.value;
-  if (proj && proj !== 'all') list = list.filter((t) => t.project === proj);
+  list = list.filter(matchesProjectFilter);
+  list = list.filter(matchesSearch);
 
   const label = labelFilter.value;
   if (label && label !== 'all') list = list.filter((t) => (t.labels || []).includes(label));
@@ -3271,8 +3417,8 @@ function computeCalTasksByDay() {
   const calTasks = tasks.filter((t) => {
     const cat = categoryFilter.value;
     if (cat && cat !== 'all' && t.category !== cat) return false;
-    const proj = projectFilter.value;
-    if (proj && proj !== 'all' && t.project !== proj) return false;
+    if (!matchesProjectFilter(t)) return false;
+    if (!matchesSearch(t)) return false;
     const lbl = labelFilter.value;
     if (lbl && lbl !== 'all' && !(t.labels || []).includes(lbl)) return false;
     if (!matchesTimeFilter(t, timeFilter.value)) return false;
@@ -3473,7 +3619,10 @@ function render() {
   renderTriageView();
 
   updateFooterCount(list, weekTasks, overdueTasks);
-  resultsCount.textContent = `Showing ${list.length} task${list.length === 1 ? '' : 's'}`;
+  resultsCount.textContent = `${list.length} task${list.length === 1 ? '' : 's'}`;
+  // Label and project counts follow task edits, not just list changes.
+  initLabelFilter();
+  if (projectMultiPanel.classList.contains('hidden')) renderProjectFilter();
 }
 
 // ---------- Export / Import ----------
@@ -4026,7 +4175,7 @@ function createTasksFromFile(list) {
     if (project) {
       const known = projects.find((p) => sameText(p, project));
       if (known) project = known;
-      else { projects.push(project); saveProjects(); renderProjectOptions(); renderProjectPillBar(); }
+      else { projects.push(project); saveProjects(); renderProjectOptions(); }
     }
 
     const task = {
