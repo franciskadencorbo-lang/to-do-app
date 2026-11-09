@@ -562,6 +562,27 @@
   </div>
 </div>
 
+<div class="modal-overlay hidden" id="briefUpdateOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Update the Daily Brief?</h2>
+      <button type="button" class="icon-btn" id="briefUpdateClose" aria-label="Close">✕</button>
+    </div>
+    <p class="hint-text" id="briefUpdateSummary"></p>
+    <div class="brief-update-options">
+      <button type="button" class="brief-update-option" id="briefUpdateNA"><b>N/A</b><span>Send only. The Daily Brief stays as it is.</span></button>
+      <button type="button" class="brief-update-option" id="briefUpdateRefresh"><b>Refresh</b><span>Update load, meetings and tasks. Keep the current plan.</span></button>
+      <button type="button" class="brief-update-option" id="briefUpdateReplan"><b>Replan</b><span>Plan the rest of today again. New Top 3, moves and alerts.</span></button>
+    </div>
+    <p class="hint-text">Refresh and Replan run on your PC, which must be on. Moves stay proposals: no task is changed.</p>
+  </div>
+</div>
+
+<div class="brief-update-pill" id="briefUpdatePill" role="status" hidden>
+  <span id="briefUpdatePillText"></span>
+  <button type="button" class="icon-btn" id="briefUpdatePillClose" aria-label="Dismiss">✕</button>
+</div>
+
 <div class="modal-overlay hidden" id="inviteModalOverlay">
   <div class="modal modal-wide">
     <div class="modal-header">
@@ -676,6 +697,7 @@
 <script src="app.js"></script>
 <script src="sync.js"></script>
 <script src="ask-claude.js"></script>
+<script src="brief-update.js"></script>
 <script src="slots.js"></script>
 <script src="invite-core.js"></script>
 <script src="invite.js"></script>

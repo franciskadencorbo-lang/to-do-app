@@ -1,0 +1,86 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Update the Daily Brief: test</title>
+<pre id="out">running</pre>
+<div class="modal-overlay hidden" id="briefUpdateOverlay"><p id="briefUpdateSummary"></p>
+  <button id="briefUpdateClose"></button><button id="briefUpdateNA"></button><button id="briefUpdateRefresh"></button><button id="briefUpdateReplan"></button></div>
+<div id="briefUpdatePill" hidden><span id="briefUpdatePillText"></span><button id="briefUpdatePillClose"></button></div>
+<script>
+// Self-contained: fetch is replaced, so nothing reaches GitHub and no token is used.
+window.BRIEF_POLL_MS = 20;
+const SYNC_REPO = 'test/repo';
+const syncHeaders = () => ({ Authorization: 'Bearer test' });
+const toBase64Utf8 = (s) => btoa(unescape(encodeURIComponent(s)));
+const fromBase64Utf8 = (b) => decodeURIComponent(escape(atob(b)));
+let remote = null, puts = [], gets = 0, nextStatus = null;
+window.fetch = async (url, opts = {}) => {
+  if ((opts.method || 'GET') === 'PUT') {
+    const body = JSON.parse(opts.body);
+    puts.push({ body, doc: JSON.parse(fromBase64Utf8(body.content)) });
+    remote = puts[puts.length - 1].doc;
+    return { ok: true, status: 200, json: async () => ({}) };
+  }
+  gets++;
+  if (nextStatus && remote) { remote = { ...remote, ...nextStatus }; }
+  if (!remote) return { ok: false, status: 404 };
+  return { ok: true, status: 200, json: async () => ({ sha: 'abc', content: toBase64Utf8(JSON.stringify(remote)) }) };
+};
+</script>
+<script src="../brief-update.js"></script>
+<script>
+const lines = [];
+const check = (n, ok, got) => lines.push(`${ok ? 'PASS' : 'FAIL'}  ${n}${ok ? '' : ' got ' + JSON.stringify(got)}`);
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const $ = (id) => document.getElementById(id);
+const open = () => !$('briefUpdateOverlay').classList.contains('hidden');
+const pill = () => ($('briefUpdatePill').hidden ? '' : $('briefUpdatePillText').textContent);
+(async () => {
+  try {
+    openBriefUpdateDialog(7);
+    check('dialog opens with the count', open() && /7 active/.test($('briefUpdateSummary').textContent), $('briefUpdateSummary').textContent);
+    check('N/A has the default focus', document.activeElement === $('briefUpdateNA'));
+    $('briefUpdateNA').click();
+    await wait(30);
+    check('N/A closes and sends nothing', !open() && puts.length === 0 && gets === 0, { puts, gets });
+
+    openBriefUpdateDialog(7);
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    check('Escape counts as N/A', !open() && puts.length === 0);
+
+    openBriefUpdateDialog(7);
+    $('briefUpdateRefresh').click();
+    await wait(10);
+    check('Refresh writes one queued request', puts.length === 1 && puts[0].doc.kind === 'refresh' && puts[0].doc.status === 'queued', puts);
+    check('request holds only fixed fields', Object.keys(puts[0].doc).sort().join() === 'id,kind,requestedAt,status', puts[0].doc);
+    check('dialog closed, pill says queued', !open() && /queued/.test(pill()), pill());
+    check('request is remembered across reloads', localStorage.getItem(BRIEF_ACTIVE_KEY) === puts[0].doc.id);
+
+    openBriefUpdateDialog(7);
+    $('briefUpdateReplan').click();
+    await wait(10);
+    check('a second request does not start while one is pending', puts.length === 1, puts.length);
+
+    nextStatus = { status: 'running' };
+    await wait(60);
+    check('pill follows running', /running/.test(pill()), pill());
+    nextStatus = { status: 'done', message: 'Planned 3.8h of 3.8h usable.' };
+    await wait(60);
+    check('pill shows the result', /updated\. Planned 3\.8h/.test(pill()), pill());
+    check('polling ends when finished', !localStorage.getItem(BRIEF_ACTIVE_KEY));
+
+    nextStatus = null;
+    openBriefUpdateDialog(7);
+    $('briefUpdateReplan').click();
+    await wait(10);
+    check('Replan allowed once the last one finished', puts.length === 2 && puts[1].doc.kind === 'replan', puts.length);
+    nextStatus = { status: 'failed', message: '<b>No plan</b> exists.' };
+    await wait(60);
+    check('failure message is shown as plain text', /failed\. <b>No plan<\/b>/.test(pill()) && !$('briefUpdatePillText').querySelector('b'), pill());
+    $('briefUpdatePillClose').click();
+    check('pill can be dismissed', $('briefUpdatePill').hidden);
+    lines.push(lines.every((l) => l.startsWith('PASS')) ? 'ALL PASS' : 'SOME FAILED');
+  } catch (e) { lines.push('ERROR ' + e.message); }
+  localStorage.removeItem('todo.briefUpdate.active.v1');
+  document.getElementById('out').textContent = lines.join('\n');
+})();
+</script>

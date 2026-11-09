@@ -3822,7 +3822,7 @@ async function sendSnapshotToGithub() {
     });
     if (!res.ok) throw Object.assign(new Error(`GitHub returned ${res.status}`), { status: res.status });
 
-    alert(`Sent ${tasks.filter((t) => !t.completed).length} active tasks to GitHub. The next staff-meeting agenda will use them.`);
+    openBriefUpdateDialog(tasks.filter((t) => !t.completed).length); // brief-update.js
   } catch (err) {
     if (err.status === 401 || err.status === 403 || err.status === 404) {
       localStorage.removeItem(GITHUB_TOKEN_KEY);
