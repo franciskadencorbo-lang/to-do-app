@@ -4,8 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Task Hub</title>
-<link rel="stylesheet" href="style.css">
-<link rel="stylesheet" href="meeting.css">
+<!-- ?v= must equal APP_VERSION in app.js and version.json: bump all three on every release,
+     so a reload always loads one matching set of files. -->
+<link rel="stylesheet" href="style.css?v=2026-11-10b">
+<link rel="stylesheet" href="meeting.css?v=2026-11-10b">
 </head>
 <body>
 <div class="app">
@@ -694,13 +696,13 @@
 
 <!-- Git-ignored; holds assignee email addresses. Missing it is fine. -->
 <script src="assignees.local.js"></script>
-<script src="app.js"></script>
-<script src="sync.js"></script>
-<script src="ask-claude.js"></script>
-<script src="brief-update.js"></script>
-<script src="slots.js"></script>
-<script src="invite-core.js"></script>
-<script src="invite.js"></script>
-<script src="meeting.js"></script>
+<script src="app.js?v=2026-11-10b"></script>
+<script src="sync.js?v=2026-11-10b"></script>
+<script src="ask-claude.js?v=2026-11-10b"></script>
+<script src="brief-update.js?v=2026-11-10b"></script>
+<script src="slots.js?v=2026-11-10b"></script>
+<script src="invite-core.js?v=2026-11-10b"></script>
+<script src="invite.js?v=2026-11-10b"></script>
+<script src="meeting.js?v=2026-11-10b"></script>
 </body>
 </html>

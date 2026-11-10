@@ -3783,6 +3783,21 @@ function toBase64Utf8(str) {
   return btoa(binary);
 }
 
+// Release tag: equal to version.json and the ?v= tags in index.html (bump all three together).
+// A tab opened before a release keeps running the old code, so Send to GitHub checks for it.
+const APP_VERSION = '2026-11-10b';
+
+async function newerAppPublished() {
+  try {
+    const res = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
+    if (!res.ok) return false;
+    const { version } = await res.json();
+    return !!version && version !== APP_VERSION;
+  } catch {
+    return false; // offline or blocked: say nothing rather than guess
+  }
+}
+
 function snapshotTimestamp() {
   const d = new Date();
   const pad = (n) => String(n).padStart(2, '0');
@@ -3822,7 +3837,17 @@ async function sendSnapshotToGithub() {
     });
     if (!res.ok) throw Object.assign(new Error(`GitHub returned ${res.status}`), { status: res.status });
 
-    openBriefUpdateDialog(tasks.filter((t) => !t.completed).length); // brief-update.js
+    const activeCount = tasks.filter((t) => !t.completed).length;
+    const RELOAD_HINT = 'Reload this page (Ctrl+Shift+R)';
+    if (typeof openBriefUpdateDialog !== 'function' || !document.getElementById('briefUpdateOverlay')) {
+      // Files from two releases are mixed: the snapshot is sent, but the Daily Brief options are missing.
+      alert(`Sent ${activeCount} active tasks to GitHub.\n\nThis Task Hub page is out of date, so the Daily Brief options cannot be shown. ${RELOAD_HINT}, then press Send to GitHub again.`);
+    } else {
+      openBriefUpdateDialog(activeCount); // brief-update.js
+      if (await newerAppPublished()) {
+        document.getElementById('briefUpdateSummary').textContent += ` A newer Task Hub has been published: after this, reload the page (Ctrl+Shift+R).`;
+      }
+    }
   } catch (err) {
     if (err.status === 401 || err.status === 403 || err.status === 404) {
       localStorage.removeItem(GITHUB_TOKEN_KEY);
