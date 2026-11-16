@@ -474,7 +474,8 @@ function decorateAskStates() {
   const generalState = byTask.get(ASK_GENERAL);
   document.querySelectorAll('[data-ask-general-btn]').forEach((btn) => {
     const mark = btn.querySelector('.ask-general-state');
-    if (mark) mark.textContent = generalState ? ` ${ASK_STATE_ICON[generalState]} ${ASK_STAGE_LABEL[generalState]}` : '';
+    if (mark) mark.textContent = generalState ? ` · ${ASK_STAGE_LABEL[generalState]}` : '';
+    btn.dataset.state = generalState || '';
   });
   document.querySelectorAll('li.task-item').forEach((item) => {
     const state = byTask.get(item.dataset.id);

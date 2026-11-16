@@ -3785,7 +3785,7 @@ function toBase64Utf8(str) {
 
 // Release tag: equal to version.json and the ?v= tags in index.html (bump all three together).
 // A tab opened before a release keeps running the old code, so Send to GitHub checks for it.
-const APP_VERSION = '2026-11-16a';
+const APP_VERSION = '2026-11-17a';
 
 async function newerAppPublished() {
   try {

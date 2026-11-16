@@ -2928,3 +2928,25 @@ input[type="date"].due-derived {
 
 /* Ask Claude: a hidden option must stay hidden (display rule above would override the attribute) */
 .ask-claude-option[hidden], .ask-claude-presets [hidden] { display: none !important; }
+
+/* Ask Claude: the key action, centre of the toolbar (GreenYellow teal to green) */
+.hub-btn-ask {
+  margin: 0 auto;
+  height: 42px;
+  padding: 0 22px;
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: #ffffff;
+  border: none;
+  background: linear-gradient(135deg, #00757e 0%, #3f8f3a 60%, #6aa621 100%);
+  box-shadow: 0 2px 10px rgba(0, 117, 126, 0.35);
+  letter-spacing: 0.01em;
+}
+.hub-btn-ask:hover { background: linear-gradient(135deg, #00656c 0%, #367f32 60%, #5c931c 100%); border: none; box-shadow: 0 4px 14px rgba(0, 117, 126, 0.45); }
+.hub-btn-ask .hub-ask-star { font-size: 1.2em; margin-right: 8px; }
+.hub-btn-ask .ask-general-state { font-weight: 500; opacity: 0.95; }
+.hub-btn-ask[data-state="running"], .hub-btn-ask[data-state="inbox"] { animation: ask-glow 1.6s ease-in-out infinite; }
+.hub-btn-ask[data-state="failed"] { background: linear-gradient(135deg, #b4532a, #d9534f); }
+@keyframes ask-glow { 50% { box-shadow: 0 0 0 6px rgba(106, 166, 33, 0.28), 0 2px 10px rgba(0, 117, 126, 0.35); } }
+@media (prefers-reduced-motion: reduce) { .hub-btn-ask { animation: none !important; } }
+@media (max-width: 720px) { .hub-btn-ask { margin: 0; } }

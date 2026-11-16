@@ -6,8 +6,8 @@
 <title>Task Hub</title>
 <!-- ?v= must equal APP_VERSION in app.js and version.json: bump all three on every release,
      so a reload always loads one matching set of files. -->
-<link rel="stylesheet" href="style.css?v=2026-11-16a">
-<link rel="stylesheet" href="meeting.css?v=2026-11-16a">
+<link rel="stylesheet" href="style.css?v=2026-11-17a">
+<link rel="stylesheet" href="meeting.css?v=2026-11-17a">
 </head>
 <body>
 <div class="app">
@@ -40,9 +40,9 @@
           <svg class="hub-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
           <input type="search" id="taskSearch" placeholder="Search tasks..." autocomplete="off" aria-label="Search tasks">
         </label>
+        <button type="button" id="askClaudeTopBtn" class="hub-btn hub-btn-ask" data-ask-general-btn title="Ask Claude to do a job for you (not tied to one task)"><span class="hub-ask-star" aria-hidden="true">✦</span>Ask Claude<span class="ask-general-state"></span></button>
         <span id="tasksFolderStatus" class="hub-folder-status"></span>
         <button type="button" id="tasksFolderBtn" class="hub-btn" title="Create tasks sent from the Email Triage Desk (OneDrive Email Triage\Tasks folder)" hidden>📂 Connect tasks folder</button>
-        <button type="button" id="askClaudeTopBtn" class="hub-btn" data-ask-general-btn title="Ask Claude to do a job for you (not tied to one task)">✦ Ask Claude<span class="ask-general-state"></span></button>
         <button type="button" id="exportSummaryBtn" class="hub-btn">
           <svg class="hub-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11"></path><path d="m7 10 5 5 5-5"></path><path d="M5 20h14"></path></svg>Export
         </button>
@@ -699,13 +699,13 @@
 
 <!-- Git-ignored; holds assignee email addresses. Missing it is fine. -->
 <script src="assignees.local.js"></script>
-<script src="app.js?v=2026-11-16a"></script>
-<script src="sync.js?v=2026-11-16a"></script>
-<script src="ask-claude.js?v=2026-11-16a"></script>
-<script src="brief-update.js?v=2026-11-16a"></script>
-<script src="slots.js?v=2026-11-16a"></script>
-<script src="invite-core.js?v=2026-11-16a"></script>
-<script src="invite.js?v=2026-11-16a"></script>
-<script src="meeting.js?v=2026-11-16a"></script>
+<script src="app.js?v=2026-11-17a"></script>
+<script src="sync.js?v=2026-11-17a"></script>
+<script src="ask-claude.js?v=2026-11-17a"></script>
+<script src="brief-update.js?v=2026-11-17a"></script>
+<script src="slots.js?v=2026-11-17a"></script>
+<script src="invite-core.js?v=2026-11-17a"></script>
+<script src="invite.js?v=2026-11-17a"></script>
+<script src="meeting.js?v=2026-11-17a"></script>
 </body>
 </html>
