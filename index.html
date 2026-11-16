@@ -6,8 +6,8 @@
 <title>Task Hub</title>
 <!-- ?v= must equal APP_VERSION in app.js and version.json: bump all three on every release,
      so a reload always loads one matching set of files. -->
-<link rel="stylesheet" href="style.css?v=2026-11-10b">
-<link rel="stylesheet" href="meeting.css?v=2026-11-10b">
+<link rel="stylesheet" href="style.css?v=2026-11-16a">
+<link rel="stylesheet" href="meeting.css?v=2026-11-16a">
 </head>
 <body>
 <div class="app">
@@ -42,6 +42,7 @@
         </label>
         <span id="tasksFolderStatus" class="hub-folder-status"></span>
         <button type="button" id="tasksFolderBtn" class="hub-btn" title="Create tasks sent from the Email Triage Desk (OneDrive Email Triage\Tasks folder)" hidden>📂 Connect tasks folder</button>
+        <button type="button" id="askClaudeTopBtn" class="hub-btn" data-ask-general-btn title="Ask Claude to do a job for you (not tied to one task)">✦ Ask Claude<span class="ask-general-state"></span></button>
         <button type="button" id="exportSummaryBtn" class="hub-btn">
           <svg class="hub-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11"></path><path d="m7 10 5 5 5-5"></path><path d="M5 20h14"></path></svg>Export
         </button>
@@ -546,12 +547,14 @@
     <form id="askClaudeForm">
       <div class="ask-claude-presets" id="askClaudePresets">
         <button type="button" class="filter-btn active" data-preset="do">Do the task</button>
+        <button type="button" class="filter-btn" data-preset="general" data-general-only="1" hidden>Do it</button>
+        <button type="button" class="filter-btn" data-preset="meeting" data-general-only="1" hidden>Meeting actions</button>
         <button type="button" class="filter-btn" data-preset="email">Draft email</button>
         <button type="button" class="filter-btn" data-preset="research">Research</button>
         <button type="button" class="filter-btn" data-preset="note">Prepare note</button>
       </div>
       <textarea id="askClaudePrompt" class="notes-input" rows="4" placeholder="What should Claude do? e.g. Draft the email to Giang asking for the quotation, based on the last exchange" required></textarea>
-      <label class="ask-claude-option"><input type="checkbox" id="askClaudeIncludeContext" checked> Include the task's notes and open sub-tasks</label>
+      <label class="ask-claude-option" id="askClaudeContextLabel"><input type="checkbox" id="askClaudeIncludeContext" checked> Include the task's notes and open sub-tasks</label>
       <p class="hint-text">Claude runs on your PC through the job watcher and saves drafts only: it never sends an email or changes a task. The result appears below and on every device.</p>
       <div class="modal-actions">
         <span id="askClaudeStatus" class="hint-text ask-claude-status"></span>
@@ -559,7 +562,7 @@
         <button type="submit" class="add-btn" id="askClaudeSendBtn">Send to Claude</button>
       </div>
     </form>
-    <div class="form-section-label">Requests for this task</div>
+    <div class="form-section-label" id="askClaudeHistoryLabel">Requests for this task</div>
     <div id="askClaudeHistory" class="ask-claude-history"><p class="hint-text">None yet.</p></div>
   </div>
 </div>
@@ -696,13 +699,13 @@
 
 <!-- Git-ignored; holds assignee email addresses. Missing it is fine. -->
 <script src="assignees.local.js"></script>
-<script src="app.js?v=2026-11-10b"></script>
-<script src="sync.js?v=2026-11-10b"></script>
-<script src="ask-claude.js?v=2026-11-10b"></script>
-<script src="brief-update.js?v=2026-11-10b"></script>
-<script src="slots.js?v=2026-11-10b"></script>
-<script src="invite-core.js?v=2026-11-10b"></script>
-<script src="invite.js?v=2026-11-10b"></script>
-<script src="meeting.js?v=2026-11-10b"></script>
+<script src="app.js?v=2026-11-16a"></script>
+<script src="sync.js?v=2026-11-16a"></script>
+<script src="ask-claude.js?v=2026-11-16a"></script>
+<script src="brief-update.js?v=2026-11-16a"></script>
+<script src="slots.js?v=2026-11-16a"></script>
+<script src="invite-core.js?v=2026-11-16a"></script>
+<script src="invite.js?v=2026-11-16a"></script>
+<script src="meeting.js?v=2026-11-16a"></script>
 </body>
 </html>

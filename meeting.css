@@ -146,3 +146,7 @@ body.mm-noscroll { overflow: hidden; }
   .mm-row > :nth-child(n+3), .mm-add > * { grid-column: 2; }
   .mm-add > * { grid-column: 1 / -1; }
 }
+
+/* Ask Claude in Meeting mode (16 Nov 2026): tick box before the task name, ✦ link on each block */
+.mm-head .mm-check input { margin: 0; }
+.mm-ask { font-weight: var(--weight-semibold, 600); }

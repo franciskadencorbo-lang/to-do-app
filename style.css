@@ -2925,3 +2925,6 @@ input[type="date"].due-derived {
 .brief-update-option span { font-size: 0.85em; opacity: 0.75; }
 .brief-update-pill { position: fixed; right: 16px; bottom: 16px; z-index: 1000; display: flex; align-items: center; gap: 8px; max-width: min(420px, calc(100vw - 32px)); padding: 10px 12px; border: 1px solid var(--border, #d8dee9); border-radius: 8px; background: var(--surface, #fff); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15); font-size: 0.9em; }
 .brief-update-pill[hidden] { display: none; }
+
+/* Ask Claude: a hidden option must stay hidden (display rule above would override the attribute) */
+.ask-claude-option[hidden], .ask-claude-presets [hidden] { display: none !important; }

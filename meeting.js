@@ -17,7 +17,7 @@
 
 const MEETING_HIDDEN_KEY = 'todo.meetingHidden.v1';
 const MEETING_DAYS = [1, 3, 5]; // Monday, Wednesday, Friday
-const MM = { open: false, showDone: false, showHidden: false, adding: null, armed: null };
+const MM = { open: false, showDone: false, showHidden: false, adding: null, armed: null, selected: new Set() };
 
 function mmLoadHidden() {
   try { const v = JSON.parse(localStorage.getItem(MEETING_HIDDEN_KEY) || '[]'); return Array.isArray(v) ? v : []; }
@@ -97,12 +97,14 @@ function mmBlock(task, sec) {
   const armedHide = MM.armed === 'hide:' + task.id;
   let h = `<section class="mm-block mm-${sec}" data-task="${task.id}">
     <div class="mm-head">
+      <label class="mm-check" title="Tick to include this task in an Ask Claude request"><input type="checkbox" data-mm="ask-select" data-task="${task.id}"${MM.selected.has(task.id) ? ' checked' : ''} aria-label="Select for Ask Claude: ${escapeHtml(task.title)}"></label>
       <b class="mm-name">${escapeHtml(task.title)}</b>
       ${mmCategoryTag(task.category)}
       ${task.project ? `<span class="mm-tag mm-tag-project">${escapeHtml(task.project)}</span>` : ''}
       <span class="mm-meta">${open.length} open${doneCount ? ` · ${doneCount} done` : ''}${task.due ? ` · due ${escapeHtml(mmLongDate(task.due))}` : ''}${late ? ` · <span class="mm-late">${late} overdue</span>` : ''}</span>
       <span class="mm-grow"></span>
       ${isDelegateTask(task) ? '' : `<button type="button" class="mm-link" data-mm-act="delegate" data-task="${task.id}" title="Hands the whole task over: moves it to DELEGATE (Low effort, Low impact). To hand over a single sub-task, pick its assignee instead">${armedDelegate ? 'Confirm: move to DELEGATE' : 'Move to DELEGATE'}</button>`}
+      <button type="button" class="mm-link mm-ask" data-mm-act="ask" data-task="${task.id}" title="Ask Claude to work on this task">✦ Ask Claude</button>
       <button type="button" class="mm-link" data-mm-act="edit" data-task="${task.id}">Edit</button>
       <button type="button" class="mm-link" data-mm-act="hide" data-task="${task.id}" title="Hide this task from Meeting mode (kept in your list)">${armedHide ? 'Confirm: hide' : 'Hide'}</button>
     </div>`;
@@ -138,6 +140,7 @@ function mmRender() {
 
   let h = `<div class="mm-top">
       <h2>Team Meeting · ${escapeHtml(mmLongDate(mmTodayKey()))}</h2>
+      <button type="button" class="btn btn-secondary" id="mmAsk" title="Ask Claude about the ticked tasks (or a general request if none is ticked)">✦ Ask Claude${MM.selected.size ? ` (${MM.selected.size})` : ''}</button>
       <button type="button" class="btn btn-primary" id="mmAddTask">+ Add Task</button>
       <button type="button" class="btn btn-secondary" id="mmClose" aria-label="Close Meeting mode">Close</button>
     </div>
@@ -174,7 +177,7 @@ function mmRender() {
 }
 
 function openMeetingMode() {
-  MM.open = true; MM.adding = null; MM.armed = null; MM.showHidden = false;
+  MM.open = true; MM.adding = null; MM.armed = null; MM.showHidden = false; MM.selected.clear();
   document.getElementById('meetingOverlay').classList.remove('hidden');
   document.body.classList.add('mm-noscroll');
   mmRender();
@@ -212,6 +215,12 @@ function mmWire() {
     const el = e.target;
     if (el.id === 'mmShowDone') { MM.showDone = el.checked; mmRender(); return; }
     const kind = el.dataset.mm;
+    if (kind === 'ask-select') {
+      if (el.checked && MM.selected.size >= 10) { el.checked = false; return; } // same limit as the watcher
+      if (el.checked) MM.selected.add(el.dataset.task); else MM.selected.delete(el.dataset.task);
+      mmRender();
+      return;
+    }
     if (kind === 'task-done') {
       const task = getTaskById(el.dataset.task);
       if (task) { task.completed = el.checked; mmCommit(); }
@@ -248,6 +257,7 @@ function mmWire() {
   box.addEventListener('click', (e) => {
     if (e.target.closest('#mmClose')) { closeMeetingMode(); return; }
     if (e.target.closest('#mmAddTask')) { openAddTaskModal(); return; }
+    if (e.target.closest('#mmAsk')) { openAskGeneral([...MM.selected], true); return; }
     if (e.target.closest('#mmHiddenBtn')) { MM.showHidden = !MM.showHidden; mmRender(); return; }
     const btn = e.target.closest('[data-mm-act]');
     if (!btn) return;
@@ -257,6 +267,7 @@ function mmWire() {
     if (act === 'cancel-sub') { MM.adding = null; mmRender(); return; }
     if (act === 'save-sub') { saveNewSub(btn.dataset.task); return; }
     if (act === 'edit' && task) { openEditModal(task.id); return; }
+    if (act === 'ask' && task) { openAskClaudeModal(task.id, null); return; }
     if (act === 'delegate' && task) {
       if (MM.armed !== 'delegate:' + task.id) { MM.armed = 'delegate:' + task.id; mmRender(); return; }
       MM.armed = null; mmMoveToDelegate(task); mmCommit(); return;

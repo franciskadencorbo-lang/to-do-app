@@ -31,8 +31,16 @@ const askHistoryEl = document.getElementById('askClaudeHistory');
 const askPresetsEl = document.getElementById('askClaudePresets');
 const askNoticeEl = document.getElementById('askClaudeNotice');
 
-let askTarget = null; // { taskId, subtaskId }
+let askTarget = null; // { taskId, subtaskId } or, for a general request, { taskId: 'general', taskIds: [...] }
 let askPreset = 'do';
+// General requests (toolbar button and Meeting Mode): no task, or the tasks selected in Meeting Mode.
+// The job file is general__<jobId>.json and job.tasks carries the selected tasks. The watcher caps Ask Claude at 25 jobs a day.
+const ASK_GENERAL = 'general';
+const ASK_MAX_TASKS = 10;
+const askTopBtn = document.getElementById('askClaudeTopBtn');
+const askHistoryLabelEl = document.getElementById('askClaudeHistoryLabel');
+const askContextLabelEl = document.getElementById('askClaudeContextLabel');
+function askIsGeneral() { return !!askTarget && askTarget.taskId === ASK_GENERAL; }
 
 function parseAskName(name) {
   const [taskId, jobId, subtaskId] = name.replace(/\.json$/, '').split('__');
@@ -122,6 +130,13 @@ function buildAskTaskContext(task, subtask, includeContext) {
   return { task: ctx, subtask: subtask ? subtaskContext(subtask) : null };
 }
 
+// A general request carries only the tasks the user selected (up to ASK_MAX_TASKS), never the whole list.
+function askGeneralContext(taskIds, includeContext) {
+  const list = (taskIds || []).map((id) => getTaskById(id)).filter(Boolean).slice(0, ASK_MAX_TASKS);
+  const label = list.length ? `Meeting: ${list.map((t) => t.title).join('; ')}`.slice(0, 120) : 'General request';
+  return { task: { id: ASK_GENERAL, title: label }, subtask: null, tasks: list.map((t) => buildAskTaskContext(t, null, includeContext).task) };
+}
+
 async function askListStage(stage) {
   const res = await fetch(`${ASK_JOBS_API}/${stage}?ref=main`, { headers: syncHeaders(), cache: 'no-store' });
   if (res.status === 404) return [];
@@ -152,6 +167,28 @@ async function askWriteJob(name, job) {
 
 // ---------- Modal ----------
 
+function openAskGeneral(taskIds, fromMeeting) {
+  const ids = (taskIds || []).filter((id) => getTaskById(id)).slice(0, ASK_MAX_TASKS);
+  askTarget = { taskId: ASK_GENERAL, subtaskId: null, taskIds: ids };
+  const list = ids.map((id) => getTaskById(id));
+  askTargetEl.innerHTML = list.length
+    ? `<div class="ask-claude-task">${list.length} selected task${list.length > 1 ? 's' : ''}</div>
+       <div class="hint-text">${list.map((t) => escapeHtml(t.title)).join(' · ')}</div>`
+    : `<div class="ask-claude-task">General request</div>
+       <div class="hint-text">Not tied to a task. In Meeting Mode, tick tasks first to attach them.</div>`;
+  askPromptEl.value = '';
+  askContextEl.checked = true;
+  askContextLabelEl.hidden = !list.length;
+  askHistoryLabelEl.textContent = 'General requests';
+  setAskPreset(fromMeeting && list.length ? 'meeting' : 'general');
+  askStatusEl.textContent = syncToken() ? '' : 'Connect cloud sync first (⚙ → Connect cloud sync).';
+  askSendBtn.disabled = !syncToken();
+  askOverlay.classList.remove('hidden');
+  askPromptEl.focus();
+  renderAskHistory();
+  markAskSeen(ASK_GENERAL);
+}
+
 function openAskClaudeModal(taskId, subtaskId) {
   const task = getTaskById(taskId);
   if (!task) return;
@@ -162,6 +199,8 @@ function openAskClaudeModal(taskId, subtaskId) {
     <div class="hint-text">${[task.project, task.due ? `due ${formatShortDate((subtask && subtask.date) || task.due)}` : ''].filter(Boolean).map(escapeHtml).join(' · ')}</div>`;
   askPromptEl.value = '';
   askContextEl.checked = true;
+  askContextLabelEl.hidden = false;
+  askHistoryLabelEl.textContent = 'Requests for this task';
   setAskPreset('do');
   askStatusEl.textContent = syncToken() ? '' : 'Connect cloud sync first (⚙ → Connect cloud sync).';
   askSendBtn.disabled = !syncToken();
@@ -178,6 +217,10 @@ function closeAskClaudeModal() {
 
 function setAskPreset(preset) {
   askPreset = preset;
+  const general = askIsGeneral();
+  askPresetsEl.querySelectorAll('[data-preset]').forEach((b) => {
+    b.hidden = general ? b.dataset.preset === 'do' : !!b.dataset.generalOnly;
+  });
   askPresetsEl.querySelectorAll('[data-preset]').forEach((b) => b.classList.toggle('active', b.dataset.preset === preset));
 }
 
@@ -207,7 +250,8 @@ function askHistoryItemHtml({ stage, jobId, job }) {
   if (!job) return '';
   const status = stage === 'done' ? (job.status === 'failed' ? 'failed' : 'done') : stage;
   const when = job.createdAt ? new Date(job.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '';
-  const target = job.subtask ? ` · ${escapeHtml(job.subtask.title)}` : '';
+  const target = job.subtask ? ` · ${escapeHtml(job.subtask.title)}`
+    : (job.tasks || []).length ? ` · ${(job.tasks || []).map((t) => escapeHtml(t.title)).join(', ')}` : '';
   const files = (job.files || []).map((f) => `
     <details class="ask-claude-file"><summary>📄 ${escapeHtml(f.name)}</summary>
       ${f.content != null ? `<pre class="diag-pre">${escapeHtml(f.content)}</pre>` : `<p class="hint-text">On ${escapeHtml(job.host || 'the PC that ran this request')}: ${escapeHtml(f.path || '')}</p>`}
@@ -224,7 +268,7 @@ function askHistoryItemHtml({ stage, jobId, job }) {
       <div class="ask-claude-actions">
         ${folderUrl ? `<a class="link-btn" href="${askAttr(askBrowserUrl(folderUrl))}" target="_blank" rel="noopener" title="${ASK_UPLOAD_HINT}">Open output folder</a>` : ''}
         <button type="button" class="link-btn" data-ask-copy="${jobId}">Copy result</button>
-        <button type="button" class="link-btn" data-ask-note="${jobId}">Add result to task notes</button>
+        ${askIsGeneral() ? '' : `<button type="button" class="link-btn" data-ask-note="${jobId}">Add result to task notes</button>`}
       </div>`
     : status === 'failed' ? `<p class="hint-text">${escapeHtml(job.error || 'Claude could not finish this request.')}</p>` : '';
   return `
@@ -241,21 +285,22 @@ function askHistoryItemHtml({ stage, jobId, job }) {
 async function sendAskClaude(e) {
   e.preventDefault();
   if (!askTarget) return;
-  const task = getTaskById(askTarget.taskId);
+  const general = askIsGeneral();
+  const task = general ? { id: ASK_GENERAL, title: 'General request' } : getTaskById(askTarget.taskId);
   const prompt = askPromptEl.value.trim();
   if (!task || !prompt) return;
-  const subtask = askTarget.subtaskId ? (task.subtasks || []).find((s) => s.id === askTarget.subtaskId) : null;
+  const subtask = !general && askTarget.subtaskId ? (task.subtasks || []).find((s) => s.id === askTarget.subtaskId) : null;
   const jobId = askJobId();
   const name = `${task.id}__${jobId}${subtask ? `__${subtask.id}` : ''}.json`;
   const job = {
-    id: jobId, createdAt: new Date().toISOString(), device: syncDeviceName(),
-    preset: askPreset, prompt, ...buildAskTaskContext(task, subtask, askContextEl.checked),
+    id: jobId, createdAt: new Date().toISOString(), device: syncDeviceName(), preset: askPreset, prompt,
+    ...(general ? askGeneralContext(askTarget.taskIds, askContextEl.checked) : buildAskTaskContext(task, subtask, askContextEl.checked)),
   };
   askSendBtn.disabled = true;
   askStatusEl.textContent = 'Sending…';
   try {
     await askWriteJob(name, job);
-    saveAskPending([...loadAskPending(), { name, taskId: task.id, title: subtask ? subtask.title : task.title }]);
+    saveAskPending([...loadAskPending(), { name, taskId: task.id, title: general ? prompt.slice(0, 50) : subtask ? subtask.title : task.title }]);
     askJobStates.set(name, 'inbox');
     decorateAskStates();
     askPromptEl.value = '';
@@ -324,7 +369,7 @@ askHistoryEl.addEventListener('click', async (e) => {
     }
     return;
   }
-  const task = getTaskById(askTarget.taskId);
+  const task = askIsGeneral() ? null : getTaskById(askTarget.taskId);
   if (!task) return;
   const stamp = new Date(job.finishedAt || Date.now()).toISOString().slice(0, 10);
   const line = `✦ Claude ${stamp}${job.subtask ? ` (${job.subtask.title})` : ''}: ${(job.result || '').trim()}`;
@@ -340,6 +385,7 @@ askPresetsEl.addEventListener('click', (e) => {
   if (btn) setAskPreset(btn.dataset.preset);
 });
 askForm.addEventListener('submit', sendAskClaude);
+if (askTopBtn) askTopBtn.addEventListener('click', () => openAskGeneral([], false));
 document.getElementById('askClaudeModalClose').addEventListener('click', closeAskClaudeModal);
 document.getElementById('askClaudeCancelBtn').addEventListener('click', closeAskClaudeModal);
 askOverlay.addEventListener('click', (e) => { if (e.target === askOverlay) closeAskClaudeModal(); });
@@ -425,6 +471,11 @@ function decorateAskStates() {
     btn.textContent = state ? ASK_STATE_ICON[state] : '✦';
     btn.title = state ? `Claude: ${ASK_STAGE_LABEL[state]} — click to see the request` : 'Ask Claude to work on this sub-task';
   });
+  const generalState = byTask.get(ASK_GENERAL);
+  document.querySelectorAll('[data-ask-general-btn]').forEach((btn) => {
+    const mark = btn.querySelector('.ask-general-state');
+    if (mark) mark.textContent = generalState ? ` ${ASK_STATE_ICON[generalState]} ${ASK_STAGE_LABEL[generalState]}` : '';
+  });
   document.querySelectorAll('li.task-item').forEach((item) => {
     const state = byTask.get(item.dataset.id);
     const meta = item.querySelector('.card-title-meta');
@@ -494,7 +545,8 @@ function showAskNotice(text, taskId) {
 
 askNoticeEl.addEventListener('click', () => {
   askNoticeEl.classList.add('hidden');
-  if (getTaskById(askNoticeEl.dataset.taskId)) openAskClaudeModal(askNoticeEl.dataset.taskId, null);
+  if (askNoticeEl.dataset.taskId === ASK_GENERAL) openAskGeneral([], false);
+  else if (getTaskById(askNoticeEl.dataset.taskId)) openAskClaudeModal(askNoticeEl.dataset.taskId, null);
 });
 
 setInterval(refreshAskStates, ASK_POLL_MS);
