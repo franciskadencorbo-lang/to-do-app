@@ -234,17 +234,15 @@ async function inviteRestoreFolder() {
 }
 
 async function inviteConnectFolder() {
-  // Check the saved permission without asking for it: the request can stall silently in some browsers,
-  // so the Windows folder dialog never opens. Only the picker itself is needed when access is not granted.
+  // Open the Windows folder dialog straight from the click. Browsers accept the picker only within
+  // a few seconds of a click, and any await before it (a permission check, a storage read) can stall
+  // or let that moment pass, so nothing is awaited before the picker.
   setInviteDirectoryStatus('<span class="hint-text">Choose the Task Hub Meetings folder in the Windows dialog…</span>');
   try {
-    if (inviteFolder && await inviteFolder.queryPermission({ mode: 'read' }) === 'granted') {
-      await inviteLoadDirectory();
-      if (invitePeople.length) return;
-    }
     inviteFolder = await window.showDirectoryPicker({ id: 'invite-folder', mode: 'read' });
-    await fsPut(INVITE_FOLDER_KEY, inviteFolder);
     await inviteLoadDirectory();
+    // Saving the link for next time must not hold up the directory. If it fails, the next open asks again.
+    fsPut(INVITE_FOLDER_KEY, inviteFolder).catch(() => {});
   } catch (err) {
     if (err && err.name === 'AbortError') {
       setInviteDirectoryStatus(`<span class="hint-text">Connect OneDrive\\Chief of Staff\\Task Hub Meetings to search the directory. Assignees and typed addresses work without it.</span> ${INVITE_CONNECT_BTN}`);
