@@ -215,7 +215,13 @@ async function inviteRestoreFolder() {
   // Opening the window again while this is still waiting must not be undone by
   // this older run finishing late.
   const run = ++inviteRestoreRun;
-  const saved = inviteFolder || await fsGet(INVITE_FOLDER_KEY);
+  // Show the Connect button straight away, so it is there even if the saved-folder lookup stalls.
+  setInviteDirectoryStatus(`<span class="hint-text">Connect OneDrive\\Chief of Staff\\Task Hub Meetings to search the directory. Assignees and typed addresses work without it.</span> ${INVITE_CONNECT_BTN}`);
+  // A saved-folder lookup that never finishes (blocked or stalled browser storage) must not leave the window blank.
+  const saved = inviteFolder || await Promise.race([
+    fsGet(INVITE_FOLDER_KEY).catch(() => null),
+    new Promise((resolve) => setTimeout(() => resolve(null), 3000)),
+  ]);
   if (run !== inviteRestoreRun) return;
   inviteFolder = inviteFolder || saved;
   const granted = !!inviteFolder && await inviteFolder.queryPermission({ mode: 'read' }) === 'granted';
